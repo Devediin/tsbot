@@ -7,35 +7,32 @@ const BOT_CHANNEL_PERMISSIONS = {
   channel_needed_subscribe_power: 2,
 };
 
-const BOT_CHANNEL_PERMISSION_OVERRIDES = [
-  {
-    permsid: 'i_channel_needed_permission_modify_power',
-    permvalue: 100,
-    permnegated: 0,
-    permskip: 0,
-  },
-];
+const BOT_ENEMY_CHANNEL_PERMISSIONS = {
+  channel_flag_permanent: 1,
+  channel_needed_join_power: 50,
+  channel_needed_subscribe_power: 50,
+};
 
-const applyBotChannelPermissions = async (channel = null) => {
-  if (!channel) return;
-
-  try {
-    await channel.edit({
-      channel_needed_join_power: 2,
-      channel_needed_subscribe_power: 2,
-      channel_flag_permanent: 1,
-    });
-  } catch (error) {
-    console.error('Erro ajustando powers base do canal do bot:', error);
+const getChannelEditPermissionsByType = (type) => {
+  if (type === 'enemy') {
+    return {
+      channel_needed_join_power: 50,
+      channel_needed_subscribe_power: 50,
+    };
   }
 
-  try {
-    for (const permission of BOT_CHANNEL_PERMISSION_OVERRIDES) {
-      await channel.setPerm(permission);
-    }
-  } catch (error) {
-    console.error('Erro aplicando permissões extras no canal do bot:', error);
+  return {
+    channel_needed_join_power: 2,
+    channel_needed_subscribe_power: 2,
+  };
+};
+
+const getChannelCreatePermissionsByType = (type) => {
+  if (type === 'enemy') {
+    return BOT_ENEMY_CHANNEL_PERMISSIONS;
   }
+
+  return BOT_CHANNEL_PERMISSIONS;
 };
 
 export const createChannel = async (teamspeak = {}, { name, type, description }, data = {}) => {
@@ -43,11 +40,10 @@ export const createChannel = async (teamspeak = {}, { name, type, description },
     const channel = await teamspeak.channelCreate(name, {
       ...data,
       channel_description: description,
-      ...BOT_CHANNEL_PERMISSIONS,
+      ...getChannelCreatePermissionsByType(type),
     });
 
     await insertChannel(channel, type);
-    await applyBotChannelPermissions(channel);
 
     return channel;
   } catch (error) {
@@ -81,12 +77,9 @@ export const updateChannel = async (teamspeak = {}, type, onlineData = {}, chann
 
       await channelFromTs.edit({
         channel_description: description,
-        channel_needed_join_power: 2,
-        channel_needed_subscribe_power: 2,
+        ...getChannelEditPermissionsByType(type),
         ...extraEditParams,
       });
-
-      await applyBotChannelPermissions(channelFromTs);
 
       resolve(true);
     } catch (error) {
@@ -127,23 +120,19 @@ export const upsertNeutralPageChannel = async (
       const existingChannelFromTs = await teamspeak.getChannelByID(existingTsChannel.propcache.cid);
       await existingChannelFromTs.edit({
         channel_description: finalDescription,
-        channel_needed_join_power: 2,
-        channel_needed_subscribe_power: 2,
+        ...getChannelEditPermissionsByType(type),
       });
-
-      await applyBotChannelPermissions(existingChannelFromTs);
 
       return true;
     }
 
     const channel = await teamspeak.channelCreate(baseName, {
       channel_description: finalDescription,
-      ...BOT_CHANNEL_PERMISSIONS,
+      ...getChannelCreatePermissionsByType(type),
       ...(parentChannel ? { cpid: parentChannel.cid || 0 } : {}),
     });
 
     await insertChannel(channel, type);
-    await applyBotChannelPermissions(channel);
     return true;
   }
 
@@ -151,11 +140,8 @@ export const upsertNeutralPageChannel = async (
 
   await channelFromTs.edit({
     channel_description: finalDescription,
-    channel_needed_join_power: 2,
-    channel_needed_subscribe_power: 2,
+    ...getChannelEditPermissionsByType(type),
   });
-
-  await applyBotChannelPermissions(channelFromTs);
 
   return true;
 };
