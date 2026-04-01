@@ -64,6 +64,33 @@ const getTypeLabel = (type = '') => {
   return String(type || 'CHAR').toUpperCase();
 };
 
+const getTypeColorTag = (type = '') => {
+  if (type === 'friend') return '🟢';
+  if (type === 'enemy') return '🔴';
+  return '⚪';
+};
+
+const formatDeathAge = (time) => {
+  const deathMoment = moment(time);
+
+  if (!deathMoment.isValid()) return 'agora';
+  return deathMoment.fromNow();
+};
+
+const formatDeathMessage = ({
+  type,
+  characterName,
+  level,
+  mainKiller,
+  time,
+}) => {
+  const typeLabel = getTypeLabel(type);
+  const typeColorTag = getTypeColorTag(type);
+  const deathAge = formatDeathAge(time);
+
+  return `💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu há ${deathAge} no level ${level} para ${mainKiller}`;
+};
+
 const sortDescendingByLevel = (characters = []) => (
   [...characters].sort((a, b) => Number(b.level) - Number(a.level))
 );
@@ -322,6 +349,10 @@ const getNotPokedKills = async (kills = []) => (
           characterName,
         } = death;
 
+        if (type !== 'friend' && type !== 'enemy') {
+          continue;
+        }
+
         const cacheKey = getDeathCacheKey({ characterName, time });
         const mainKiller = killers.length > 0 ? killers[0].name : 'unknown';
         const isCached = cachedKeys.has(cacheKey);
@@ -334,7 +365,14 @@ const getNotPokedKills = async (kills = []) => (
           continue;
         }
 
-        killsToPoke.push(`💀 [${getTypeLabel(type)}] ${characterName} morreu no level ${level} para ${mainKiller}`);
+        killsToPoke.push(formatDeathMessage({
+          type,
+          characterName,
+          level,
+          mainKiller,
+          time,
+        }));
+
         await addDeathsCache({ characterName, time });
         cachedKeys.add(cacheKey);
       }
