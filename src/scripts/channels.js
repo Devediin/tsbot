@@ -35,6 +35,16 @@ const getChannelCreatePermissionsByType = (type) => {
   return BOT_CHANNEL_PERMISSIONS;
 };
 
+const applyNeutralPagePermissions = async (teamspeak, cid) => {
+  try {
+    await teamspeak.channelSetPerm(Number(cid), 'i_channel_needed_subscribe_power', 2);
+    await teamspeak.channelSetPerm(Number(cid), 'i_channel_needed_join_power', 99);
+    await teamspeak.channelSetPerm(Number(cid), 144, 2);
+  } catch (error) {
+    console.error(`Erro aplicando perms na neutral page cid=${cid}:`, error);
+  }
+};
+
 export const createChannel = async (teamspeak = {}, { name, type, description }, data = {}) => {
   try {
     const channel = await teamspeak.channelCreate(name, {
@@ -117,11 +127,15 @@ export const upsertNeutralPageChannel = async (
 
       await insertChannel(existingTsChannel, type);
 
-      const existingChannelFromTs = await teamspeak.getChannelByID(existingTsChannel.propcache.cid);
+      const existingCid = Number(existingTsChannel.propcache.cid);
+      const existingChannelFromTs = await teamspeak.getChannelByID(existingCid);
+
       await existingChannelFromTs.edit({
         channel_description: finalDescription,
         ...getChannelEditPermissionsByType(type),
       });
+
+      await applyNeutralPagePermissions(teamspeak, existingCid);
 
       return true;
     }
@@ -134,17 +148,16 @@ export const upsertNeutralPageChannel = async (
 
     await insertChannel(channel, type);
 
-    try {
-      const createdCid = channel?.cid || channel?.propcache?.cid;
-      if (createdCid) {
-        const createdChannelFromTs = await teamspeak.getChannelByID(createdCid);
-        await createdChannelFromTs.edit({
-          channel_description: finalDescription,
-          ...getChannelEditPermissionsByType(type),
-        });
-      }
-    } catch (error) {
-      console.error('Erro reaplicando permissões na neutral page recém-criada:', error);
+    const createdCid = Number(channel.cid || channel.propcache?.cid);
+    if (createdCid) {
+      const createdChannelFromTs = await teamspeak.getChannelByID(createdCid);
+
+      await createdChannelFromTs.edit({
+        channel_description: finalDescription,
+        ...getChannelEditPermissionsByType(type),
+      });
+
+      await applyNeutralPagePermissions(teamspeak, createdCid);
     }
 
     return true;
@@ -156,6 +169,8 @@ export const upsertNeutralPageChannel = async (
     channel_description: finalDescription,
     ...getChannelEditPermissionsByType(type),
   });
+
+  await applyNeutralPagePermissions(teamspeak, channelFromDb.cid);
 
   return true;
 };
