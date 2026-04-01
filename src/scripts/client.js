@@ -1,7 +1,9 @@
 export const sendJoinMessage = async (event = {}) => (
   new Promise(async (resolve) => {
     event.client.message('Bem-vindo ao servidor.');
-    event.client.message('Eu sou o NiideHelper. Use !help no privado comigo para ver os comandos disponíveis.');
+    event.client.message('É obrigatório ter sua descrição adicionada para liberar seu acesso.');
+    event.client.message('Envie para quem vai te registrar exatamente neste formato: Main: Nome do seu personagem principal');
+    event.client.message('Depois aguarde alguns segundos para o NiideHelper validar seu personagem e aplicar seus grupos.');
     resolve();
   })
 );
