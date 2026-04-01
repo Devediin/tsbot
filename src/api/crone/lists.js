@@ -37,6 +37,7 @@ const { WORLD_NAME } = process.env;
 const NEUTRAL_PAGE_SIZE = 50;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
+let isListTaskRunning = false;
 
 const getVocationLabel = ({ vocation }) => {
   if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return '🏹 [RP]';
@@ -401,97 +402,110 @@ const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
 
 export const startTasks = (teamspeak) => {
   const listTask = cron.schedule('0-59/5 * * * * *', async () => {
-    const enemyCharacters = await Characters.find({ type: 'enemy' });
-    const friendCharacters = await Characters.find({ type: 'friend' });
-
-    const playersOnline = await tibiaAPI.getWorldOnline();
-    const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
-
-    const allCharacters = [
-      ...enemyCharacters.map(mapCharactersToNames),
-      ...friendCharacters.map(mapCharactersToNames),
-      ...automaticNeutralData.online.map(({ name }) => ({ type: 'neutral', characterName: name })),
-    ].filter(({ characterName }) => characterName);
-
-    const allCharactersInformation = await getInformationFromCharacters(allCharacters);
-    const deathListByCharacters = [];
-
-    if (allCharactersInformation && allCharactersInformation.length > 0) {
-      allCharactersInformation.forEach((data) => {
-        if (data && data.kills) {
-          deathListByCharacters.push(...data.kills);
-        }
-      });
+    if (isListTaskRunning) {
+      console.log('[CRON] listTask ainda em execução. Pulando esta rodada.');
+      return;
     }
 
-    console.log(`[DEATH] Characters monitorados: ${allCharacters.length}`);
-    console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
+    isListTaskRunning = true;
 
-    await processLevelUps(allCharactersInformation, teamspeak);
+    try {
+      const enemyCharacters = await Characters.find({ type: 'enemy' });
+      const friendCharacters = await Characters.find({ type: 'friend' });
 
-    const killsToPoke = await getNotPokedKills(deathListByCharacters);
-    if (killsToPoke.length > 0) {
-      for (const killMessage of killsToPoke) {
-        console.log(`[DEATH] Enviando poke: ${killMessage}`);
-        await sendMassPoke(teamspeak, killMessage);
+      const playersOnline = await tibiaAPI.getWorldOnline();
+      const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
+
+      const allCharacters = [
+        ...enemyCharacters.map(mapCharactersToNames),
+        ...friendCharacters.map(mapCharactersToNames),
+        ...automaticNeutralData.online.map(({ name }) => ({ type: 'neutral', characterName: name })),
+      ].filter(({ characterName }) => characterName);
+
+      const allCharactersInformation = await getInformationFromCharacters(allCharacters);
+      const deathListByCharacters = [];
+
+      if (allCharactersInformation && allCharactersInformation.length > 0) {
+        allCharactersInformation.forEach((data) => {
+          if (data && data.kills) {
+            deathListByCharacters.push(...data.kills);
+          }
+        });
       }
-    }
 
-    await syncOnlineTrackers(playersOnline);
-    await syncMonthlyLevelTrackers(playersOnline);
+      console.log(`[DEATH] Characters monitorados: ${allCharacters.length}`);
+      console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
 
-    const enemyOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, enemyCharacters));
-    const friendOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, friendCharacters));
+      await processLevelUps(allCharactersInformation, teamspeak);
 
-    const channelLists = await teamspeak.channelList();
-    const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
+      const killsToPoke = await getNotPokedKills(deathListByCharacters);
+      if (killsToPoke.length > 0) {
+        for (const killMessage of killsToPoke) {
+          console.log(`[DEATH] Enviando poke: ${killMessage}`);
+          await sendMassPoke(teamspeak, killMessage);
+        }
+      }
 
-    await updateChannel(teamspeak, 'enemy', enemyOnlineOfflineData, channelListsName);
-    await updateChannel(teamspeak, 'friend', friendOnlineOfflineData, channelListsName);
+      await syncOnlineTrackers(playersOnline);
+      await syncMonthlyLevelTrackers(playersOnline);
 
-    const neutralSummaryData = {
-      online: automaticNeutralData.online,
-      dbCharacters: automaticNeutralData.dbCharacters,
-      description: `[b][color=#00AAFF]Online ${automaticNeutralData.online.length}/${automaticNeutralData.dbCharacters.length}[/color][/b]\n\n[b]Neutral list is paginated below in groups of ${NEUTRAL_PAGE_SIZE}.[/b]\n`,
-    };
+      const enemyOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, enemyCharacters));
+      const friendOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, friendCharacters));
 
-    await updateChannel(teamspeak, 'neutral', neutralSummaryData, channelListsName);
+      const channelLists = await teamspeak.channelList();
+      const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
 
-    const neutralPages = paginateList(automaticNeutralData.online, NEUTRAL_PAGE_SIZE);
-    const neutralParentChannel = await Channels.findOne({ type: 'neutral' });
+      await updateChannel(teamspeak, 'enemy', enemyOnlineOfflineData, channelListsName);
+      await updateChannel(teamspeak, 'friend', friendOnlineOfflineData, channelListsName);
 
-    for (let i = 0; i < neutralPages.length; i += 1) {
-      const page = neutralPages[i];
-      const start = i * NEUTRAL_PAGE_SIZE + 1;
-      const end = i * NEUTRAL_PAGE_SIZE + page.length;
-
-      const pageData = {
-        online: page,
-        dbCharacters: page.map(({ name }) => ({ characterName: name, type: 'neutral-auto' })),
+      const neutralSummaryData = {
+        online: automaticNeutralData.online,
+        dbCharacters: automaticNeutralData.dbCharacters,
+        description: `[b][color=#00AAFF]Online ${automaticNeutralData.online.length}/${automaticNeutralData.dbCharacters.length}[/color][/b]\n\n[b]Neutral list is paginated below in groups of ${NEUTRAL_PAGE_SIZE}.[/b]\n`,
       };
 
-      const { description } = await generateDescription(pageData);
-      const rangeLabel = `${start}-${end}`;
+      await updateChannel(teamspeak, 'neutral', neutralSummaryData, channelListsName);
 
-      await upsertNeutralPageChannel(
+      const neutralPages = paginateList(automaticNeutralData.online, NEUTRAL_PAGE_SIZE);
+      const neutralParentChannel = await Channels.findOne({ type: 'neutral' });
+
+      for (let i = 0; i < neutralPages.length; i += 1) {
+        const page = neutralPages[i];
+        const start = i * NEUTRAL_PAGE_SIZE + 1;
+        const end = i * NEUTRAL_PAGE_SIZE + page.length;
+
+        const pageData = {
+          online: page,
+          dbCharacters: page.map(({ name }) => ({ characterName: name, type: 'neutral-auto' })),
+        };
+
+        const { description } = await generateDescription(pageData);
+        const rangeLabel = `${start}-${end}`;
+
+        await upsertNeutralPageChannel(
+          teamspeak,
+          i,
+          rangeLabel,
+          description,
+          neutralParentChannel
+        );
+      }
+
+      await deleteUnusedNeutralPageChannels(
         teamspeak,
-        i,
-        rangeLabel,
-        description,
-        neutralParentChannel
+        neutralPages.map((_, index) => index)
       );
+
+      await deleteOrphanNeutralPageChannelsFromTs(teamspeak);
+
+      await moveAfkClients(teamspeak);
+      await syncRegistrationGroups(teamspeak);
+      await updateMeta();
+    } catch (error) {
+      console.error('[CRON] Erro na listTask:', error);
+    } finally {
+      isListTaskRunning = false;
     }
-
-    await deleteUnusedNeutralPageChannels(
-      teamspeak,
-      neutralPages.map((_, index) => index)
-    );
-
-    await deleteOrphanNeutralPageChannelsFromTs(teamspeak);
-
-    await moveAfkClients(teamspeak);
-    await syncRegistrationGroups(teamspeak);
-    await updateMeta();
   }, {
     scheduled: false,
   });
