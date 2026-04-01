@@ -70,11 +70,20 @@ const getTypeColorTag = (type = '') => {
   return '⚪';
 };
 
-const formatDeathAge = (time) => {
+const formatDeathAgeShort = (time) => {
   const deathMoment = moment(time);
 
   if (!deathMoment.isValid()) return 'agora';
-  return deathMoment.fromNow();
+
+  const diffMinutes = moment().diff(deathMoment, 'minutes');
+  if (diffMinutes < 1) return 'agora';
+  if (diffMinutes < 60) return `${diffMinutes}m`;
+
+  const diffHours = moment().diff(deathMoment, 'hours');
+  if (diffHours < 24) return `${diffHours}h`;
+
+  const diffDays = moment().diff(deathMoment, 'days');
+  return `${diffDays}d`;
 };
 
 const formatDeathMessage = ({
@@ -86,9 +95,9 @@ const formatDeathMessage = ({
 }) => {
   const typeLabel = getTypeLabel(type);
   const typeColorTag = getTypeColorTag(type);
-  const deathAge = formatDeathAge(time);
+  const deathAge = formatDeathAgeShort(time);
 
-  return `💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu há ${deathAge} no level ${level} para ${mainKiller}`;
+  return `[${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para ${mainKiller}`;
 };
 
 const sortDescendingByLevel = (characters = []) => (
