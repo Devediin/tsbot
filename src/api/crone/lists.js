@@ -1,46 +1,83 @@
 import cron from 'node-cron';
 import moment from 'moment';
-import { findKey } from 'lodash';
 import { capitalize } from 'lodash';
 import TibiaAPI from '../tibia';
 import Characters from '../models/characters';
+import Channels from '../models/channels';
 import Meta, { updateMeta } from '../models/meta';
-import { sendMassPoke } from '../../scripts/client';
-import { updateChannel } from '../../scripts/channels';
-import { VOCATIONS_ICONS } from '../../utils/constants';
+import {
+  upsertOnlineTracker,
+  getOnlineTrackerByName,
+} from '../models/online-tracker';
+import {
+  ensureMonthlyLevelTracker,
+  getMonthlyLevelTrackerByName,
+} from '../models/monthly-level-tracker';
+import {
+  upsertLevelTracker,
+} from '../models/level-tracker';
+import {
+  sendMassPoke,
+  sendMassPrivateMessage,
+} from '../../scripts/client';
+import { moveAfkClients } from '../../scripts/afk';
+import { syncRegistrationGroups } from '../../scripts/registration-groups';
+import {
+  updateChannel,
+  upsertNeutralPageChannel,
+  deleteUnusedNeutralPageChannels,
+} from '../../scripts/channels';
 
 const { WORLD_NAME } = process.env;
+const NEUTRAL_PAGE_SIZE = 50;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 
-const sortByProfessions = ({ online: onlineCharacters, dbCharacters }) => {
-  const sorcerers = onlineCharacters.filter(({ vocation }) => (
-    vocation === 'Master Sorcerer' || vocation === 'Sorcerer'
-  ));
+const getVocationLabel = ({ vocation }) => {
+  if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return '🏹 [RP]';
+  if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return '🔥 [MS]';
+  if (vocation.includes('Elder Druid') || vocation === 'Druid') return '🌿 [ED]';
+  if (vocation.includes('Elite Knight') || vocation === 'Knight') return '🛡️ [EK]';
+  if (vocation.includes('Exalted Monk') || vocation === 'Monk') return '🥋 [EM]';
+  return '❔ [UNK]';
+};
 
-  const druids = onlineCharacters.filter(({ vocation }) => (
-    vocation === 'Elder Druid' || vocation === 'Druid'
-  ));
+const sortDescendingByLevel = (characters = []) => (
+  [...characters].sort((a, b) => Number(b.level) - Number(a.level))
+);
 
-  const paladins = onlineCharacters.filter(({ vocation }) => (
-    vocation === 'Royal Paladin' || vocation === 'Paladin'
-  ));
+const splitByProfessions = (onlineCharacters = []) => {
+  const eks = sortDescendingByLevel(
+    onlineCharacters.filter(({ vocation }) => vocation.includes('Elite Knight') || vocation === 'Knight')
+  );
 
-  const knights = onlineCharacters.filter(({ vocation }) => (
-    vocation === 'Elite Knight' || vocation === 'Knight'
-  ));
+  const ems = sortDescendingByLevel(
+    onlineCharacters.filter(({ vocation }) => vocation.includes('Exalted Monk') || vocation === 'Monk')
+  );
 
-  const nons = onlineCharacters.filter(({ vocation }) => vocation === 'None');
+  const rps = sortDescendingByLevel(
+    onlineCharacters.filter(({ vocation }) => vocation.includes('Royal Paladin') || vocation === 'Paladin')
+  );
+
+  const eds = sortDescendingByLevel(
+    onlineCharacters.filter(({ vocation }) => vocation.includes('Elder Druid') || vocation === 'Druid')
+  );
+
+  const mss = sortDescendingByLevel(
+    onlineCharacters.filter(({ vocation }) => vocation.includes('Master Sorcerer') || vocation === 'Sorcerer')
+  );
+
+  const nons = sortDescendingByLevel(
+    onlineCharacters.filter(({ vocation }) => vocation === 'None')
+  );
 
   return {
-    online: [
-      ...sorcerers,
-      ...druids,
-      ...paladins,
-      ...knights,
-      ...nons,
-    ],
-    dbCharacters
+    eks,
+    ems,
+    rps,
+    eds,
+    mss,
+    nons,
   };
 };
 
@@ -54,17 +91,25 @@ const getInformationFromCharacters = async (characterNames = []) => (
         new Promise(async (resolve) => {
           try {
             const information = await tibiaAPI.getCharacterInformation(characterName);
-            information.kills.forEach((death) => {
-              death.type = type;
-            });
 
-            resolve(information);
+            if (information.kills && Array.isArray(information.kills)) {
+              information.kills.forEach((death) => {
+                death.type = type;
+                death.characterName = characterName;
+              });
+            }
+
+            resolve({
+              ...information,
+              monitoredType: type,
+              monitoredCharacterName: characterName,
+            });
           } catch (error) {
             resolve();
           }
         })
       )));
-  
+
       resolve(characterInformations);
     } catch (error) {
       reject(error);
@@ -72,22 +117,67 @@ const getInformationFromCharacters = async (characterNames = []) => (
   })
 );
 
-const getVocationIcon = ({ vocation }) => {
-  const iconUrl = findKey(VOCATIONS_ICONS, voc => vocation.indexOf(voc) > -1);
-  return `[IMG]${iconUrl}[/IMG]`;
+const formatOnlineDuration = (firstSeenOnline) => {
+  if (!firstSeenOnline) return '0m';
+
+  const start = moment(firstSeenOnline);
+  const now = moment();
+
+  const totalMinutes = now.diff(start, 'minutes');
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours <= 0) return `${minutes}m`;
+  return `${hours}h${minutes}m`;
 };
 
-const buildCharacterDescription = ({ name, vocation, level }) => (
-  `${getVocationIcon({ vocation })} ${name} - ${vocation} - ${level} \n`
-);
+const formatMonthlyLevelDiff = (startLevel, currentLevel) => {
+  const diff = Number(currentLevel) - Number(startLevel);
 
-const generateDescription = (data = {}) => {
-  let description = '\n';
+  if (diff > 0) return `+${diff}`;
+  if (diff < 0) return `${diff}`;
+  return '+0';
+};
 
-  const { online, dbCharacters } = data;
-  online.forEach((character) => {
-    description += buildCharacterDescription(character);
-  });
+const buildCharacterDescription = async ({ name, vocation, level }) => {
+  const tracker = await getOnlineTrackerByName(name);
+  const monthlyTracker = await getMonthlyLevelTrackerByName(name);
+
+  const onlineDuration = tracker?.firstSeenOnline
+    ? formatOnlineDuration(tracker.firstSeenOnline)
+    : '0m';
+
+  const monthlyDiff = monthlyTracker
+    ? formatMonthlyLevelDiff(monthlyTracker.startLevel, level)
+    : '+0';
+
+  return `${getVocationLabel({ vocation })} - ${level} [${monthlyDiff}] - ${name} - ${onlineDuration}\n`;
+};
+
+const appendProfessionBlock = async (title, list = [], description = '') => {
+  if (!list.length) return description;
+
+  let nextDescription = `${description}\n[b]${title} (${list.length})[/b]\n`;
+
+  for (const character of list) {
+    nextDescription += await buildCharacterDescription(character);
+  }
+
+  return nextDescription;
+};
+
+const generateDescription = async (data = {}) => {
+  const { online = [], dbCharacters = [] } = data;
+  const { eks, ems, rps, eds, mss, nons } = splitByProfessions(online);
+
+  let description = `[b][color=#00AAFF]Online ${online.length}/${dbCharacters.length}[/color][/b]\n`;
+
+  description = await appendProfessionBlock('🛡️ Elite Knights', eks, description);
+  description = await appendProfessionBlock('🥋 Exalted Monks', ems, description);
+  description = await appendProfessionBlock('🏹 Royal Paladins', rps, description);
+  description = await appendProfessionBlock('🌿 Elder Druids', eds, description);
+  description = await appendProfessionBlock('🔥 Master Sorcerers', mss, description);
+  description = await appendProfessionBlock('❔ No Vocation', nons, description);
 
   return {
     online,
@@ -110,20 +200,102 @@ const getOnlineCharacters = (onlineCharacters = [], dbCharacters = []) => {
   return { online, dbCharacters };
 };
 
+const getAutomaticNeutralCharacters = (onlineCharacters = [], friendCharacters = [], enemyCharacters = []) => {
+  const friendNames = new Set(friendCharacters.map(({ characterName }) => characterName));
+  const enemyNames = new Set(enemyCharacters.map(({ characterName }) => characterName));
+
+  const neutralOnline = onlineCharacters.filter(({ name }) => (
+    !friendNames.has(name) && !enemyNames.has(name)
+  ));
+
+  return {
+    online: sortDescendingByLevel(neutralOnline),
+    dbCharacters: neutralOnline.map(({ name }) => ({ characterName: name, type: 'neutral-auto' })),
+  };
+};
+
+const paginateList = (items = [], pageSize = 50) => {
+  const pages = [];
+
+  for (let i = 0; i < items.length; i += pageSize) {
+    pages.push(items.slice(i, i + pageSize));
+  }
+
+  return pages;
+};
+
+const syncOnlineTrackers = async (playersOnline = []) => {
+  const onlineNames = new Set(playersOnline.map(({ name }) => name));
+
+  for (const player of playersOnline) {
+    await upsertOnlineTracker({ name: player.name, isOnline: true });
+  }
+
+  const trackedCharacters = await Characters.find({});
+  for (const { characterName } of trackedCharacters) {
+    if (!onlineNames.has(characterName)) {
+      await upsertOnlineTracker({ name: characterName, isOnline: false });
+    }
+  }
+};
+
+const syncMonthlyLevelTrackers = async (playersOnline = []) => {
+  for (const player of playersOnline) {
+    await ensureMonthlyLevelTracker({
+      name: player.name,
+      level: player.level,
+    });
+  }
+};
+
+const processLevelUps = async (characterResponses = [], teamspeak) => {
+  for (const response of characterResponses) {
+    if (!response || !response.info) continue;
+
+    const { info, monitoredType } = response;
+    const { name, level } = info;
+
+    const result = await upsertLevelTracker({ name, level });
+
+    if (result?.leveledUp && result.previousLevel !== null) {
+      const message = `${capitalize(monitoredType)} ${name} upou de ${result.previousLevel} para ${result.currentLevel}`;
+      await sendMassPrivateMessage(teamspeak, message);
+    }
+  }
+};
+
 const getNotPokedKills = async (kills = []) => (
   new Promise(async (resolve, reject) => {
     try {
       const queryMeta = await Meta.findOne();
 
+      if (!queryMeta || !queryMeta.lastCheck) {
+        resolve([]);
+        return;
+      }
+
       const { lastCheck } = queryMeta;
       const lastCheckMoment = moment(lastCheck);
-    
-      const killsToPoke = kills.map(({ type, name, killedBy, timeAgo }) => {
-        const isNewKill = lastCheckMoment.isSameOrAfter(moment(timeAgo));
-        
-        if (isNewKill) return `${capitalize(type)} ${capitalize(name)} Killed ${killedBy}`;
-        return '';
-      });
+
+      const killsToPoke = kills.map((death) => {
+        const {
+          type,
+          level,
+          killers = [],
+          time,
+          characterName,
+        } = death;
+
+        const mainKiller = killers.length > 0 ? killers[0].name : 'unknown';
+        const isNewKill = moment(time).isAfter(lastCheckMoment);
+
+        if (!isNewKill) {
+          return '';
+        }
+
+        return `${capitalize(type)} ${characterName} morreu level ${level} para ${mainKiller}`;
+      }).filter(Boolean);
+
       resolve(killsToPoke);
     } catch (error) {
       reject(error);
@@ -137,72 +309,80 @@ export const startTasks = (teamspeak) => {
   const listTask = cron.schedule('0-59/5 * * * * *', async () => {
     const enemyCharacters = await Characters.find({ type: 'enemy' });
     const friendCharacters = await Characters.find({ type: 'friend' });
-    const neutralCharacters = await Characters.find({ type: 'neutral' });
-    const makersEnemyCharacters = await Characters.find({ type: 'makersEnemy' });
-    const makersFriendCharacters = await Characters.find({ type: 'makersFriend' });
-    const possibleEnemysCharacters = await Characters.find({ type: 'possibleEnemys' });
 
     const allCharacters = [
       ...enemyCharacters.map(mapCharactersToNames),
       ...friendCharacters.map(mapCharactersToNames),
-      ...neutralCharacters.map(mapCharactersToNames),
-      ...makersEnemyCharacters.map(mapCharactersToNames),
-      ...makersFriendCharacters.map(mapCharactersToNames),
-      ...possibleEnemysCharacters.map(mapCharactersToNames),
     ].filter(({ characterName }) => characterName);
 
     const allCharactersInformation = await getInformationFromCharacters(allCharacters);
-
     const deathListByCharacters = [];
-    const playersOnline = [];
 
     if (allCharactersInformation && allCharactersInformation.length > 0) {
       allCharactersInformation.forEach((data) => {
         if (data && data.kills) {
           deathListByCharacters.push(...data.kills);
         }
-  
-        if (data && data.info) {
-          if (data.info.status === 'online') {
-            playersOnline.push(data.info);
-          }
-        }
       });
     }
 
-    const enemyOnlineOfflineData = generateDescription(sortByProfessions(getOnlineCharacters(playersOnline, enemyCharacters)));
-    const friendOnlineOfflineData = generateDescription(sortByProfessions(getOnlineCharacters(playersOnline, friendCharacters)));
-    const neutralOnlineOfflineData = generateDescription(sortByProfessions(getOnlineCharacters(playersOnline, neutralCharacters)));
-    const makersOnlineOfflineData = generateDescription(sortByProfessions(getOnlineCharacters(playersOnline, makersEnemyCharacters)));
-    const makersFriendOnlineOfflineData = generateDescription(sortByProfessions(getOnlineCharacters(playersOnline, makersFriendCharacters)));
-    const possibleOnlineOfflineData = generateDescription(sortByProfessions(getOnlineCharacters(playersOnline, possibleEnemysCharacters)));
-  
-    const channelLists = await teamspeak.channelList();
+    await processLevelUps(allCharactersInformation, teamspeak);
 
+    const playersOnline = await tibiaAPI.getWorldOnline();
+    await syncOnlineTrackers(playersOnline);
+    await syncMonthlyLevelTrackers(playersOnline);
+
+    const enemyOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, enemyCharacters));
+    const friendOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, friendCharacters));
+    const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
+
+    const channelLists = await teamspeak.channelList();
     const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
 
     await updateChannel(teamspeak, 'enemy', enemyOnlineOfflineData, channelListsName);
     await updateChannel(teamspeak, 'friend', friendOnlineOfflineData, channelListsName);
-    await updateChannel(teamspeak, 'neutral', neutralOnlineOfflineData, channelListsName);
-    await updateChannel(teamspeak, 'makersEnemy', makersOnlineOfflineData, channelListsName);
-    await updateChannel(teamspeak, 'makersFriend', makersFriendOnlineOfflineData, channelListsName);
-    await updateChannel(teamspeak, 'possibleEnemys', possibleOnlineOfflineData, channelListsName);
 
-    const killsToPoke = await getNotPokedKills(deathListByCharacters.filter((character) => character.length));
- 
-    await Promise.all(killsToPoke.map((message) => (
-      new Promise(async (resolve, reject) => {
-        try {
-          await sendMassPoke(teamspeak, `${message.substring(0, 97)}...`);
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      })
-    )));
+    const neutralSummaryData = {
+      online: automaticNeutralData.online,
+      dbCharacters: automaticNeutralData.dbCharacters,
+      description: `[b][color=#00AAFF]Online ${automaticNeutralData.online.length}/${automaticNeutralData.dbCharacters.length}[/color][/b]\n\n[b]Neutral list is paginated below in groups of ${NEUTRAL_PAGE_SIZE}.[/b]\n`,
+    };
 
+    await updateChannel(teamspeak, 'neutral', neutralSummaryData, channelListsName);
+
+    const neutralPages = paginateList(automaticNeutralData.online, NEUTRAL_PAGE_SIZE);
+    const neutralParentChannel = await Channels.findOne({ type: 'neutral' });
+
+    for (let i = 0; i < neutralPages.length; i += 1) {
+      const page = neutralPages[i];
+      const start = i * NEUTRAL_PAGE_SIZE + 1;
+      const end = i * NEUTRAL_PAGE_SIZE + page.length;
+
+      const pageData = {
+        online: page,
+        dbCharacters: page.map(({ name }) => ({ characterName: name, type: 'neutral-auto' })),
+      };
+
+      const { description } = await generateDescription(pageData);
+      const rangeLabel = `${start}-${end}`;
+
+      await upsertNeutralPageChannel(
+        teamspeak,
+        i,
+        rangeLabel,
+        description,
+        neutralParentChannel
+      );
+    }
+
+    await deleteUnusedNeutralPageChannels(
+      teamspeak,
+      neutralPages.map((_, index) => index)
+    );
+
+    await moveAfkClients(teamspeak);
+    await syncRegistrationGroups(teamspeak);
     await updateMeta();
-
   }, {
     scheduled: false,
   });

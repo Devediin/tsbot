@@ -7,14 +7,15 @@ import { BOT_NAME, COMMANDS_MAP } from '../utils/constants';
 const executeCommand = async (command, teamspeak, msgAsList, cid) => (
   new Promise(async (resolve, reject) => {
     const { exec } = COMMANDS_MAP[command];
-    
-    const { ok, message } = await exec(teamspeak, msgAsList, cid);
 
-    if (!ok) {
-      reject(message);
+    const response = await exec(teamspeak, msgAsList, cid);
+
+    if (!response || !response.ok) {
+      reject(response?.message || 'Command failed');
+      return;
     }
 
-    resolve(ok);
+    resolve(response);
   })
 );
 
@@ -28,10 +29,16 @@ export const proceesCommand = async (event = {}, teamspeak) => {
     if (client_nickname === BOT_NAME) return;
 
     const msgAsList = msg.split(' ');
-  
     const command = msgAsList[0];
-    
-    const dbUserGroups = await ServerGroups.find({ sgid: { $in: client_servergroups } });
+
+    const parsedServerGroups = Array.isArray(client_servergroups)
+      ? client_servergroups.map((group) => Number(group))
+      : String(client_servergroups || '')
+          .split(',')
+          .map((group) => Number(group.trim()))
+          .filter((group) => !Number.isNaN(group));
+
+    const dbUserGroups = await ServerGroups.find({ sgid: { $in: parsedServerGroups } });
 
     if (command === '!help') {
       invoker.message(formatHelpMessage(dbUserGroups));
@@ -39,19 +46,23 @@ export const proceesCommand = async (event = {}, teamspeak) => {
     }
 
     const { ok, message } = await canDo(command, dbUserGroups);
-    
-    const isServerAdmin = await isUserServerAdmin(teamspeak, client_servergroups);
+    const isServerAdmin = await isUserServerAdmin(teamspeak, parsedServerGroups);
 
-    const continueWithAddingAdmins = (command === '!addNewAdmin' || command === '!addNewModerator') && isServerAdmin;
-    
+    const continueWithAddingAdmins =
+      (command === '!addNewAdmin' || command === '!addNewModerator') && isServerAdmin;
+
     if (!continueWithAddingAdmins && !ok) {
       return invoker.message(message);
     }
-  
-    await executeCommand(command, teamspeak, msgAsList, cid);
-  
+
+    const response = await executeCommand(command, teamspeak, msgAsList, cid);
+
+    if (response.message) {
+      invoker.message(response.message);
+    }
+
     return true;
   } catch (error) {
-    invoker.message(error);
+    invoker.message(String(error));
   }
 };

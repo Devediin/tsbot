@@ -19,9 +19,14 @@ const Characters = mongoose.model('Characters', characterSchema, 'characters');
 export const removeCharacter = async (character) => (
   new Promise(async (resolve, reject) => {
     try {
-      await Characters.findOneAndDelete(character);
+      const removed = await Characters.findOneAndDelete(character);
 
-      resolve();
+      if (!removed) {
+        resolve({ removed: false });
+        return;
+      }
+
+      resolve({ removed: true });
     } catch (error) {
       reject(error);
     }
@@ -34,10 +39,17 @@ export const addCharactersByGuildName = async (guildName, type) => (
       const members = await tibiaAPI.getGuildInformation(guildName);
 
       const characters = members.map(({ name }) => ({ characterName: name, type }));
-  
-      await Promise.all(characters.map(insertCharacter));
-  
-      resolve();
+
+      const results = await Promise.all(characters.map(insertCharacter));
+
+      const added = results.filter((result) => result && result.added).length;
+      const alreadyExists = results.filter((result) => result && result.alreadyExists).length;
+
+      resolve({
+        added,
+        alreadyExists,
+        total: characters.length,
+      });
     } catch (error) {
       reject(error);
     }
@@ -52,13 +64,21 @@ export const insertCharacter = async (character) => (
       const query = await Characters.findOne({ characterName });
 
       if (query) {
-        resolve();
+        resolve({
+          added: false,
+          alreadyExists: true,
+        });
         return;
       }
+
       const newCharacter = new Characters(character);
 
       await newCharacter.save();
-      resolve();
+
+      resolve({
+        added: true,
+        alreadyExists: false,
+      });
     } catch (error) {
       reject(error);
     }

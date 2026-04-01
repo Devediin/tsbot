@@ -5,7 +5,7 @@ import { insertCharacter, removeCharacter, addCharactersByGuildName } from '../a
 export const ADMIN_GROUP_NAME = 'Bot Admin';
 export const MODERATOR_GROUP_NAME = 'Bot Moderator';
 
-export const BOT_NAME = 'FreeBot';
+export const BOT_NAME = 'NiideHelper';
 
 export const VOCATIONS_ICONS = {
   'http://forums.xenobot.net/images/icons/icon4.png': 'None',
@@ -20,7 +20,7 @@ export const INITIAL_CHANNELS = [{
   name: '[*cspacer]▂',
 }, {
   type: 'spacer',
-  name: '[cspacer]* * * Tibia TS BOT * * *',
+  name: '[cspacer]* * * NiideHelp TS BOT * * *',
 }, {
   type: 'spacer',
   name: '[*cspacer]▂▂',
@@ -67,51 +67,76 @@ export const VOCATIONS = [
 ];
 
 export const COMMANDS_MAP = {
-  '!mk': {
+    '!mk': {
     groups: [MODERATOR_GROUP_NAME, ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
       try {
         msgAsList.shift();
-        const message = msgAsList.join(' ');
-        await massKick(teamspeak, message);
+        const message = msgAsList.join(' ') || 'Removido pelo administrador.';
+        const affected = await massKick(teamspeak, message);
         return {
           ok: true,
+          message: `✅ Kick em massa executado com sucesso. Usuários removidos: ${affected}.`,
         };
       } catch (error) {
         console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao executar o kick em massa.',
+        };
       }
     },
-    howToUse: '!mk ${message}, kick clients with optional message',
+    howToUse: '!mk ${mensagem} - expulsa todos os usuários conectados com uma mensagem opcional',
   },
+
   '!mp': {
     groups: [MODERATOR_GROUP_NAME, ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
       try {
         msgAsList.shift();
         const message = msgAsList.join(' ');
-        await sendMassPoke(teamspeak, message);
+
+        if (!message) {
+          return {
+            ok: false,
+            message: '❌ Você precisa informar a mensagem do mass poke.',
+          };
+        }
+
+        const affected = await sendMassPoke(teamspeak, message);
         return {
           ok: true,
+          message: `✅ Mass poke enviado com sucesso para ${affected} usuário(s).`,
         };
       } catch (error) {
         console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao enviar o mass poke.',
+        };
       }
     },
-    howToUse: '!mp ${message}, to sent a poke to all connected clients',
+    howToUse: '!mp ${mensagem} - envia um poke para todos os usuários conectados',
   },
+
   '!mmove': {
     groups: [MODERATOR_GROUP_NAME, ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList, cid) => {
       try {
-        await massMove(teamspeak, cid, msgAsList[1]);
+        const affected = await massMove(teamspeak, cid, msgAsList[1]);
         return {
           ok: true,
+          message: `✅ Mass move executado com sucesso. Usuários movidos: ${affected}.`,
         };
       } catch (error) {
         console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao executar o mass move.',
+        };
       }
     },
-    howToUse: '!mmove ${cpw}, just move to the channel you want to move all, and execute note: pass cpw when try to move to a private channel',
+    howToUse: '!mmove ${senhaDoCanal} - move todos para o canal onde você está',
   },
   '!addEnemy': {
     groups: [ADMIN_GROUP_NAME],
@@ -120,33 +145,68 @@ export const COMMANDS_MAP = {
         msgAsList.shift();
         const characterName = msgAsList.join(' ');
 
-        await insertCharacter({ characterName, type: 'enemy' }, teamspeak);
+        if (!characterName) {
+          return {
+            ok: false,
+            message: '❌ Você precisa informar o nome do personagem inimigo.',
+          };
+        }
+
+        const result = await insertCharacter({ characterName, type: 'enemy' }, teamspeak);
+
+        if (result?.alreadyExists) {
+          return {
+            ok: true,
+            message: `ℹ️ O inimigo ${characterName} já estava cadastrado.`,
+          };
+        }
 
         return {
           ok: true,
+          message: `✅ Inimigo adicionado com sucesso: ${characterName}.`,
         };
       } catch (error) {
         console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao adicionar o inimigo.',
+        };
       }
     },
-    howToUse: '!addEnemy ${enemyName}',
+    howToUse: '!addEnemy ${nome} - adiciona um personagem na lista de inimigos',
   },
+
   '!addEnemysByGuild': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (_, msgAsList) => {
       try {
         msgAsList.shift();
-        const message = msgAsList.join(' ');
-        await addCharactersByGuildName(message, 'enemy');
+        const guildName = msgAsList.join(' ');
+
+        if (!guildName) {
+          return {
+            ok: false,
+            message: '❌ Você precisa informar o nome da guild.',
+          };
+        }
+
+        const result = await addCharactersByGuildName(guildName, 'enemy');
+
         return {
           ok: true,
+          message: `✅ Guild de inimigos processada: ${guildName}. Adicionados: ${result.added}. Já existentes: ${result.alreadyExists}. Total encontrado: ${result.total}.`,
         };
       } catch (error) {
         console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao adicionar a guild de inimigos.',
+        };
       }
     },
-    howToUse: '!addEnemysByGuild ${guildName}',
+    howToUse: '!addEnemysByGuild ${guild} - adiciona todos os membros da guild como inimigos',
   },
+
   '!removeEnemy': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -154,17 +214,37 @@ export const COMMANDS_MAP = {
         msgAsList.shift();
         const characterName = msgAsList.join(' ');
 
-        await removeCharacter({ characterName, type: 'enemy' });
+        if (!characterName) {
+          return {
+            ok: false,
+            message: '❌ Você precisa informar o nome do personagem inimigo.',
+          };
+        }
+
+        const result = await removeCharacter({ characterName, type: 'enemy' });
+
+        if (!result?.removed) {
+          return {
+            ok: true,
+            message: `ℹ️ O inimigo ${characterName} não estava cadastrado.`,
+          };
+        }
 
         return {
           ok: true,
+          message: `✅ Inimigo removido com sucesso: ${characterName}.`,
         };
       } catch (error) {
         console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao remover o inimigo.',
+        };
       }
     },
-    howToUse: '!removeEnemy ${enemyName}',
+    howToUse: '!removeEnemy ${nome} - remove um personagem da lista de inimigos',
   },
+
   '!addFriend': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -172,33 +252,68 @@ export const COMMANDS_MAP = {
         msgAsList.shift();
         const characterName = msgAsList.join(' ');
 
-        await insertCharacter({ characterName, type: 'friend' }, teamspeak);
+        if (!characterName) {
+          return {
+            ok: false,
+            message: '❌ Você precisa informar o nome do personagem amigo.',
+          };
+        }
+
+        const result = await insertCharacter({ characterName, type: 'friend' }, teamspeak);
+
+        if (result?.alreadyExists) {
+          return {
+            ok: true,
+            message: `ℹ️ O friend ${characterName} já estava cadastrado.`,
+          };
+        }
 
         return {
           ok: true,
+          message: `✅ Friend adicionado com sucesso: ${characterName}.`,
         };
       } catch (error) {
         console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao adicionar o friend.',
+        };
       }
     },
-    howToUse: '!addFriend ${enemyName}',
+    howToUse: '!addFriend ${nome} - adiciona um personagem na lista de friends',
   },
+
   '!addFriendsByGuild': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
       try {
         msgAsList.shift();
-        const message = msgAsList.join(' ');
-        await addCharactersByGuildName(message, 'friend');
+        const guildName = msgAsList.join(' ');
+
+        if (!guildName) {
+          return {
+            ok: false,
+            message: '❌ Você precisa informar o nome da guild.',
+          };
+        }
+
+        const result = await addCharactersByGuildName(guildName, 'friend');
+
         return {
           ok: true,
+          message: `✅ Guild de friends processada: ${guildName}. Adicionados: ${result.added}. Já existentes: ${result.alreadyExists}. Total encontrado: ${result.total}.`,
         };
       } catch (error) {
         console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao adicionar a guild de friends.',
+        };
       }
     },
-    howToUse: '!addFriendsByGuild ${guildName}',
+    howToUse: '!addFriendsByGuild ${guild} - adiciona todos os membros da guild como friends',
   },
+
   '!removeFriend': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -206,16 +321,35 @@ export const COMMANDS_MAP = {
         msgAsList.shift();
         const characterName = msgAsList.join(' ');
 
-        await removeCharacter({ characterName, type: 'friend' });
+        if (!characterName) {
+          return {
+            ok: false,
+            message: '❌ Você precisa informar o nome do personagem friend.',
+          };
+        }
+
+        const result = await removeCharacter({ characterName, type: 'friend' });
+
+        if (!result?.removed) {
+          return {
+            ok: true,
+            message: `ℹ️ O friend ${characterName} não estava cadastrado.`,
+          };
+        }
 
         return {
           ok: true,
+          message: `✅ Friend removido com sucesso: ${characterName}.`,
         };
       } catch (error) {
         console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao remover o friend.',
+        };
       }
     },
-    howToUse: '!removeFriend ${enemyName}',
+    howToUse: '!removeFriend ${nome} - remove um personagem da lista de friends',
   },
   '!addNeutral': {
     groups: [ADMIN_GROUP_NAME],
