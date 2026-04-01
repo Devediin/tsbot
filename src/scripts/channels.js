@@ -45,6 +45,22 @@ const applyNeutralPagePermissions = async (teamspeak, cid) => {
   }
 };
 
+const findChannelByExactName = async (teamspeak = {}, channelName = '') => {
+  const channels = await teamspeak.channelList();
+
+  return channels.find(({ propcache = {} }) => (
+    String(propcache.channel_name || '') === String(channelName)
+  )) || null;
+};
+
+const findChannelByCid = async (teamspeak = {}, cid = 0) => {
+  const channels = await teamspeak.channelList();
+
+  return channels.find(({ propcache = {} }) => (
+    Number(propcache.cid || 0) === Number(cid)
+  )) || null;
+};
+
 export const createChannel = async (teamspeak = {}, { name, type, description }, data = {}) => {
   try {
     const channel = await teamspeak.channelCreate(name, {
@@ -97,14 +113,6 @@ export const updateChannel = async (teamspeak = {}, type, onlineData = {}, chann
     }
   })
 );
-
-const findChannelByExactName = async (teamspeak = {}, channelName = '') => {
-  const channels = await teamspeak.channelList();
-
-  return channels.find(({ propcache = {} }) => (
-    String(propcache.channel_name || '') === String(channelName)
-  )) || null;
-};
 
 export const upsertNeutralPageChannel = async (
   teamspeak = {},
@@ -187,11 +195,28 @@ export const deleteUnusedNeutralPageChannels = async (teamspeak = {}, validPageI
       continue;
     }
 
+    let deletedFromTs = false;
+
     try {
       const tsChannel = await teamspeak.getChannelByID(channel.cid);
-      await tsChannel.del(true);
+      if (tsChannel) {
+        await tsChannel.del(true);
+        deletedFromTs = true;
+      }
     } catch (e) {
-      // ignore if already deleted
+      // fallback below
+    }
+
+    if (!deletedFromTs) {
+      try {
+        const tsChannelFromList = await findChannelByCid(teamspeak, channel.cid);
+        if (tsChannelFromList) {
+          await tsChannelFromList.del(true);
+          deletedFromTs = true;
+        }
+      } catch (e) {
+        console.error(`Erro deletando neutral page órfã no TS cid=${channel.cid}:`, e.message || e);
+      }
     }
 
     await Channels.deleteOne({ _id: channel._id });
