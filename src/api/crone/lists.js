@@ -314,47 +314,25 @@ const processLevelUps = async (characterResponses = [], teamspeak) => {
     const { name, level, vocation } = info;
 
     const result = await upsertLevelTracker({ name, level });
-    const monthlyTracker = await getMonthlyLevelTrackerByName(name);
 
     if (monitoredType === 'friend') {
-      console.log(`[LEVEL] ${name} | monitoredType=${monitoredType} | previous=${result?.previousLevel} | current=${result?.currentLevel} | leveledUp=${result?.leveledUp} | monthlyStart=${monthlyTracker?.startLevel}`);
+      console.log(`[LEVEL] ${name} | monitoredType=${monitoredType} | previous=${result?.previousLevel} | current=${result?.currentLevel} | leveledUp=${result?.leveledUp}`);
     }
 
-    if (monitoredType !== 'friend') {
-      continue;
+    if (result?.leveledUp && result.previousLevel !== null) {
+      if (monitoredType !== 'friend') {
+        continue;
+      }
+
+      const typeLabel = getTypeLabel(monitoredType);
+      const emoji = getVocationEmoji(vocation);
+      const levelsGained = result.currentLevel - result.previousLevel;
+
+      const message = `✨ [${typeLabel}] ${emoji} ${name} upou de ${result.previousLevel} para ${result.currentLevel} (+${levelsGained})`;
+
+      console.log(`[LEVEL] Enviando PM: ${message}`);
+      await sendMassPrivateMessage(teamspeak, message);
     }
-
-    const previousLevel = Number(result?.previousLevel);
-    const currentLevel = Number(result?.currentLevel);
-    const monthlyStartLevel = Number(monthlyTracker?.startLevel);
-
-    const shouldNotifyByTracker =
-      result?.leveledUp && result?.previousLevel !== null;
-
-    const shouldNotifyByMonthlyFallback =
-      !Number.isNaN(monthlyStartLevel)
-      && !Number.isNaN(currentLevel)
-      && currentLevel > monthlyStartLevel;
-
-    if (!shouldNotifyByTracker && !shouldNotifyByMonthlyFallback) {
-      continue;
-    }
-
-    const baseLevel = shouldNotifyByTracker ? previousLevel : monthlyStartLevel;
-    const levelsGained = currentLevel - baseLevel;
-
-    if (!Number.isFinite(baseLevel) || !Number.isFinite(currentLevel) || levelsGained <= 0) {
-      continue;
-    }
-
-    const typeLabel = getTypeLabel(monitoredType);
-    const emoji = getVocationEmoji(vocation);
-    const message = `✨ [${typeLabel}] ${emoji} ${name} upou de ${baseLevel} para ${currentLevel} (+${levelsGained})`;
-
-    console.log(`[LEVEL] Enviando PM: ${message}`);
-    await sendMassPrivateMessage(teamspeak, message);
-
-    await upsertLevelTracker({ name, level: currentLevel });
   }
 };
 
