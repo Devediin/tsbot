@@ -4,7 +4,7 @@ import { capitalize } from 'lodash';
 import TibiaAPI from '../tibia';
 import Characters from '../models/characters';
 import Channels from '../models/channels';
-import Meta, { updateMeta } from '../models/meta';
+import Meta, { updateMeta, ensureMeta, updateDeathCheck } from '../models/meta';
 import {
   upsertOnlineTracker,
   getOnlineTrackerByName,
@@ -292,15 +292,16 @@ const processLevelUps = async (characterResponses = [], teamspeak) => {
 const getNotPokedKills = async (kills = []) => (
   new Promise(async (resolve, reject) => {
     try {
-      const queryMeta = await Meta.findOne();
+      const queryMeta = await ensureMeta();
 
-      if (!queryMeta || !queryMeta.lastCheck) {
+      if (!queryMeta || !queryMeta.deathCheck) {
+        console.log('[DEATH] Meta sem deathCheck.');
         resolve([]);
         return;
       }
 
-      const { lastCheck } = queryMeta;
-      const lastCheckMoment = moment(lastCheck);
+      const deathCheck = queryMeta.deathCheck;
+      const deathCheckMoment = moment(deathCheck);
 
       const killsToPoke = kills.map((death) => {
         const {
@@ -312,7 +313,12 @@ const getNotPokedKills = async (kills = []) => (
         } = death;
 
         const mainKiller = killers.length > 0 ? killers[0].name : 'unknown';
-        const isNewKill = moment(time).isAfter(lastCheckMoment);
+        const deathMoment = moment(time);
+        const isNewKill = deathMoment.isAfter(deathCheckMoment);
+
+        console.log(
+          `[DEATH] ${characterName} | type=${type} | level=${level} | time=${time} | deathCheck=${deathCheck} | isNewKill=${isNewKill}`
+        );
 
         if (!isNewKill) {
           return '';
@@ -321,6 +327,7 @@ const getNotPokedKills = async (kills = []) => (
         return `💀 [${getTypeLabel(type)}] ${characterName} morreu no level ${level} para ${mainKiller}`;
       }).filter(Boolean);
 
+      console.log(`[DEATH] Kills para poke: ${killsToPoke.length}`);
       resolve(killsToPoke);
     } catch (error) {
       reject(error);
@@ -391,14 +398,20 @@ export const startTasks = (teamspeak) => {
       });
     }
 
+    console.log(`[DEATH] Characters monitorados: ${allCharacters.length}`);
+    console.log(`[DEATH] Death entries encontradas: ${deathListByCharacters.length}`);
+
     await processLevelUps(allCharactersInformation, teamspeak);
 
     const killsToPoke = await getNotPokedKills(deathListByCharacters);
     if (killsToPoke.length > 0) {
       for (const killMessage of killsToPoke) {
+        console.log(`[DEATH] Enviando poke: ${killMessage}`);
         await sendMassPoke(teamspeak, killMessage);
       }
     }
+
+    await updateDeathCheck();
 
     await syncOnlineTrackers(playersOnline);
     await syncMonthlyLevelTrackers(playersOnline);
