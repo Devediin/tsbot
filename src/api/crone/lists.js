@@ -306,26 +306,6 @@ const getNotPokedKills = async (kills = []) => (
         deathsCache.map(({ characterName, time }) => getDeathCacheKey({ characterName, time }))
       );
 
-      if (cachedKeys.size === 0 && kills.length > 0) {
-        console.log(`[DEATH] Bootstrapando cache com ${kills.length} mortes recentes atuais.`);
-
-        for (const death of kills) {
-          const { characterName, time } = death;
-          const cacheKey = getDeathCacheKey({ characterName, time });
-
-          if (cachedKeys.has(cacheKey)) {
-            continue;
-          }
-
-          await addDeathsCache({ characterName, time });
-          cachedKeys.add(cacheKey);
-        }
-
-        console.log('[DEATH] Bootstrap concluído. Nenhum poke enviado nesta rodada.');
-        resolve([]);
-        return;
-      }
-
       const killsToPoke = [];
 
       for (const death of kills) {
