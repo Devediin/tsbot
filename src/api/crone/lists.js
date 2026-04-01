@@ -4,7 +4,12 @@ import { capitalize } from 'lodash';
 import TibiaAPI from '../tibia';
 import Characters from '../models/characters';
 import Channels from '../models/channels';
-import Meta, { updateMeta, ensureMeta, updateDeathCheck } from '../models/meta';
+import Meta, {
+  updateMeta,
+  getDeathsCache,
+  addDeathsCache,
+  removeOldDeathsCache,
+} from '../models/meta';
 import {
   upsertOnlineTracker,
   getOnlineTrackerByName,
@@ -289,21 +294,40 @@ const processLevelUps = async (characterResponses = [], teamspeak) => {
   }
 };
 
+const getDeathCacheKey = ({ characterName, time }) => `${characterName}::${time}`;
+
 const getNotPokedKills = async (kills = []) => (
   new Promise(async (resolve, reject) => {
     try {
-      const queryMeta = await ensureMeta();
+      await removeOldDeathsCache();
+      const deathsCache = await getDeathsCache();
+      const cachedKeys = new Set(
+        deathsCache.map(({ characterName, time }) => getDeathCacheKey({ characterName, time }))
+      );
 
-      if (!queryMeta || !queryMeta.deathCheck) {
-        console.log('[DEATH] Meta sem deathCheck.');
+      if (cachedKeys.size === 0 && kills.length > 0) {
+        console.log(`[DEATH] Bootstrapando cache com ${kills.length} mortes recentes atuais.`);
+
+        for (const death of kills) {
+          const { characterName, time } = death;
+          const cacheKey = getDeathCacheKey({ characterName, time });
+
+          if (cachedKeys.has(cacheKey)) {
+            continue;
+          }
+
+          await addDeathsCache({ characterName, time });
+          cachedKeys.add(cacheKey);
+        }
+
+        console.log('[DEATH] Bootstrap concluído. Nenhum poke enviado nesta rodada.');
         resolve([]);
         return;
       }
 
-      const deathCheck = queryMeta.deathCheck;
-      const deathCheckMoment = moment(deathCheck);
+      const killsToPoke = [];
 
-      const killsToPoke = kills.map((death) => {
+      for (const death of kills) {
         const {
           type,
           level,
@@ -312,20 +336,22 @@ const getNotPokedKills = async (kills = []) => (
           characterName,
         } = death;
 
+        const cacheKey = getDeathCacheKey({ characterName, time });
         const mainKiller = killers.length > 0 ? killers[0].name : 'unknown';
-        const deathMoment = moment(time);
-        const isNewKill = deathMoment.isAfter(deathCheckMoment);
+        const isCached = cachedKeys.has(cacheKey);
 
         console.log(
-          `[DEATH] ${characterName} | type=${type} | level=${level} | time=${time} | deathCheck=${deathCheck} | isNewKill=${isNewKill}`
+          `[DEATH] ${characterName} | type=${type} | level=${level} | time=${time} | cached=${isCached}`
         );
 
-        if (!isNewKill) {
-          return '';
+        if (isCached) {
+          continue;
         }
 
-        return `💀 [${getTypeLabel(type)}] ${characterName} morreu no level ${level} para ${mainKiller}`;
-      }).filter(Boolean);
+        killsToPoke.push(`💀 [${getTypeLabel(type)}] ${characterName} morreu no level ${level} para ${mainKiller}`);
+        await addDeathsCache({ characterName, time });
+        cachedKeys.add(cacheKey);
+      }
 
       console.log(`[DEATH] Kills para poke: ${killsToPoke.length}`);
       resolve(killsToPoke);
@@ -399,7 +425,7 @@ export const startTasks = (teamspeak) => {
     }
 
     console.log(`[DEATH] Characters monitorados: ${allCharacters.length}`);
-    console.log(`[DEATH] Death entries encontradas: ${deathListByCharacters.length}`);
+    console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
 
     await processLevelUps(allCharactersInformation, teamspeak);
 
@@ -410,8 +436,6 @@ export const startTasks = (teamspeak) => {
         await sendMassPoke(teamspeak, killMessage);
       }
     }
-
-    await updateDeathCheck();
 
     await syncOnlineTrackers(playersOnline);
     await syncMonthlyLevelTrackers(playersOnline);
