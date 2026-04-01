@@ -97,7 +97,21 @@ const formatDeathMessage = ({
   const typeColorTag = getTypeColorTag(type);
   const deathAge = formatDeathAgeShort(time);
 
-  return `[${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para ${mainKiller}`;
+  return `⏰ [${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para [B]${mainKiller}[/B]`;
+};
+
+const formatLevelMessage = ({
+  name,
+  previousLevel,
+  currentLevel,
+  vocation,
+  monitoredType,
+}) => {
+  const typeLabel = getTypeLabel(monitoredType);
+  const emoji = getVocationEmoji(vocation);
+  const levelsGained = Number(currentLevel) - Number(previousLevel);
+
+  return `✨ 🆙 [${typeLabel}] ${emoji} [B]${name}[/B] upou de [B]${previousLevel}[/B] para [B]${currentLevel}[/B] (+${levelsGained})`;
 };
 
 const sortDescendingByLevel = (characters = []) => (
@@ -324,11 +338,13 @@ const processLevelUps = async (characterResponses = [], teamspeak) => {
         continue;
       }
 
-      const typeLabel = getTypeLabel(monitoredType);
-      const emoji = getVocationEmoji(vocation);
-      const levelsGained = result.currentLevel - result.previousLevel;
-
-      const message = `✨ [${typeLabel}] ${emoji} ${name} upou de ${result.previousLevel} para ${result.currentLevel} (+${levelsGained})`;
+      const message = formatLevelMessage({
+        name,
+        previousLevel: result.previousLevel,
+        currentLevel: result.currentLevel,
+        vocation,
+        monitoredType,
+      });
 
       console.log(`[LEVEL] Enviando PM: ${message}`);
       await sendMassPrivateMessage(teamspeak, message);
@@ -446,12 +462,20 @@ export const startTasks = (teamspeak) => {
       const friendCharacters = await Characters.find({ type: 'friend' });
 
       const playersOnline = await tibiaAPI.getWorldOnline();
+      const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
       const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
 
+      const onlineEnemyCharacters = enemyCharacters
+        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
+        .map(mapCharactersToNames);
+
+      const onlineFriendCharacters = friendCharacters
+        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
+        .map(mapCharactersToNames);
+
       const allCharacters = [
-        ...enemyCharacters.map(mapCharactersToNames),
-        ...friendCharacters.map(mapCharactersToNames),
-        ...automaticNeutralData.online.map(({ name }) => ({ type: 'neutral', characterName: name })),
+        ...onlineEnemyCharacters,
+        ...onlineFriendCharacters,
       ].filter(({ characterName }) => characterName);
 
       const allCharactersInformation = await getInformationFromCharacters(allCharacters);
@@ -465,7 +489,7 @@ export const startTasks = (teamspeak) => {
         });
       }
 
-      console.log(`[DEATH] Characters monitorados: ${allCharacters.length}`);
+      console.log(`[DEATH] Characters monitorados online: ${allCharacters.length}`);
       console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
 
       await processLevelUps(allCharactersInformation, teamspeak);
