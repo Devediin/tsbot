@@ -133,6 +133,20 @@ export const upsertNeutralPageChannel = async (
     });
 
     await insertChannel(channel, type);
+
+    try {
+      const createdCid = channel?.cid || channel?.propcache?.cid;
+      if (createdCid) {
+        const createdChannelFromTs = await teamspeak.getChannelByID(createdCid);
+        await createdChannelFromTs.edit({
+          channel_description: finalDescription,
+          ...getChannelEditPermissionsByType(type),
+        });
+      }
+    } catch (error) {
+      console.error('Erro reaplicando permissões na neutral page recém-criada:', error);
+    }
+
     return true;
   }
 
