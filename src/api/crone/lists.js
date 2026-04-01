@@ -279,6 +279,10 @@ const processLevelUps = async (characterResponses = [], teamspeak) => {
 
     const result = await upsertLevelTracker({ name, level });
 
+    if (monitoredType === 'friend') {
+      console.log(`[LEVEL] ${name} | monitoredType=${monitoredType} | previous=${result?.previousLevel} | current=${result?.currentLevel} | leveledUp=${result?.leveledUp}`);
+    }
+
     if (result?.leveledUp && result.previousLevel !== null) {
       if (monitoredType !== 'friend') {
         continue;
@@ -290,6 +294,7 @@ const processLevelUps = async (characterResponses = [], teamspeak) => {
 
       const message = `✨ [${typeLabel}] ${emoji} ${name} upou de ${result.previousLevel} para ${result.currentLevel} (+${levelsGained})`;
 
+      console.log(`[LEVEL] Enviando PM: ${message}`);
       await sendMassPrivateMessage(teamspeak, message);
     }
   }
