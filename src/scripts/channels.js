@@ -1,12 +1,17 @@
 import Channels from '../api/models/channels';
 import { insertChannel } from '../api/models/channels';
 
+const BOT_CHANNEL_PERMISSIONS = {
+  channel_flag_permanent: 1,
+  channel_needed_join_power: 9999,
+};
+
 export const createChannel = async (teamspeak = {}, { name, type, description }, data = {}) => {
   try {
     const channel = await teamspeak.channelCreate(name, {
       ...data,
       channel_description: description,
-      channel_flag_permanent: 1,
+      ...BOT_CHANNEL_PERMISSIONS,
     });
 
     await insertChannel(channel, type);
@@ -43,6 +48,7 @@ export const updateChannel = async (teamspeak = {}, type, onlineData = {}, chann
 
       await channelFromTs.edit({
         channel_description: description,
+        channel_needed_join_power: 9999,
         ...extraEditParams,
       });
 
@@ -52,6 +58,14 @@ export const updateChannel = async (teamspeak = {}, type, onlineData = {}, chann
     }
   })
 );
+
+const findChannelByExactName = async (teamspeak = {}, channelName = '') => {
+  const channels = await teamspeak.channelList();
+
+  return channels.find(({ propcache = {} }) => (
+    String(propcache.channel_name || '') === String(channelName)
+  )) || null;
+};
 
 export const upsertNeutralPageChannel = async (
   teamspeak = {},
@@ -67,9 +81,25 @@ export const upsertNeutralPageChannel = async (
   const finalDescription = `[b]Faixa: ${rangeLabel}[/b]\n\n${description}`;
 
   if (!channelFromDb) {
+    const existingTsChannel = await findChannelByExactName(teamspeak, baseName);
+
+    if (existingTsChannel) {
+      await Channels.deleteMany({ type });
+
+      await insertChannel(existingTsChannel, type);
+
+      const existingChannelFromTs = await teamspeak.getChannelByID(existingTsChannel.propcache.cid);
+      await existingChannelFromTs.edit({
+        channel_description: finalDescription,
+        channel_needed_join_power: 9999,
+      });
+
+      return true;
+    }
+
     const channel = await teamspeak.channelCreate(baseName, {
       channel_description: finalDescription,
-      channel_flag_permanent: 1,
+      ...BOT_CHANNEL_PERMISSIONS,
       ...(parentChannel ? { cpid: parentChannel.cid || 0 } : {}),
     });
 
@@ -79,9 +109,9 @@ export const upsertNeutralPageChannel = async (
 
   const channelFromTs = await teamspeak.getChannelByID(channelFromDb.cid);
 
-  // não renomeia mais, só atualiza a descrição
   await channelFromTs.edit({
     channel_description: finalDescription,
+    channel_needed_join_power: 9999,
   });
 
   return true;

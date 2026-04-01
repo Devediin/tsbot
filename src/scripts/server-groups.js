@@ -43,7 +43,7 @@ export const promoteUser = async (teamspeak, username, name, type = 'add') => (
         return;
       }
 
-      const { sgid } = serverGroup;
+      const sgid = Number(serverGroup.sgid);
 
       const client = await teamspeak.getClientByName(username);
 
@@ -53,12 +53,17 @@ export const promoteUser = async (teamspeak, username, name, type = 'add') => (
       }
 
       const { propcache: clientPropcache } = client;
-      const { client_database_id } = clientPropcache;
+      const clientDatabaseId = Number(clientPropcache.client_database_id);
+
+      if (!sgid || !clientDatabaseId) {
+        resolve();
+        return;
+      }
 
       if (type === 'add') {
-        await teamspeak.serverGroupAddClient(sgid, client_database_id);
+        await teamspeak.serverGroupAddClient(clientDatabaseId, sgid);
       } else {
-        await teamspeak.serverGroupDelClient(sgid, client_database_id);
+        await teamspeak.serverGroupDelClient(clientDatabaseId, sgid);
       }
 
       resolve();
@@ -91,11 +96,11 @@ export const createServerGroups = async (spinner, teamspeak) => (
         propcache: { client_database_id }
       } = me;
 
-      await teamspeak.serverGroupAddClient(serverGroupIdAdmin, client_database_id);
-      await teamspeak.serverGroupAddClient(serverGroupIdModerator, client_database_id);
+      await teamspeak.serverGroupAddClient(Number(client_database_id), Number(serverGroupIdAdmin));
+      await teamspeak.serverGroupAddClient(Number(client_database_id), Number(serverGroupIdModerator));
 
-      await insertServerGroup({ sgid: serverGroupIdAdmin, name: ADMIN_GROUP_NAME });
-      await insertServerGroup({ sgid: serverGroupIdModerator, name: MODERATOR_GROUP_NAME });
+      await insertServerGroup({ sgid: Number(serverGroupIdAdmin), name: ADMIN_GROUP_NAME });
+      await insertServerGroup({ sgid: Number(serverGroupIdModerator), name: MODERATOR_GROUP_NAME });
 
       resolve();
     } catch (error) {

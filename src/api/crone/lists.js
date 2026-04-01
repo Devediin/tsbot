@@ -42,6 +42,22 @@ const getVocationLabel = ({ vocation }) => {
   return '❔ [UNK]';
 };
 
+const getVocationEmoji = (vocation = '') => {
+  if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return '🏹';
+  if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return '🔥';
+  if (vocation.includes('Elder Druid') || vocation === 'Druid') return '🌿';
+  if (vocation.includes('Elite Knight') || vocation === 'Knight') return '🛡️';
+  if (vocation.includes('Exalted Monk') || vocation === 'Monk') return '🥋';
+  return '❔';
+};
+
+const getTypeLabel = (type = '') => {
+  if (type === 'friend') return 'FRIEND';
+  if (type === 'enemy') return 'ENEMY';
+  if (type === 'neutral') return 'NEUTRAL';
+  return String(type || 'CHAR').toUpperCase();
+};
+
 const sortDescendingByLevel = (characters = []) => (
   [...characters].sort((a, b) => Number(b.level) - Number(a.level))
 );
@@ -253,12 +269,21 @@ const processLevelUps = async (characterResponses = [], teamspeak) => {
     if (!response || !response.info) continue;
 
     const { info, monitoredType } = response;
-    const { name, level } = info;
+    const { name, level, vocation } = info;
 
     const result = await upsertLevelTracker({ name, level });
 
     if (result?.leveledUp && result.previousLevel !== null) {
-      const message = `${capitalize(monitoredType)} ${name} upou de ${result.previousLevel} para ${result.currentLevel}`;
+      if (monitoredType !== 'friend') {
+        continue;
+      }
+
+      const typeLabel = getTypeLabel(monitoredType);
+      const emoji = getVocationEmoji(vocation);
+      const levelsGained = result.currentLevel - result.previousLevel;
+
+      const message = `✨ [${typeLabel}] ${emoji} ${name} upou de ${result.previousLevel} para ${result.currentLevel} (+${levelsGained})`;
+
       await sendMassPrivateMessage(teamspeak, message);
     }
   }
@@ -293,7 +318,7 @@ const getNotPokedKills = async (kills = []) => (
           return '';
         }
 
-        return `${capitalize(type)} ${characterName} morreu level ${level} para ${mainKiller}`;
+        return `💀 [${getTypeLabel(type)}] ${characterName} morreu no level ${level} para ${mainKiller}`;
       }).filter(Boolean);
 
       resolve(killsToPoke);
@@ -305,14 +330,54 @@ const getNotPokedKills = async (kills = []) => (
 
 const mapCharactersToNames = ({ type, characterName }) => ({ type, characterName });
 
+const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
+  try {
+    const tsChannels = await teamspeak.channelList();
+    const dbNeutralPages = await Channels.find({
+      type: { $regex: /^neutral-page-/ }
+    });
+
+    const validDbCids = new Set(dbNeutralPages.map(({ cid }) => Number(cid)));
+
+    const orphanNeutralPageChannels = tsChannels.filter(({ propcache = {} }) => {
+      const channelName = String(propcache.channel_name || '');
+      const cid = Number(propcache.cid || 0);
+
+      const isNeutralPageName =
+        channelName.startsWith('[cspacer]Neutrals Page ') ||
+        channelName.startsWith('Neutrals Page ');
+
+      if (!isNeutralPageName) {
+        return false;
+      }
+
+      return !validDbCids.has(cid);
+    });
+
+    for (const orphanChannel of orphanNeutralPageChannels) {
+      try {
+        await orphanChannel.del(true);
+      } catch (error) {
+        // ignore
+      }
+    }
+  } catch (error) {
+    console.error('Erro limpando canais órfãos de neutral page:', error);
+  }
+};
+
 export const startTasks = (teamspeak) => {
   const listTask = cron.schedule('0-59/5 * * * * *', async () => {
     const enemyCharacters = await Characters.find({ type: 'enemy' });
     const friendCharacters = await Characters.find({ type: 'friend' });
 
+    const playersOnline = await tibiaAPI.getWorldOnline();
+    const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
+
     const allCharacters = [
       ...enemyCharacters.map(mapCharactersToNames),
       ...friendCharacters.map(mapCharactersToNames),
+      ...automaticNeutralData.online.map(({ name }) => ({ type: 'neutral', characterName: name })),
     ].filter(({ characterName }) => characterName);
 
     const allCharactersInformation = await getInformationFromCharacters(allCharacters);
@@ -328,13 +393,18 @@ export const startTasks = (teamspeak) => {
 
     await processLevelUps(allCharactersInformation, teamspeak);
 
-    const playersOnline = await tibiaAPI.getWorldOnline();
+    const killsToPoke = await getNotPokedKills(deathListByCharacters);
+    if (killsToPoke.length > 0) {
+      for (const killMessage of killsToPoke) {
+        await sendMassPoke(teamspeak, killMessage);
+      }
+    }
+
     await syncOnlineTrackers(playersOnline);
     await syncMonthlyLevelTrackers(playersOnline);
 
     const enemyOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, enemyCharacters));
     const friendOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, friendCharacters));
-    const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
 
     const channelLists = await teamspeak.channelList();
     const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
@@ -379,6 +449,8 @@ export const startTasks = (teamspeak) => {
       teamspeak,
       neutralPages.map((_, index) => index)
     );
+
+    await deleteOrphanNeutralPageChannelsFromTs(teamspeak);
 
     await moveAfkClients(teamspeak);
     await syncRegistrationGroups(teamspeak);
