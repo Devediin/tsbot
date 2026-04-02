@@ -23,6 +23,24 @@ const metaSchema = new mongoose.Schema({
     type: [deathCacheEntrySchema],
     default: [],
   },
+  serverSaveStatus: {
+    isOffline: {
+      type: Boolean,
+      default: false,
+    },
+    lastOfflineAt: {
+      type: Date,
+      default: null,
+    },
+    lastOnlineAt: {
+      type: Date,
+      default: null,
+    },
+    lastAnnouncedOnlineAt: {
+      type: Date,
+      default: null,
+    },
+  },
 });
 
 const Meta = mongoose.model('Meta', metaSchema, 'meta');
@@ -37,6 +55,12 @@ export const ensureMeta = async () => (
           lastCheck: new Date(),
           deathCheck: new Date(),
           deathCache: [],
+          serverSaveStatus: {
+            isOffline: false,
+            lastOfflineAt: null,
+            lastOnlineAt: null,
+            lastAnnouncedOnlineAt: null,
+          },
         });
       }
 
@@ -52,6 +76,32 @@ export const ensureMeta = async () => (
 
       if (!Array.isArray(queryMeta.deathCache)) {
         updates.deathCache = [];
+      }
+
+      if (!queryMeta.serverSaveStatus || typeof queryMeta.serverSaveStatus !== 'object') {
+        updates.serverSaveStatus = {
+          isOffline: false,
+          lastOfflineAt: null,
+          lastOnlineAt: null,
+          lastAnnouncedOnlineAt: null,
+        };
+      } else {
+        const nextServerSaveStatus = {
+          isOffline: queryMeta.serverSaveStatus.isOffline ?? false,
+          lastOfflineAt: queryMeta.serverSaveStatus.lastOfflineAt ?? null,
+          lastOnlineAt: queryMeta.serverSaveStatus.lastOnlineAt ?? null,
+          lastAnnouncedOnlineAt: queryMeta.serverSaveStatus.lastAnnouncedOnlineAt ?? null,
+        };
+
+        const hasMissingServerSaveField =
+          queryMeta.serverSaveStatus.isOffline === undefined ||
+          queryMeta.serverSaveStatus.lastOfflineAt === undefined ||
+          queryMeta.serverSaveStatus.lastOnlineAt === undefined ||
+          queryMeta.serverSaveStatus.lastAnnouncedOnlineAt === undefined;
+
+        if (hasMissingServerSaveField) {
+          updates.serverSaveStatus = nextServerSaveStatus;
+        }
       }
 
       if (Object.keys(updates).length > 0) {
@@ -151,6 +201,81 @@ export const removeOldDeathsCache = async () => (
       );
 
       resolve(filteredDeathCache);
+    } catch (error) {
+      reject(error);
+    }
+  })
+);
+
+export const getServerSaveStatus = async () => (
+  new Promise(async (resolve, reject) => {
+    try {
+      const queryMeta = await ensureMeta();
+      resolve(queryMeta.serverSaveStatus || {
+        isOffline: false,
+        lastOfflineAt: null,
+        lastOnlineAt: null,
+        lastAnnouncedOnlineAt: null,
+      });
+    } catch (error) {
+      reject(error);
+    }
+  })
+);
+
+export const setServerSaveOffline = async () => (
+  new Promise(async (resolve, reject) => {
+    try {
+      const queryMeta = await ensureMeta();
+      const now = new Date();
+
+      await Meta.findByIdAndUpdate(queryMeta._id, {
+        $set: {
+          'serverSaveStatus.isOffline': true,
+          'serverSaveStatus.lastOfflineAt': now,
+        },
+      });
+
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  })
+);
+
+export const setServerSaveOnline = async () => (
+  new Promise(async (resolve, reject) => {
+    try {
+      const queryMeta = await ensureMeta();
+      const now = new Date();
+
+      await Meta.findByIdAndUpdate(queryMeta._id, {
+        $set: {
+          'serverSaveStatus.isOffline': false,
+          'serverSaveStatus.lastOnlineAt': now,
+        },
+      });
+
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  })
+);
+
+export const setServerSaveAnnounced = async () => (
+  new Promise(async (resolve, reject) => {
+    try {
+      const queryMeta = await ensureMeta();
+      const now = new Date();
+
+      await Meta.findByIdAndUpdate(queryMeta._id, {
+        $set: {
+          'serverSaveStatus.lastAnnouncedOnlineAt': now,
+        },
+      });
+
+      resolve();
     } catch (error) {
       reject(error);
     }
