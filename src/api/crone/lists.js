@@ -9,6 +9,10 @@ import Meta, {
   getDeathsCache,
   addDeathsCache,
   removeOldDeathsCache,
+  getServerSaveStatus,
+  setServerSaveOffline,
+  setServerSaveOnline,
+  setServerSaveAnnounced,
 } from '../models/meta';
 import {
   upsertOnlineTracker,
@@ -116,6 +120,22 @@ const formatLevelMessage = ({
   const levelsGained = Number(currentLevel) - Number(previousLevel);
 
   return `✨ 🆙 [${typeLabel}] ${emoji} [B]${name}[/B] upou de [B]${previousLevel}[/B] para [B]${currentLevel}[/B] (+${levelsGained})`;
+};
+
+const buildServerSaveMessage = ({ worldName, boostedCreature, boostedBoss }) => {
+  const lines = [
+    `🟢 [B]${worldName}[/B] voltou do server save.`,
+  ];
+
+  if (boostedCreature) {
+    lines.push(`🐉 Boosted Creature: [B]${boostedCreature}[/B]`);
+  }
+
+  if (boostedBoss) {
+    lines.push(`👹 Boosted Boss: [B]${boostedBoss}[/B]`);
+  }
+
+  return lines.join(' ');
 };
 
 const sortDescendingByLevel = (characters = []) => (
@@ -512,26 +532,53 @@ const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
   }
 };
 
-export const startTasks = (teamspeak) => {
-  const fastTask = cron.schedule('0-59/5 * * * * *', async () => {
-    if (isFastTaskRunning) {
-      console.log('[CRON] fastTask ainda em execução. Pulando esta rodada.');
+const processServerSaveStatus = async (teamspeak) => {
+  try {
+    const worldOverview = await tibiaAPI.getWorldOverview();
+    const serverSaveStatus = await getServerSaveStatus();
+    const onlineCount = Number(worldOverview.onlineCount || 0);
+
+    if (onlineCount <= 0) {
+      if (!serverSaveStatus?.isOffline) {
+        console.log('[SERVERSAVE] Mundo aparenta estar offline.');
+        await setServerSaveOffline();
+      }
       return;
     }
 
-    isFastTaskRunning = true;
+    if (serverSaveStatus?.isOffline) {
+      const message = buildServerSaveMessage({
+        worldName: worldOverview.name || WORLD_NAME,
+        boostedCreature: worldOverview.boostedCreature,
+        boostedBoss: worldOverview.boostedBoss,
+      });
+
+      console.log(`[SERVERSAVE] Mundo voltou. Mensagem: ${message}`);
+      await sendMassPrivateMessage(teamspeak, message);
+      await setServerSaveOnline();
+      await setServerSaveAnnounced();
+    }
+  } catch (error) {
+    console.error('[SERVERSAVE] Erro processando status do server save:', error);
+  }
+};
+
+export const startTasks = (teamspeak) => {
+  const listTask = cron.schedule('0-59/5 * * * * *', async () => {
+    if (isListTaskRunning) {
+      console.log('[CRON] listTask ainda em execução. Pulando esta rodada.');
+      return;
+    }
+
+    isListTaskRunning = true;
 
     try {
       const enemyCharacters = await Characters.find({ type: 'enemy' });
       const friendCharacters = await Characters.find({ type: 'friend' });
 
-      const monitoredCharacters = [
-        ...enemyCharacters.map(mapCharactersToNames),
-        ...friendCharacters.map(mapCharactersToNames),
-      ];
-
       const playersOnline = await tibiaAPI.getWorldOnline();
       const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
+      const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
 
       const onlineEnemyCharacters = enemyCharacters
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
@@ -540,6 +587,11 @@ export const startTasks = (teamspeak) => {
       const onlineFriendCharacters = friendCharacters
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
         .map(mapCharactersToNames);
+
+      const monitoredCharacters = [
+        ...enemyCharacters.map(mapCharactersToNames),
+        ...friendCharacters.map(mapCharactersToNames),
+      ];
 
       const recentlyOfflineCharacters = await getRecentlyOfflineCharacters(monitoredCharacters, onlinePlayerNames);
 
@@ -587,18 +639,19 @@ export const startTasks = (teamspeak) => {
       await updateChannel(teamspeak, 'friend', friendOnlineOfflineData, channelListsName);
 
       await moveAfkClients(teamspeak);
+      await processServerSaveStatus(teamspeak);
     } catch (error) {
-      console.error('[CRON] Erro na fastTask:', error);
+      console.error('[CRON] Erro na listTask:', error);
     } finally {
-      isFastTaskRunning = false;
+      isListTaskRunning = false;
     }
   }, {
     scheduled: false,
   });
 
-  const slowTask = cron.schedule('*/30 * * * * *', async () => {
+  const neutralTask = cron.schedule('*/30 * * * * *', async () => {
     if (isSlowTaskRunning) {
-      console.log('[CRON] slowTask ainda em execução. Pulando esta rodada.');
+      console.log('[CRON] neutralTask ainda em execução. Pulando esta rodada.');
       return;
     }
 
@@ -657,7 +710,7 @@ export const startTasks = (teamspeak) => {
       await syncRegistrationGroups(teamspeak);
       await updateMeta();
     } catch (error) {
-      console.error('[CRON] Erro na slowTask:', error);
+      console.error('[CRON] Erro na neutralTask:', error);
     } finally {
       isSlowTaskRunning = false;
     }
@@ -665,6 +718,6 @@ export const startTasks = (teamspeak) => {
     scheduled: false,
   });
 
-  fastTask.start();
-  slowTask.start();
+  listTask.start();
+  neutralTask.start();
 };
