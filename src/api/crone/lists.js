@@ -39,7 +39,8 @@ const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
-let isListTaskRunning = false;
+let isFastTaskRunning = false;
+let isSlowTaskRunning = false;
 const announcedLevelUps = new Map();
 
 const getVocationLabel = ({ vocation }) => {
@@ -512,13 +513,13 @@ const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
 };
 
 export const startTasks = (teamspeak) => {
-  const listTask = cron.schedule('0-59/5 * * * * *', async () => {
-    if (isListTaskRunning) {
-      console.log('[CRON] listTask ainda em execução. Pulando esta rodada.');
+  const fastTask = cron.schedule('0-59/5 * * * * *', async () => {
+    if (isFastTaskRunning) {
+      console.log('[CRON] fastTask ainda em execução. Pulando esta rodada.');
       return;
     }
 
-    isListTaskRunning = true;
+    isFastTaskRunning = true;
 
     try {
       const enemyCharacters = await Characters.find({ type: 'enemy' });
@@ -531,7 +532,6 @@ export const startTasks = (teamspeak) => {
 
       const playersOnline = await tibiaAPI.getWorldOnline();
       const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
-      const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
 
       const onlineEnemyCharacters = enemyCharacters
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
@@ -586,6 +586,34 @@ export const startTasks = (teamspeak) => {
       await updateChannel(teamspeak, 'enemy', enemyOnlineOfflineData, channelListsName);
       await updateChannel(teamspeak, 'friend', friendOnlineOfflineData, channelListsName);
 
+      await moveAfkClients(teamspeak);
+    } catch (error) {
+      console.error('[CRON] Erro na fastTask:', error);
+    } finally {
+      isFastTaskRunning = false;
+    }
+  }, {
+    scheduled: false,
+  });
+
+  const slowTask = cron.schedule('*/30 * * * * *', async () => {
+    if (isSlowTaskRunning) {
+      console.log('[CRON] slowTask ainda em execução. Pulando esta rodada.');
+      return;
+    }
+
+    isSlowTaskRunning = true;
+
+    try {
+      const enemyCharacters = await Characters.find({ type: 'enemy' });
+      const friendCharacters = await Characters.find({ type: 'friend' });
+
+      const playersOnline = await tibiaAPI.getWorldOnline();
+      const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
+
+      const channelLists = await teamspeak.channelList();
+      const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
+
       const neutralSummaryData = {
         online: automaticNeutralData.online,
         dbCharacters: automaticNeutralData.dbCharacters,
@@ -626,17 +654,17 @@ export const startTasks = (teamspeak) => {
 
       await deleteOrphanNeutralPageChannelsFromTs(teamspeak);
 
-      await moveAfkClients(teamspeak);
       await syncRegistrationGroups(teamspeak);
       await updateMeta();
     } catch (error) {
-      console.error('[CRON] Erro na listTask:', error);
+      console.error('[CRON] Erro na slowTask:', error);
     } finally {
-      isListTaskRunning = false;
+      isSlowTaskRunning = false;
     }
   }, {
     scheduled: false,
   });
 
-  listTask.start();
+  fastTask.start();
+  slowTask.start();
 };
