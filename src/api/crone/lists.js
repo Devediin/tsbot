@@ -42,6 +42,8 @@ import {
 const { WORLD_NAME } = process.env;
 const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
+const BETA_DEATH_LOOKBACK_MINUTES = 15;
+const BETA_DEATH_CHECK_COOLDOWN_MS = 30000;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isFastTaskRunning = false;
@@ -80,6 +82,37 @@ const getTypeColorTag = (type = '') => {
   if (type === 'friend') return '🟢';
   if (type === 'enemy') return '🔴';
   return '⚪';
+};
+
+const parseTibiaSiteTimeToUtc = (rawTime = '') => {
+  if (!rawTime) return null;
+
+  const cleaned = String(rawTime).trim();
+  const match = cleaned.match(/^([A-Z][a-z]{2}) (\d{2}) (\d{4}), (\d{2}):(\d{2}):(\d{2}) (CEST|CET)$/);
+
+  if (!match) return null;
+
+  const [, monthStr, dayStr, yearStr, hourStr, minuteStr, secondStr, tz] = match;
+  const months = {
+    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+  };
+
+  const month = months[monthStr];
+  if (month === undefined) return null;
+
+  const utcOffsetHours = tz === 'CEST' ? 2 : 1;
+
+  const utcMillis = Date.UTC(
+    Number(yearStr),
+    month,
+    Number(dayStr),
+    Number(hourStr) - utcOffsetHours,
+    Number(minuteStr),
+    Number(secondStr)
+  );
+
+  return new Date(utcMillis).toISOString();
 };
 
 const formatDeathAgeShort = (time) => {
@@ -513,7 +546,7 @@ const processBetaSiteDeaths = async (characters = [], teamspeak) => {
       continue;
     }
 
-    betaDeathCheckCooldown.set(characterName, now + 30000);
+    betaDeathCheckCooldown.set(characterName, now + BETA_DEATH_CHECK_COOLDOWN_MS);
 
     try {
       const siteDeaths = await getCharacterDeathsFromTibiaSite(characterName);
@@ -526,10 +559,25 @@ const processBetaSiteDeaths = async (characters = [], teamspeak) => {
         continue;
       }
 
-      const cacheKey = `${characterName}::site::${newestDeath.time}::${newestDeath.level}`;
+      const parsedTime = parseTibiaSiteTimeToUtc(newestDeath.time);
+      if (!parsedTime) {
+        continue;
+      }
+
+      const deathMoment = moment(parsedTime);
+      if (!deathMoment.isValid()) {
+        continue;
+      }
+
+      const minutesAgo = moment().diff(deathMoment, 'minutes');
+      if (minutesAgo < 0 || minutesAgo > BETA_DEATH_LOOKBACK_MINUTES) {
+        continue;
+      }
+
+      const cacheTime = `site::${parsedTime}::${newestDeath.level}::${newestDeath.killer}`;
       const deathsCache = await getDeathsCache();
       const alreadySent = deathsCache.some(({ characterName: cachedName, time: cachedTime }) => (
-        `${cachedName}::${cachedTime}` === cacheKey
+        cachedName === characterName && cachedTime === cacheTime
       ));
 
       if (alreadySent) {
@@ -541,13 +589,13 @@ const processBetaSiteDeaths = async (characters = [], teamspeak) => {
         characterName,
         level: newestDeath.level,
         mainKiller: newestDeath.killer,
-        time: newestDeath.time,
+        time: parsedTime,
         prefix: '[BETA]',
       });
 
       console.log(`[DEATH-BETA] Enviando poke: ${betaMessage}`);
       await sendMassPoke(teamspeak, betaMessage);
-      await addDeathsCache({ characterName, time: `site::${newestDeath.time}::${newestDeath.level}` });
+      await addDeathsCache({ characterName, time: cacheTime });
     } catch (error) {
       console.error(`[DEATH-BETA] Erro checando ${characterName} no tibia.com:`, error?.message || error);
     }
