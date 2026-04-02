@@ -19,7 +19,9 @@ import {
   getMonthlyLevelTrackerByName,
 } from '../models/monthly-level-tracker';
 import {
-  upsertLevelTracker,
+  getLevelTrackerByName,
+  ensureLevelTracker,
+  setLevelTrackerLevel,
 } from '../models/level-tracker';
 import {
   sendMassPoke,
@@ -38,6 +40,7 @@ const NEUTRAL_PAGE_SIZE = 50;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isListTaskRunning = false;
+const announcedLevelUps = new Map();
 
 const getVocationLabel = ({ vocation }) => {
   if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return '🏹 [RP]';
@@ -326,29 +329,45 @@ const processLevelUps = async (characterResponses = [], teamspeak) => {
 
     const { info, monitoredType } = response;
     const { name, level, vocation } = info;
+    const currentLevel = Number(level);
 
-    const result = await upsertLevelTracker({ name, level });
+    const tracker = await ensureLevelTracker({ name, level: currentLevel });
+    const previousLevel = Number(tracker?.lastLevel);
+    const alreadyAnnouncedLevel = announcedLevelUps.get(name);
 
     if (monitoredType === 'friend') {
-      console.log(`[LEVEL] ${name} | monitoredType=${monitoredType} | previous=${result?.previousLevel} | current=${result?.currentLevel} | leveledUp=${result?.leveledUp}`);
+      console.log(`[LEVEL] ${name} | monitoredType=${monitoredType} | previous=${previousLevel} | current=${currentLevel} | announced=${alreadyAnnouncedLevel}`);
     }
 
-    if (result?.leveledUp && result.previousLevel !== null) {
-      if (monitoredType !== 'friend') {
-        continue;
-      }
-
-      const message = formatLevelMessage({
-        name,
-        previousLevel: result.previousLevel,
-        currentLevel: result.currentLevel,
-        vocation,
-        monitoredType,
-      });
-
-      console.log(`[LEVEL] Enviando PM: ${message}`);
-      await sendMassPrivateMessage(teamspeak, message);
+    if (monitoredType !== 'friend') {
+      await setLevelTrackerLevel({ name, level: currentLevel });
+      continue;
     }
+
+    const shouldAnnounce =
+      Number.isFinite(previousLevel) &&
+      Number.isFinite(currentLevel) &&
+      currentLevel > previousLevel &&
+      alreadyAnnouncedLevel !== currentLevel;
+
+    if (!shouldAnnounce) {
+      await setLevelTrackerLevel({ name, level: currentLevel });
+      continue;
+    }
+
+    const message = formatLevelMessage({
+      name,
+      previousLevel,
+      currentLevel,
+      vocation,
+      monitoredType,
+    });
+
+    console.log(`[LEVEL] Enviando PM: ${message}`);
+    await sendMassPrivateMessage(teamspeak, message);
+
+    announcedLevelUps.set(name, currentLevel);
+    await setLevelTrackerLevel({ name, level: currentLevel });
   }
 };
 
