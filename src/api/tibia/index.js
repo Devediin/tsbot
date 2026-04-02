@@ -57,4 +57,28 @@ export default class TibiaAPI {
 
     return onlinePlayers;
   }
+
+  async getWorldOverview() {
+    const { data } = await axios.get(
+      `${TIBIA_DATA_API_URL}world/${encodeURIComponent(this.worldName)}`
+    );
+
+    const worldData = data.world || {};
+
+    return {
+      name: worldData.name || this.worldName,
+      onlinePlayers: worldData.online_players || [],
+      boostedCreature: worldData.boosted_creature || null,
+      boostedBoss: worldData.boosted_boss || null,
+      recordOnline: worldData.record_online || null,
+      location: worldData.location || null,
+      pvpType: worldData.pvp_type || null,
+      battleyeDate: worldData.battleye_date || null,
+      tournamentWorldType: worldData.tournament_world_type || null,
+      gameWorldType: worldData.game_world_type || null,
+      creationDate: worldData.creation_date || null,
+      transferType: worldData.transfer_type || null,
+      onlineCount: Array.isArray(worldData.online_players) ? worldData.online_players.length : 0,
+    };
+  }
 }
