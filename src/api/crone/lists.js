@@ -46,6 +46,8 @@ const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isFastTaskRunning = false;
 let isSlowTaskRunning = false;
 const announcedLevelUps = new Map();
+let previousOnlineNames = new Set();
+const recentlyOfflineMap = new Map();
 
 const getVocationLabel = ({ vocation }) => {
   if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return '🏹 [RP]';
@@ -354,35 +356,37 @@ const syncMonthlyLevelTrackers = async (playersOnline = []) => {
   }
 };
 
-const getRecentlyOfflineCharacters = async (characters = [], onlinePlayerNames = new Set()) => {
+const updateRecentlyOfflineMap = (onlinePlayerNames = new Set()) => {
+  const now = Date.now();
+
+  for (const previousName of previousOnlineNames) {
+    if (!onlinePlayerNames.has(previousName)) {
+      recentlyOfflineMap.set(previousName, now);
+    }
+  }
+
+  for (const currentName of onlinePlayerNames) {
+    if (recentlyOfflineMap.has(currentName)) {
+      recentlyOfflineMap.delete(currentName);
+    }
+  }
+
+  for (const [name, timestamp] of recentlyOfflineMap.entries()) {
+    if ((now - timestamp) / 1000 > RECENT_OFFLINE_DEATH_WINDOW_SECONDS) {
+      recentlyOfflineMap.delete(name);
+    }
+  }
+
+  previousOnlineNames = new Set(onlinePlayerNames);
+};
+
+const getRecentlyOfflineCharacters = (characters = []) => {
   const recentlyOffline = [];
-  const now = moment();
 
   for (const character of characters) {
     const { type, characterName } = character;
 
-    if (onlinePlayerNames.has(characterName)) {
-      continue;
-    }
-
-    const tracker = await getOnlineTrackerByName(characterName);
-
-    if (!tracker) {
-      continue;
-    }
-
-    if (tracker.isOnline) {
-      recentlyOffline.push({ type, characterName });
-      continue;
-    }
-
-    if (!tracker.lastSeenOnline) {
-      continue;
-    }
-
-    const secondsSinceLastSeenOnline = now.diff(moment(tracker.lastSeenOnline), 'seconds');
-
-    if (secondsSinceLastSeenOnline >= 0 && secondsSinceLastSeenOnline <= RECENT_OFFLINE_DEATH_WINDOW_SECONDS) {
+    if (recentlyOfflineMap.has(characterName)) {
       recentlyOffline.push({ type, characterName });
     }
   }
@@ -579,6 +583,8 @@ export const startTasks = (teamspeak) => {
       const playersOnline = await tibiaAPI.getWorldOnline();
       const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
 
+      updateRecentlyOfflineMap(onlinePlayerNames);
+
       const onlineEnemyCharacters = enemyCharacters
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
         .map(mapCharactersToNames);
@@ -592,7 +598,7 @@ export const startTasks = (teamspeak) => {
         ...friendCharacters.map(mapCharactersToNames),
       ];
 
-      const recentlyOfflineCharacters = await getRecentlyOfflineCharacters(monitoredCharacters, onlinePlayerNames);
+      const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
 
       const deathPriorityCharacters = [
         ...onlineEnemyCharacters,
