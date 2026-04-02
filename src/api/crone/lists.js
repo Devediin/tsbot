@@ -44,14 +44,17 @@ const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
 const BETA_DEATH_LOOKBACK_MINUTES = 15;
 const BETA_DEATH_CHECK_COOLDOWN_MS = 30000;
+const BETA_DEATH_TARGETS_PER_ROUND = 2;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isFastTaskRunning = false;
 let isSlowTaskRunning = false;
+let isBetaDeathTaskRunning = false;
 const announcedLevelUps = new Map();
 let previousOnlineNames = new Set();
 const recentlyOfflineMap = new Map();
 const betaDeathCheckCooldown = new Map();
+let betaDeathCursor = 0;
 
 const getVocationLabel = ({ vocation }) => {
   if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return '🏹 [RP]';
@@ -537,15 +540,43 @@ const getNotPokedKills = async (kills = []) => (
 
 const processBetaSiteDeaths = async (characters = [], teamspeak) => {
   const now = Date.now();
+  const uniqueCharacters = [];
+  const seen = new Set();
 
   for (const character of characters) {
-    const { type, characterName } = character;
-    const cooldownUntil = betaDeathCheckCooldown.get(characterName) || 0;
+    const key = `${character.type}:${character.characterName}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueCharacters.push(character);
+  }
+
+  if (uniqueCharacters.length === 0) {
+    return;
+  }
+
+  const selectedCharacters = [];
+  let attempts = 0;
+
+  while (
+    selectedCharacters.length < BETA_DEATH_TARGETS_PER_ROUND &&
+    attempts < uniqueCharacters.length
+  ) {
+    const index = betaDeathCursor % uniqueCharacters.length;
+    const character = uniqueCharacters[index];
+    const cooldownUntil = betaDeathCheckCooldown.get(character.characterName) || 0;
+
+    betaDeathCursor += 1;
+    attempts += 1;
 
     if (cooldownUntil > now) {
       continue;
     }
 
+    selectedCharacters.push(character);
+  }
+
+  for (const character of selectedCharacters) {
+    const { type, characterName } = character;
     betaDeathCheckCooldown.set(characterName, now + BETA_DEATH_CHECK_COOLDOWN_MS);
 
     try {
@@ -735,11 +766,6 @@ export const startTasks = (teamspeak) => {
         }
       }
 
-      await processBetaSiteDeaths(
-        [...onlineFriendCharacters, ...onlineEnemyCharacters, ...recentlyOfflineCharacters],
-        teamspeak
-      );
-
       await syncOnlineTrackers(playersOnline);
       await syncMonthlyLevelTrackers(playersOnline);
 
@@ -758,6 +784,53 @@ export const startTasks = (teamspeak) => {
       console.error('[CRON] Erro na fastTask:', error);
     } finally {
       isFastTaskRunning = false;
+    }
+  }, {
+    scheduled: false,
+  });
+
+  const betaDeathTask = cron.schedule('0-59/5 * * * * *', async () => {
+    if (isBetaDeathTaskRunning) {
+      console.log('[CRON] betaDeathTask ainda em execução. Pulando esta rodada.');
+      return;
+    }
+
+    isBetaDeathTaskRunning = true;
+
+    try {
+      const enemyCharacters = await Characters.find({ type: 'enemy' });
+      const friendCharacters = await Characters.find({ type: 'friend' });
+
+      const playersOnline = await tibiaAPI.getWorldOnline();
+      const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
+
+      const onlineEnemyCharacters = enemyCharacters
+        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
+        .map(mapCharactersToNames);
+
+      const onlineFriendCharacters = friendCharacters
+        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
+        .map(mapCharactersToNames);
+
+      const monitoredCharacters = [
+        ...enemyCharacters.map(mapCharactersToNames),
+        ...friendCharacters.map(mapCharactersToNames),
+      ];
+
+      const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
+
+      const betaTargets = [
+        ...recentlyOfflineCharacters,
+        ...onlineFriendCharacters,
+        ...onlineEnemyCharacters,
+      ].filter(({ characterName }) => characterName);
+
+      console.log(`[DEATH-BETA] Targets disponíveis: ${betaTargets.length}`);
+      await processBetaSiteDeaths(betaTargets, teamspeak);
+    } catch (error) {
+      console.error('[CRON] Erro na betaDeathTask:', error);
+    } finally {
+      isBetaDeathTaskRunning = false;
     }
   }, {
     scheduled: false,
@@ -833,5 +906,6 @@ export const startTasks = (teamspeak) => {
   });
 
   fastTask.start();
+  betaDeathTask.start();
   neutralTask.start();
 };
