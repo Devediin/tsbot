@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import moment from 'moment';
 import { capitalize } from 'lodash';
 import TibiaAPI from '../tibia';
+import getCharacterDeathsFromTibiaSite from '../tibia/site';
 import Characters from '../models/characters';
 import Channels from '../models/channels';
 import Meta, {
@@ -48,6 +49,7 @@ let isSlowTaskRunning = false;
 const announcedLevelUps = new Map();
 let previousOnlineNames = new Set();
 const recentlyOfflineMap = new Map();
+const betaDeathCheckCooldown = new Map();
 
 const getVocationLabel = ({ vocation }) => {
   if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return '🏹 [RP]';
@@ -102,12 +104,14 @@ const formatDeathMessage = ({
   level,
   mainKiller,
   time,
+  prefix = '',
 }) => {
   const typeLabel = getTypeLabel(type);
   const typeColorTag = getTypeColorTag(type);
   const deathAge = formatDeathAgeShort(time);
+  const prefixText = prefix ? `${prefix} ` : '';
 
-  return `⏰ [${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para [B]${mainKiller}[/B]`;
+  return `${prefixText}⏰ [${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para [B]${mainKiller}[/B]`;
 };
 
 const formatLevelMessage = ({
@@ -498,6 +502,58 @@ const getNotPokedKills = async (kills = []) => (
   })
 );
 
+const processBetaSiteDeaths = async (characters = [], teamspeak) => {
+  const now = Date.now();
+
+  for (const character of characters) {
+    const { type, characterName } = character;
+    const cooldownUntil = betaDeathCheckCooldown.get(characterName) || 0;
+
+    if (cooldownUntil > now) {
+      continue;
+    }
+
+    betaDeathCheckCooldown.set(characterName, now + 30000);
+
+    try {
+      const siteDeaths = await getCharacterDeathsFromTibiaSite(characterName);
+      if (!Array.isArray(siteDeaths) || siteDeaths.length === 0) {
+        continue;
+      }
+
+      const newestDeath = siteDeaths[0];
+      if (!newestDeath?.time || !newestDeath?.level || !newestDeath?.killer) {
+        continue;
+      }
+
+      const cacheKey = `${characterName}::site::${newestDeath.time}::${newestDeath.level}`;
+      const deathsCache = await getDeathsCache();
+      const alreadySent = deathsCache.some(({ characterName: cachedName, time: cachedTime }) => (
+        `${cachedName}::${cachedTime}` === cacheKey
+      ));
+
+      if (alreadySent) {
+        continue;
+      }
+
+      const betaMessage = formatDeathMessage({
+        type,
+        characterName,
+        level: newestDeath.level,
+        mainKiller: newestDeath.killer,
+        time: newestDeath.time,
+        prefix: '[BETA]',
+      });
+
+      console.log(`[DEATH-BETA] Enviando poke: ${betaMessage}`);
+      await sendMassPoke(teamspeak, betaMessage);
+      await addDeathsCache({ characterName, time: `site::${newestDeath.time}::${newestDeath.level}` });
+    } catch (error) {
+      console.error(`[DEATH-BETA] Erro checando ${characterName} no tibia.com:`, error?.message || error);
+    }
+  }
+};
+
 const mapCharactersToNames = ({ type, characterName }) => ({ type, characterName });
 
 const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
@@ -630,6 +686,11 @@ export const startTasks = (teamspeak) => {
           await sendMassPoke(teamspeak, killMessage);
         }
       }
+
+      await processBetaSiteDeaths(
+        [...onlineFriendCharacters, ...onlineEnemyCharacters, ...recentlyOfflineCharacters],
+        teamspeak
+      );
 
       await syncOnlineTrackers(playersOnline);
       await syncMonthlyLevelTrackers(playersOnline);
