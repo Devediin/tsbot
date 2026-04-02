@@ -19,7 +19,6 @@ import {
   getMonthlyLevelTrackerByName,
 } from '../models/monthly-level-tracker';
 import {
-  getLevelTrackerByName,
   ensureLevelTracker,
   setLevelTrackerLevel,
 } from '../models/level-tracker';
@@ -323,26 +322,24 @@ const syncMonthlyLevelTrackers = async (playersOnline = []) => {
   }
 };
 
-const processLevelUps = async (characterResponses = [], teamspeak) => {
-  for (const response of characterResponses) {
-    if (!response || !response.info) continue;
+const processLevelUps = async (playersOnline = [], friendCharacters = [], teamspeak) => {
+  const friendNames = new Set(friendCharacters.map(({ characterName }) => characterName));
 
-    const { info, monitoredType } = response;
-    const { name, level, vocation } = info;
-    const currentLevel = Number(level);
+  for (const player of playersOnline) {
+    if (!friendNames.has(player.name)) {
+      continue;
+    }
+
+    const name = player.name;
+    const currentLevel = Number(player.level);
+    const vocation = player.vocation;
+    const monitoredType = 'friend';
 
     const tracker = await ensureLevelTracker({ name, level: currentLevel });
     const previousLevel = Number(tracker?.lastLevel);
     const alreadyAnnouncedLevel = announcedLevelUps.get(name);
 
-    if (monitoredType === 'friend') {
-      console.log(`[LEVEL] ${name} | monitoredType=${monitoredType} | previous=${previousLevel} | current=${currentLevel} | announced=${alreadyAnnouncedLevel}`);
-    }
-
-    if (monitoredType !== 'friend') {
-      await setLevelTrackerLevel({ name, level: currentLevel });
-      continue;
-    }
+    console.log(`[LEVEL] ${name} | monitoredType=${monitoredType} | previous=${previousLevel} | current=${currentLevel} | announced=${alreadyAnnouncedLevel}`);
 
     const shouldAnnounce =
       Number.isFinite(previousLevel) &&
@@ -511,7 +508,7 @@ export const startTasks = (teamspeak) => {
       console.log(`[DEATH] Characters monitorados online: ${allCharacters.length}`);
       console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
 
-      await processLevelUps(allCharactersInformation, teamspeak);
+      await processLevelUps(playersOnline, friendCharacters, teamspeak);
 
       const killsToPoke = await getNotPokedKills(deathListByCharacters);
       if (killsToPoke.length > 0) {
