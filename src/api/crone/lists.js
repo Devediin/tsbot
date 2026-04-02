@@ -36,6 +36,7 @@ import {
 
 const { WORLD_NAME } = process.env;
 const NEUTRAL_PAGE_SIZE = 50;
+const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isListTaskRunning = false;
@@ -158,7 +159,17 @@ const splitByProfessions = (onlineCharacters = []) => {
 const getInformationFromCharacters = async (characterNames = []) => (
   new Promise(async (resolve, reject) => {
     try {
-      const characterInformations = await Promise.all(characterNames.map(({
+      const uniqueCharacters = [];
+      const seen = new Set();
+
+      for (const entry of characterNames) {
+        const key = `${entry.type}:${entry.characterName}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        uniqueCharacters.push(entry);
+      }
+
+      const characterInformations = await Promise.all(uniqueCharacters.map(({
         type,
         characterName,
       }) => (
@@ -322,6 +333,42 @@ const syncMonthlyLevelTrackers = async (playersOnline = []) => {
   }
 };
 
+const getRecentlyOfflineCharacters = async (characters = [], onlinePlayerNames = new Set()) => {
+  const recentlyOffline = [];
+  const now = moment();
+
+  for (const character of characters) {
+    const { type, characterName } = character;
+
+    if (onlinePlayerNames.has(characterName)) {
+      continue;
+    }
+
+    const tracker = await getOnlineTrackerByName(characterName);
+
+    if (!tracker) {
+      continue;
+    }
+
+    if (tracker.isOnline) {
+      recentlyOffline.push({ type, characterName });
+      continue;
+    }
+
+    if (!tracker.lastSeenOnline) {
+      continue;
+    }
+
+    const secondsSinceLastSeenOnline = now.diff(moment(tracker.lastSeenOnline), 'seconds');
+
+    if (secondsSinceLastSeenOnline >= 0 && secondsSinceLastSeenOnline <= RECENT_OFFLINE_DEATH_WINDOW_SECONDS) {
+      recentlyOffline.push({ type, characterName });
+    }
+  }
+
+  return recentlyOffline;
+};
+
 const processLevelUps = async (playersOnline = [], friendCharacters = [], teamspeak) => {
   const friendNames = new Set(friendCharacters.map(({ characterName }) => characterName));
 
@@ -477,6 +524,11 @@ export const startTasks = (teamspeak) => {
       const enemyCharacters = await Characters.find({ type: 'enemy' });
       const friendCharacters = await Characters.find({ type: 'friend' });
 
+      const monitoredCharacters = [
+        ...enemyCharacters.map(mapCharactersToNames),
+        ...friendCharacters.map(mapCharactersToNames),
+      ];
+
       const playersOnline = await tibiaAPI.getWorldOnline();
       const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
       const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
@@ -489,12 +541,15 @@ export const startTasks = (teamspeak) => {
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
         .map(mapCharactersToNames);
 
-      const allCharacters = [
+      const recentlyOfflineCharacters = await getRecentlyOfflineCharacters(monitoredCharacters, onlinePlayerNames);
+
+      const deathPriorityCharacters = [
         ...onlineEnemyCharacters,
         ...onlineFriendCharacters,
+        ...recentlyOfflineCharacters,
       ].filter(({ characterName }) => characterName);
 
-      const allCharactersInformation = await getInformationFromCharacters(allCharacters);
+      const allCharactersInformation = await getInformationFromCharacters(deathPriorityCharacters);
       const deathListByCharacters = [];
 
       if (allCharactersInformation && allCharactersInformation.length > 0) {
@@ -505,7 +560,8 @@ export const startTasks = (teamspeak) => {
         });
       }
 
-      console.log(`[DEATH] Characters monitorados online: ${allCharacters.length}`);
+      console.log(`[DEATH] Characters monitorados online: ${onlineEnemyCharacters.length + onlineFriendCharacters.length}`);
+      console.log(`[DEATH] Characters monitorados recem-offline: ${recentlyOfflineCharacters.length}`);
       console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
 
       await processLevelUps(playersOnline, friendCharacters, teamspeak);
