@@ -90,17 +90,12 @@ const getTypeColorTag = (type = '') => {
 const parseTibiaSiteTimeToUtc = (rawTime = '') => {
   if (!rawTime) return null;
 
-  const cleaned = String(rawTime).replace(/\s+/g, ' ').trim();
-  const match = cleaned.match(/^([A-Z][a-z]{2}) (\d{2}) (\d{4}), (\d{2}):(\d{2}):(\d{2}) (CEST|CET)$/i);
+  const cleaned = String(rawTime).trim();
+  const match = cleaned.match(/^([A-Z][a-z]{2}) (\d{2}) (\d{4}), (\d{2}):(\d{2}):(\d{2}) (CEST|CET)$/);
 
-  if (!match) {
-    return null;
-  }
+  if (!match) return null;
 
-  const [, monthStrRaw, dayStr, yearStr, hourStr, minuteStr, secondStr, tzRaw] = match;
-  const monthStr = monthStrRaw.slice(0, 1).toUpperCase() + monthStrRaw.slice(1).toLowerCase();
-  const tz = tzRaw.toUpperCase();
-
+  const [, monthStr, dayStr, yearStr, hourStr, minuteStr, secondStr, tz] = match;
   const months = {
     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
@@ -126,12 +121,10 @@ const parseTibiaSiteTimeToUtc = (rawTime = '') => {
 const formatDeathAgeShort = (time) => {
   const deathMoment = moment(time);
 
-  if (!deathMoment.isValid()) return '0s';
-
-  const diffSeconds = Math.max(moment().diff(deathMoment, 'seconds'), 0);
-  if (diffSeconds < 60) return `${diffSeconds}s`;
+  if (!deathMoment.isValid()) return 'agora';
 
   const diffMinutes = moment().diff(deathMoment, 'minutes');
+  if (diffMinutes < 1) return 'agora';
   if (diffMinutes < 60) return `${diffMinutes}m`;
 
   const diffHours = moment().diff(deathMoment, 'hours');
