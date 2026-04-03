@@ -44,7 +44,6 @@ const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
 const BETA_DEATH_LOOKBACK_MINUTES = 15;
 const BETA_DEATH_CHECK_COOLDOWN_MS = 30000;
-const BETA_DEATH_TARGETS_PER_ROUND = 2;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isFastTaskRunning = false;
@@ -90,27 +89,43 @@ const getTypeColorTag = (type = '') => {
 const parseTibiaSiteTimeToUtc = (rawTime = '') => {
   if (!rawTime) return null;
 
-  const cleaned = String(rawTime).trim();
-  const match = cleaned.match(/^([A-Z][a-z]{2}) (\d{2}) (\d{4}), (\d{2}):(\d{2}):(\d{2}) (CEST|CET)$/);
+  const cleaned = String(rawTime).replace(/\s+/g, ' ').trim();
 
-  if (!match) return null;
+  const match = cleaned.match(/^([A-Z][a-z]{2}) (\d{2}) (\d{4}), (\d{2}):(\d{2}):(\d{2}) (CEST|CET)$/i);
+  if (!match) {
+    return null;
+  }
 
-  const [, monthStr, dayStr, yearStr, hourStr, minuteStr, secondStr, tz] = match;
-  const months = {
-    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+  const [, monthStrRaw, dayStr, yearStr, hourStr, minuteStr, secondStr, tzRaw] = match;
+
+  const monthMap = {
+    jan: 0,
+    feb: 1,
+    mar: 2,
+    apr: 3,
+    may: 4,
+    jun: 5,
+    jul: 6,
+    aug: 7,
+    sep: 8,
+    oct: 9,
+    nov: 10,
+    dec: 11,
   };
 
-  const month = months[monthStr];
-  if (month === undefined) return null;
+  const month = monthMap[String(monthStrRaw).toLowerCase()];
+  if (month === undefined) {
+    return null;
+  }
 
-  const utcOffsetHours = tz === 'CEST' ? 2 : 1;
+  const tz = String(tzRaw).toUpperCase();
+  const offsetHours = tz === 'CEST' ? 2 : 1;
 
   const utcMillis = Date.UTC(
     Number(yearStr),
     month,
     Number(dayStr),
-    Number(hourStr) - utcOffsetHours,
+    Number(hourStr) - offsetHours,
     Number(minuteStr),
     Number(secondStr)
   );
@@ -121,10 +136,12 @@ const parseTibiaSiteTimeToUtc = (rawTime = '') => {
 const formatDeathAgeShort = (time) => {
   const deathMoment = moment(time);
 
-  if (!deathMoment.isValid()) return 'agora';
+  if (!deathMoment.isValid()) return '0s';
+
+  const diffSeconds = Math.max(moment().diff(deathMoment, 'seconds'), 0);
+  if (diffSeconds < 60) return `${diffSeconds}s`;
 
   const diffMinutes = moment().diff(deathMoment, 'minutes');
-  if (diffMinutes < 1) return 'agora';
   if (diffMinutes < 60) return `${diffMinutes}m`;
 
   const diffHours = moment().diff(deathMoment, 'hours');
