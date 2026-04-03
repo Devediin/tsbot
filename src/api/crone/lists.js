@@ -126,10 +126,12 @@ const parseTibiaSiteTimeToUtc = (rawTime = '') => {
 const formatDeathAgeShort = (time) => {
   const deathMoment = moment(time);
 
-  if (!deathMoment.isValid()) return 'agora';
+  if (!deathMoment.isValid()) return '0s';
+
+  const diffSeconds = Math.max(moment().diff(deathMoment, 'seconds'), 0);
+  if (diffSeconds < 60) return `${diffSeconds}s`;
 
   const diffMinutes = moment().diff(deathMoment, 'minutes');
-  if (diffMinutes < 1) return 'agora';
   if (diffMinutes < 60) return `${diffMinutes}m`;
 
   const diffHours = moment().diff(deathMoment, 'hours');
@@ -621,7 +623,7 @@ const processBetaSiteDeaths = async (characters = [], teamspeak) => {
       const cacheTime = `site::${parsedTime}::${newestDeath.level}::${newestDeath.killer}`;
       const deathsCache = await getDeathsCache();
       const alreadySent = deathsCache.some(({ characterName: cachedName, time: cachedTime }) => (
-        cachedName === characterName && cachedTime === cacheTime
+        cachedName === characterName && String(cachedTime) === cacheTime
       ));
 
       if (alreadySent) {
