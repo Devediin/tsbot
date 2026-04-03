@@ -580,17 +580,22 @@ const processBetaSiteDeaths = async (characters = [], teamspeak) => {
     betaDeathCheckCooldown.set(characterName, now + BETA_DEATH_CHECK_COOLDOWN_MS);
 
     try {
+      console.log(`[DEATH-BETA] Checando ${characterName}`);
       const siteDeaths = await getCharacterDeathsFromTibiaSite(characterName);
       if (!Array.isArray(siteDeaths) || siteDeaths.length === 0) {
+        console.log(`[DEATH-BETA] ${characterName} sem deaths no site.`);
         continue;
       }
 
       const newestDeath = siteDeaths[0];
       if (!newestDeath?.time || !newestDeath?.level || !newestDeath?.killer) {
+        console.log(`[DEATH-BETA] ${characterName} death inválida: ${JSON.stringify(newestDeath)}`);
         continue;
       }
 
       const parsedTime = parseTibiaSiteTimeToUtc(newestDeath.time);
+      console.log(`[DEATH-BETA] ${characterName} rawTime=${newestDeath.time} parsedTime=${parsedTime} level=${newestDeath.level} killer=${newestDeath.killer}`);
+
       if (!parsedTime) {
         continue;
       }
@@ -601,7 +606,10 @@ const processBetaSiteDeaths = async (characters = [], teamspeak) => {
       }
 
       const minutesAgo = moment().diff(deathMoment, 'minutes');
+      console.log(`[DEATH-BETA] ${characterName} minutesAgo=${minutesAgo}`);
+
       if (minutesAgo < 0 || minutesAgo > BETA_DEATH_LOOKBACK_MINUTES) {
+        console.log(`[DEATH-BETA] ${characterName} descartado por lookback.`);
         continue;
       }
 
@@ -612,6 +620,7 @@ const processBetaSiteDeaths = async (characters = [], teamspeak) => {
       ));
 
       if (alreadySent) {
+        console.log(`[DEATH-BETA] ${characterName} já enviado no cache.`);
         continue;
       }
 
