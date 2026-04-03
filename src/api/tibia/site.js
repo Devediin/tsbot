@@ -20,25 +20,66 @@ const parseTibiaDeathLine = (line = '') => {
   };
 };
 
+const extractDeathLinesFromText = (text = '') => {
+  const lines = String(text || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines
+    .filter((line) => line.includes('Died at Level') || line.includes('Killed at Level'))
+    .map(parseTibiaDeathLine)
+    .filter(Boolean);
+};
+
 export const getCharacterDeathsFromTibiaSite = async (characterName) => {
   const browser = await chromium.launch({ headless: true });
 
   try {
-    const page = await browser.newPage();
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      locale: 'en-US',
+      timezoneId: 'UTC',
+      bypassCSP: true,
+      ignoreHTTPSErrors: true,
+    });
 
-    await page.goto(
-      `${TIBIA_CHARACTER_URL}${encodeURIComponent(characterName)}`,
-      { waitUntil: 'networkidle', timeout: 60000 }
-    );
+    const page = await context.newPage();
 
-    const text = await page.locator('body').innerText();
-    const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+    await page.setExtraHTTPHeaders({
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    });
 
-    const deathLines = lines
-      .filter((line) => line.includes('Died at Level') || line.includes('Killed at Level'))
-      .map(parseTibiaDeathLine)
-      .filter(Boolean);
+    const url = `${TIBIA_CHARACTER_URL}${encodeURIComponent(characterName)}`;
 
+    await page.goto(url, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
+    });
+
+    await page.waitForTimeout(1500);
+
+    let text = await page.locator('body').innerText();
+    let deathLines = extractDeathLinesFromText(text);
+
+    await page.reload({
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
+    });
+
+    await page.waitForTimeout(2000);
+
+    const textAfterReload = await page.locator('body').innerText();
+    const deathLinesAfterReload = extractDeathLinesFromText(textAfterReload);
+
+    if (deathLinesAfterReload.length > deathLines.length) {
+      deathLines = deathLinesAfterReload;
+    } else if (deathLinesAfterReload.length > 0) {
+      deathLines = deathLinesAfterReload;
+    }
+
+    await context.close();
     return deathLines;
   } finally {
     await browser.close();
