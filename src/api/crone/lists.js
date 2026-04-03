@@ -44,6 +44,7 @@ const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
 const BETA_DEATH_LOOKBACK_MINUTES = 15;
 const BETA_DEATH_CHECK_COOLDOWN_MS = 30000;
+const BETA_DEATH_TARGETS_PER_ROUND = 2;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isFastTaskRunning = false;
@@ -53,6 +54,7 @@ const announcedLevelUps = new Map();
 let previousOnlineNames = new Set();
 const recentlyOfflineMap = new Map();
 const betaDeathCheckCooldown = new Map();
+const betaSentCache = new Set();
 
 const getVocationLabel = ({ vocation }) => {
   if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return '🏹 [RP]';
@@ -119,12 +121,10 @@ const parseTibiaSiteTimeToUtc = (rawTime = '') => {
 const formatDeathAgeShort = (time) => {
   const deathMoment = moment(time);
 
-  if (!deathMoment.isValid()) return '0s';
-
-  const diffSeconds = Math.max(moment().diff(deathMoment, 'seconds'), 0);
-  if (diffSeconds < 60) return `${diffSeconds}s`;
+  if (!deathMoment.isValid()) return 'agora';
 
   const diffMinutes = moment().diff(deathMoment, 'minutes');
+  if (diffMinutes < 1) return 'agora';
   if (diffMinutes < 60) return `${diffMinutes}m`;
 
   const diffHours = moment().diff(deathMoment, 'hours');
@@ -586,15 +586,13 @@ const processBetaSiteDeaths = async (characters = [], teamspeak) => {
       }
 
       const cacheTime = `site::${parsedTime}::${newestDeath.level}::${newestDeath.killer}`;
-      const deathsCache = await getDeathsCache();
-      const alreadySent = deathsCache.some(({ characterName: cachedName, time: cachedTime }) => (
-        cachedName === characterName && String(cachedTime) === cacheTime
-      ));
 
-      if (alreadySent) {
-        console.log(`[DEATH-BETA] ${characterName} já enviado no cache.`);
+      if (betaSentCache.has(cacheTime)) {
+        console.log(`[DEATH-BETA] ${characterName} já enviado na memória.`);
         continue;
       }
+
+      betaSentCache.add(cacheTime);
 
       const betaMessage = formatDeathMessage({
         type,
