@@ -90,12 +90,17 @@ const getTypeColorTag = (type = '') => {
 const parseTibiaSiteTimeToUtc = (rawTime = '') => {
   if (!rawTime) return null;
 
-  const cleaned = String(rawTime).trim();
-  const match = cleaned.match(/^([A-Z][a-z]{2}) (\d{2}) (\d{4}), (\d{2}):(\d{2}):(\d{2}) (CEST|CET)$/);
+  const cleaned = String(rawTime).replace(/\s+/g, ' ').trim();
+  const match = cleaned.match(/^([A-Z][a-z]{2}) (\d{2}) (\d{4}), (\d{2}):(\d{2}):(\d{2}) (CEST|CET)$/i);
 
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
 
-  const [, monthStr, dayStr, yearStr, hourStr, minuteStr, secondStr, tz] = match;
+  const [, monthStrRaw, dayStr, yearStr, hourStr, minuteStr, secondStr, tzRaw] = match;
+  const monthStr = monthStrRaw.slice(0, 1).toUpperCase() + monthStrRaw.slice(1).toLowerCase();
+  const tz = tzRaw.toUpperCase();
+
   const months = {
     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
