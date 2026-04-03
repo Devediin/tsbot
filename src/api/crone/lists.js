@@ -44,6 +44,7 @@ const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
 const BETA_DEATH_LOOKBACK_MINUTES = 15;
 const BETA_DEATH_CHECK_COOLDOWN_MS = 30000;
+const BETA_DEATH_TARGETS_PER_ROUND = 2;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isFastTaskRunning = false;
@@ -53,6 +54,7 @@ const announcedLevelUps = new Map();
 let previousOnlineNames = new Set();
 const recentlyOfflineMap = new Map();
 const betaDeathCheckCooldown = new Map();
+let betaDeathCursor = 0;
 const betaSentCache = new Set();
 
 const getVocationLabel = ({ vocation }) => {
@@ -90,42 +92,31 @@ const parseTibiaSiteTimeToUtc = (rawTime = '') => {
   if (!rawTime) return null;
 
   const cleaned = String(rawTime).replace(/\s+/g, ' ').trim();
-
   const match = cleaned.match(/^([A-Z][a-z]{2}) (\d{2}) (\d{4}), (\d{2}):(\d{2}):(\d{2}) (CEST|CET)$/i);
+
   if (!match) {
     return null;
   }
 
   const [, monthStrRaw, dayStr, yearStr, hourStr, minuteStr, secondStr, tzRaw] = match;
+  const monthStr = monthStrRaw.slice(0, 1).toUpperCase() + monthStrRaw.slice(1).toLowerCase();
+  const tz = tzRaw.toUpperCase();
 
-  const monthMap = {
-    jan: 0,
-    feb: 1,
-    mar: 2,
-    apr: 3,
-    may: 4,
-    jun: 5,
-    jul: 6,
-    aug: 7,
-    sep: 8,
-    oct: 9,
-    nov: 10,
-    dec: 11,
+  const months = {
+    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
   };
 
-  const month = monthMap[String(monthStrRaw).toLowerCase()];
-  if (month === undefined) {
-    return null;
-  }
+  const month = months[monthStr];
+  if (month === undefined) return null;
 
-  const tz = String(tzRaw).toUpperCase();
-  const offsetHours = tz === 'CEST' ? 2 : 1;
+  const utcOffsetHours = tz === 'CEST' ? 2 : 1;
 
   const utcMillis = Date.UTC(
     Number(yearStr),
     month,
     Number(dayStr),
-    Number(hourStr) - offsetHours,
+    Number(hourStr) - utcOffsetHours,
     Number(minuteStr),
     Number(secondStr)
   );
@@ -136,12 +127,10 @@ const parseTibiaSiteTimeToUtc = (rawTime = '') => {
 const formatDeathAgeShort = (time) => {
   const deathMoment = moment(time);
 
-  if (!deathMoment.isValid()) return '0s';
-
-  const diffSeconds = Math.max(moment().diff(deathMoment, 'seconds'), 0);
-  if (diffSeconds < 60) return `${diffSeconds}s`;
+  if (!deathMoment.isValid()) return 'agora';
 
   const diffMinutes = moment().diff(deathMoment, 'minutes');
+  if (diffMinutes < 1) return 'agora';
   if (diffMinutes < 60) return `${diffMinutes}m`;
 
   const diffHours = moment().diff(deathMoment, 'hours');
@@ -557,15 +546,43 @@ const getNotPokedKills = async (kills = []) => (
 
 const processBetaSiteDeaths = async (characters = [], teamspeak) => {
   const now = Date.now();
+  const uniqueCharacters = [];
+  const seen = new Set();
 
   for (const character of characters) {
-    const { type, characterName } = character;
-    const cooldownUntil = betaDeathCheckCooldown.get(characterName) || 0;
+    const key = `${character.type}:${character.characterName}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueCharacters.push(character);
+  }
+
+  if (uniqueCharacters.length === 0) {
+    return;
+  }
+
+  const selectedCharacters = [];
+  let attempts = 0;
+
+  while (
+    selectedCharacters.length < BETA_DEATH_TARGETS_PER_ROUND &&
+    attempts < uniqueCharacters.length
+  ) {
+    const index = betaDeathCursor % uniqueCharacters.length;
+    const character = uniqueCharacters[index];
+    const cooldownUntil = betaDeathCheckCooldown.get(character.characterName) || 0;
+
+    betaDeathCursor += 1;
+    attempts += 1;
 
     if (cooldownUntil > now) {
       continue;
     }
 
+    selectedCharacters.push(character);
+  }
+
+  for (const character of selectedCharacters) {
+    const { type, characterName } = character;
     betaDeathCheckCooldown.set(characterName, now + BETA_DEATH_CHECK_COOLDOWN_MS);
 
     try {
@@ -808,7 +825,15 @@ export const startTasks = (teamspeak) => {
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
         .map(mapCharactersToNames);
 
+      const monitoredCharacters = [
+        ...enemyCharacters.map(mapCharactersToNames),
+        ...friendCharacters.map(mapCharactersToNames),
+      ];
+
+      const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
+
       const betaTargets = [
+        ...recentlyOfflineCharacters,
         ...onlineFriendCharacters,
         ...onlineEnemyCharacters,
       ].filter(({ characterName }) => characterName);
