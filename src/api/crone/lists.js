@@ -595,52 +595,7 @@ export const startTasks = (teamspeak) => {
 
       updateRecentlyOfflineMap(onlinePlayerNames);
 
-      const onlineEnemyCharacters = enemyCharacters
-        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(({ type, characterName }) => ({ type, characterName }));
-
-      const onlineFriendCharacters = friendCharacters
-        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(({ type, characterName }) => ({ type, characterName }));
-
-      const monitoredCharacters = [
-        ...enemyCharacters.map(({ type, characterName }) => ({ type, characterName })),
-        ...friendCharacters.map(({ type, characterName }) => ({ type, characterName })),
-      ];
-
-      const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
-
-      const deathPriorityCharacters = [
-        ...onlineEnemyCharacters,
-        ...onlineFriendCharacters,
-        ...recentlyOfflineCharacters,
-      ].filter(({ characterName }) => characterName);
-
-      const allCharactersInformation = await getInformationFromCharacters(deathPriorityCharacters);
-      const deathListByCharacters = [];
-
-      if (allCharactersInformation && allCharactersInformation.length > 0) {
-        allCharactersInformation.forEach((data) => {
-          if (data && data.kills) {
-            deathListByCharacters.push(...data.kills);
-          }
-        });
-      }
-
-      console.log(`[DEATH] Characters monitorados online: ${onlineEnemyCharacters.length + onlineFriendCharacters.length}`);
-      console.log(`[DEATH] Characters monitorados recem-offline: ${recentlyOfflineCharacters.length}`);
-      console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
-
       await processLevelUps(playersOnline, friendCharacters, teamspeak);
-
-      const killsToPoke = await getNotPokedKills(deathListByCharacters);
-      if (killsToPoke.length > 0) {
-        for (const killMessage of killsToPoke) {
-          console.log(`[DEATH] Enviando poke: ${killMessage}`);
-          await sendMassPoke(teamspeak, killMessage);
-        }
-      }
-
       await syncOnlineTrackers(playersOnline);
       await syncMonthlyLevelTrackers(playersOnline);
 
