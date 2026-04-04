@@ -650,7 +650,6 @@ export const startTasks = (teamspeak) => {
       const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
 
       const betaTargets = [
-        ...recentlyOfflineCharacters,
         ...onlineFriendCharacters,
         ...onlineEnemyCharacters,
       ].filter(({ characterName }) => characterName);
