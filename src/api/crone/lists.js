@@ -619,7 +619,7 @@ export const startTasks = (teamspeak) => {
     scheduled: false,
   });
 
-  const betaDeathTask = cron.schedule('0-59/5 * * * * *', async () => {
+  const betaDeathTask = cron.schedule('0-59/10 * * * * *', async () => {
     if (isBetaDeathTaskRunning) {
       console.log('[CRON] betaDeathTask ainda em execução. Pulando esta rodada.');
       return;
