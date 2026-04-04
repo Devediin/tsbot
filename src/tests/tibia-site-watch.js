@@ -78,15 +78,17 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const deaths = extractDeathLinesFromText(text);
         const newestDeath = deaths[0] || null;
 
-        const now = new Date().toISOString();
+        const now = new Date();
+        const nowIso = now.toISOString();
+        const nowBr = now.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
         if (!newestDeath) {
-          console.log(`[WATCH] ${now} | sem deaths`);
+          console.log(`[WATCH] ${nowIso} | ${nowBr} | sem deaths`);
         } else {
-          console.log(`[WATCH] ${now} | newest=${newestDeath.raw}`);
+          console.log(`[WATCH] ${nowIso} | ${nowBr} | newest=${newestDeath.raw}`);
 
           if (previousRawDeath && newestDeath.raw !== previousRawDeath) {
-            console.log(`[WATCH] NOVA DEATH DETECTADA => ${newestDeath.raw}`);
+            console.log(`[WATCH] NOVA DEATH DETECTADA EM ${nowBr} => ${newestDeath.raw}`);
           }
 
           previousRawDeath = newestDeath.raw;
