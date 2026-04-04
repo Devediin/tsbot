@@ -7,9 +7,6 @@ import Characters from '../models/characters';
 import Channels from '../models/channels';
 import Meta, {
   updateMeta,
-  getDeathsCache,
-  addDeathsCache,
-  removeOldDeathsCache,
   getServerSaveStatus,
   setServerSaveOffline,
   setServerSaveOnline,
@@ -224,52 +221,6 @@ const splitByProfessions = (onlineCharacters = []) => {
     nons,
   };
 };
-
-const getInformationFromCharacters = async (characterNames = []) => (
-  new Promise(async (resolve, reject) => {
-    try {
-      const uniqueCharacters = [];
-      const seen = new Set();
-
-      for (const entry of characterNames) {
-        const key = `${entry.type}:${entry.characterName}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        uniqueCharacters.push(entry);
-      }
-
-      const characterInformations = await Promise.all(uniqueCharacters.map(({
-        type,
-        characterName,
-      }) => (
-        new Promise(async (resolve) => {
-          try {
-            const information = await tibiaAPI.getCharacterInformation(characterName);
-
-            if (information.kills && Array.isArray(information.kills)) {
-              information.kills.forEach((death) => {
-                death.type = type;
-                death.characterName = characterName;
-              });
-            }
-
-            resolve({
-              ...information,
-              monitoredType: type,
-              monitoredCharacterName: characterName,
-            });
-          } catch (error) {
-            resolve();
-          }
-        })
-      )));
-
-      resolve(characterInformations);
-    } catch (error) {
-      reject(error);
-    }
-  })
-);
 
 const formatOnlineDuration = (firstSeenOnline) => {
   if (!firstSeenOnline) return '0m';
@@ -486,103 +437,17 @@ const processLevelUps = async (playersOnline = [], friendCharacters = [], teamsp
   }
 };
 
-const getDeathCacheKey = ({ characterName, time }) => `${characterName}::${time}`;
-
-const getNotPokedKills = async (kills = []) => (
-  new Promise(async (resolve, reject) => {
-    try {
-      await removeOldDeathsCache();
-      const deathsCache = await getDeathsCache();
-      const cachedKeys = new Set(
-        deathsCache.map(({ characterName, time }) => getDeathCacheKey({ characterName, time }))
-      );
-
-      const killsToPoke = [];
-
-      for (const death of kills) {
-        const {
-          type,
-          level,
-          killers = [],
-          time,
-          characterName,
-        } = death;
-
-        if (type !== 'friend' && type !== 'enemy') {
-          continue;
-        }
-
-        const cacheKey = getDeathCacheKey({ characterName, time });
-        const mainKiller = killers.length > 0 ? killers[0].name : 'unknown';
-        const isCached = cachedKeys.has(cacheKey);
-
-        console.log(
-          `[DEATH] ${characterName} | type=${type} | level=${level} | time=${time} | cached=${isCached}`
-        );
-
-        if (isCached) {
-          continue;
-        }
-
-        killsToPoke.push(formatDeathMessage({
-          type,
-          characterName,
-          level,
-          mainKiller,
-          time,
-        }));
-
-        await addDeathsCache({ characterName, time });
-        cachedKeys.add(cacheKey);
-      }
-
-      console.log(`[DEATH] Kills para poke: ${killsToPoke.length}`);
-      resolve(killsToPoke);
-    } catch (error) {
-      reject(error);
-    }
-  })
-);
-
 const processBetaSiteDeaths = async (characters = [], teamspeak) => {
   const now = Date.now();
-  const uniqueCharacters = [];
-  const seen = new Set();
 
   for (const character of characters) {
-    const key = `${character.type}:${character.characterName}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    uniqueCharacters.push(character);
-  }
-
-  if (uniqueCharacters.length === 0) {
-    return;
-  }
-
-  const selectedCharacters = [];
-  let attempts = 0;
-
-  while (
-    selectedCharacters.length < BETA_DEATH_TARGETS_PER_ROUND &&
-    attempts < uniqueCharacters.length
-  ) {
-    const index = betaDeathCursor % uniqueCharacters.length;
-    const character = uniqueCharacters[index];
-    const cooldownUntil = betaDeathCheckCooldown.get(character.characterName) || 0;
-
-    betaDeathCursor += 1;
-    attempts += 1;
+    const { type, characterName } = character;
+    const cooldownUntil = betaDeathCheckCooldown.get(characterName) || 0;
 
     if (cooldownUntil > now) {
       continue;
     }
 
-    selectedCharacters.push(character);
-  }
-
-  for (const character of selectedCharacters) {
-    const { type, characterName } = character;
     betaDeathCheckCooldown.set(characterName, now + BETA_DEATH_CHECK_COOLDOWN_MS);
 
     try {
@@ -639,14 +504,11 @@ const processBetaSiteDeaths = async (characters = [], teamspeak) => {
 
       console.log(`[DEATH-BETA] Enviando poke: ${betaMessage}`);
       await sendMassPoke(teamspeak, betaMessage);
-      await addDeathsCache({ characterName, time: cacheTime });
     } catch (error) {
       console.error(`[DEATH-BETA] Erro checando ${characterName} no tibia.com:`, error?.message || error);
     }
   }
 };
-
-const mapCharactersToNames = ({ type, characterName }) => ({ type, characterName });
 
 const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
   try {
@@ -735,15 +597,15 @@ export const startTasks = (teamspeak) => {
 
       const onlineEnemyCharacters = enemyCharacters
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(mapCharactersToNames);
+        .map(({ type, characterName }) => ({ type, characterName }));
 
       const onlineFriendCharacters = friendCharacters
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(mapCharactersToNames);
+        .map(({ type, characterName }) => ({ type, characterName }));
 
       const monitoredCharacters = [
-        ...enemyCharacters.map(mapCharactersToNames),
-        ...friendCharacters.map(mapCharactersToNames),
+        ...enemyCharacters.map(({ type, characterName }) => ({ type, characterName })),
+        ...friendCharacters.map(({ type, characterName }) => ({ type, characterName })),
       ];
 
       const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
@@ -819,15 +681,15 @@ export const startTasks = (teamspeak) => {
 
       const onlineEnemyCharacters = enemyCharacters
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(mapCharactersToNames);
+        .map(({ type, characterName }) => ({ type, characterName }));
 
       const onlineFriendCharacters = friendCharacters
         .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(mapCharactersToNames);
+        .map(({ type, characterName }) => ({ type, characterName }));
 
       const monitoredCharacters = [
-        ...enemyCharacters.map(mapCharactersToNames),
-        ...friendCharacters.map(mapCharactersToNames),
+        ...enemyCharacters.map(({ type, characterName }) => ({ type, characterName })),
+        ...friendCharacters.map(({ type, characterName }) => ({ type, characterName })),
       ];
 
       const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
