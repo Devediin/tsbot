@@ -1,6 +1,8 @@
 import { chromium } from 'playwright';
 
 const TIBIA_CHARACTER_URL = 'https://www.tibia.com/community/?subtopic=characters&name=';
+const ATTEMPTS = 4;
+const WAIT_BETWEEN_ATTEMPTS_MS = 1500;
 
 const parseTibiaDeathLine = (line = '') => {
   const cleanedLine = String(line || '').trim();
@@ -32,6 +34,8 @@ const extractDeathLinesFromText = (text = '') => {
     .filter(Boolean);
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const getCharacterDeathsFromTibiaSite = async (characterName) => {
   const browser = await chromium.launch({ headless: true });
 
@@ -47,40 +51,42 @@ export const getCharacterDeathsFromTibiaSite = async (characterName) => {
     const page = await context.newPage();
 
     await page.setExtraHTTPHeaders({
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
       Pragma: 'no-cache',
+      Expires: '0',
     });
 
     const url = `${TIBIA_CHARACTER_URL}${encodeURIComponent(characterName)}`;
 
-    await page.goto(url, {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000,
-    });
+    let bestDeathLines = [];
 
-    await page.waitForTimeout(1500);
+    for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+      if (attempt === 1) {
+        await page.goto(url, {
+          waitUntil: 'domcontentloaded',
+          timeout: 60000,
+        });
+      } else {
+        await page.reload({
+          waitUntil: 'domcontentloaded',
+          timeout: 60000,
+        });
+      }
 
-    let text = await page.locator('body').innerText();
-    let deathLines = extractDeathLinesFromText(text);
+      await sleep(WAIT_BETWEEN_ATTEMPTS_MS);
 
-    await page.reload({
-      waitUntil: 'domcontentloaded',
-      timeout: 60000,
-    });
+      const text = await page.locator('body').innerText();
+      const deathLines = extractDeathLinesFromText(text);
 
-    await page.waitForTimeout(2000);
-
-    const textAfterReload = await page.locator('body').innerText();
-    const deathLinesAfterReload = extractDeathLinesFromText(textAfterReload);
-
-    if (deathLinesAfterReload.length > deathLines.length) {
-      deathLines = deathLinesAfterReload;
-    } else if (deathLinesAfterReload.length > 0) {
-      deathLines = deathLinesAfterReload;
+      if (deathLines.length > bestDeathLines.length) {
+        bestDeathLines = deathLines;
+      } else if (deathLines.length > 0) {
+        bestDeathLines = deathLines;
+      }
     }
 
     await context.close();
-    return deathLines;
+    return bestDeathLines;
   } finally {
     await browser.close();
   }
