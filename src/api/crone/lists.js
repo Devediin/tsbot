@@ -2,11 +2,13 @@ import cron from 'node-cron';
 import moment from 'moment';
 import { capitalize } from 'lodash';
 import TibiaAPI from '../tibia';
-import getCharacterDeathsFromTibiaSite from '../tibia/site';
 import Characters from '../models/characters';
 import Channels from '../models/channels';
 import Meta, {
   updateMeta,
+  getDeathsCache,
+  addDeathsCache,
+  removeOldDeathsCache,
   getServerSaveStatus,
   setServerSaveOffline,
   setServerSaveOnline,
@@ -39,20 +41,13 @@ import {
 const { WORLD_NAME } = process.env;
 const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
-const BETA_DEATH_LOOKBACK_MINUTES = 15;
-const BETA_DEATH_CHECK_COOLDOWN_MS = 30000;
-const BETA_DEATH_TARGETS_PER_ROUND = 2;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isFastTaskRunning = false;
 let isSlowTaskRunning = false;
-let isBetaDeathTaskRunning = false;
 const announcedLevelUps = new Map();
 let previousOnlineNames = new Set();
 const recentlyOfflineMap = new Map();
-const betaDeathCheckCooldown = new Map();
-let betaDeathCursor = 0;
-const betaSentCache = new Set();
 
 const getVocationLabel = ({ vocation }) => {
   if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return '🏹 [RP]';
@@ -85,42 +80,6 @@ const getTypeColorTag = (type = '') => {
   return '⚪';
 };
 
-const parseTibiaSiteTimeToUtc = (rawTime = '') => {
-  if (!rawTime) return null;
-
-  const cleaned = String(rawTime).replace(/\s+/g, ' ').trim();
-  const match = cleaned.match(/^([A-Z][a-z]{2}) (\d{2}) (\d{4}), (\d{2}):(\d{2}):(\d{2}) (CEST|CET)$/i);
-
-  if (!match) {
-    return null;
-  }
-
-  const [, monthStrRaw, dayStr, yearStr, hourStr, minuteStr, secondStr, tzRaw] = match;
-  const monthStr = monthStrRaw.slice(0, 1).toUpperCase() + monthStrRaw.slice(1).toLowerCase();
-  const tz = tzRaw.toUpperCase();
-
-  const months = {
-    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
-  };
-
-  const month = months[monthStr];
-  if (month === undefined) return null;
-
-  const utcOffsetHours = tz === 'CEST' ? 2 : 1;
-
-  const utcMillis = Date.UTC(
-    Number(yearStr),
-    month,
-    Number(dayStr),
-    Number(hourStr) - utcOffsetHours,
-    Number(minuteStr),
-    Number(secondStr)
-  );
-
-  return new Date(utcMillis).toISOString();
-};
-
 const formatDeathAgeShort = (time) => {
   const deathMoment = moment(time);
 
@@ -143,14 +102,12 @@ const formatDeathMessage = ({
   level,
   mainKiller,
   time,
-  prefix = '',
 }) => {
   const typeLabel = getTypeLabel(type);
   const typeColorTag = getTypeColorTag(type);
   const deathAge = formatDeathAgeShort(time);
-  const prefixText = prefix ? `${prefix} ` : '';
 
-  return `${prefixText}⏰ [${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para [B]${mainKiller}[/B]`;
+  return `⏰ [${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para [B]${mainKiller}[/B]`;
 };
 
 const formatLevelMessage = ({
@@ -221,6 +178,52 @@ const splitByProfessions = (onlineCharacters = []) => {
     nons,
   };
 };
+
+const getInformationFromCharacters = async (characterNames = []) => (
+  new Promise(async (resolve, reject) => {
+    try {
+      const uniqueCharacters = [];
+      const seen = new Set();
+
+      for (const entry of characterNames) {
+        const key = `${entry.type}:${entry.characterName}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        uniqueCharacters.push(entry);
+      }
+
+      const characterInformations = await Promise.all(uniqueCharacters.map(({
+        type,
+        characterName,
+      }) => (
+        new Promise(async (resolve) => {
+          try {
+            const information = await tibiaAPI.getCharacterInformation(characterName);
+
+            if (information.kills && Array.isArray(information.kills)) {
+              information.kills.forEach((death) => {
+                death.type = type;
+                death.characterName = characterName;
+              });
+            }
+
+            resolve({
+              ...information,
+              monitoredType: type,
+              monitoredCharacterName: characterName,
+            });
+          } catch (error) {
+            resolve();
+          }
+        })
+      )));
+
+      resolve(characterInformations);
+    } catch (error) {
+      reject(error);
+    }
+  })
+);
 
 const formatOnlineDuration = (firstSeenOnline) => {
   if (!firstSeenOnline) return '0m';
@@ -437,78 +440,61 @@ const processLevelUps = async (playersOnline = [], friendCharacters = [], teamsp
   }
 };
 
-const processBetaSiteDeaths = async (characters = [], teamspeak) => {
-  const now = Date.now();
+const getDeathCacheKey = ({ characterName, time }) => `${characterName}::${time}`;
 
-  for (const character of characters) {
-    const { type, characterName } = character;
-    const cooldownUntil = betaDeathCheckCooldown.get(characterName) || 0;
-
-    if (cooldownUntil > now) {
-      continue;
-    }
-
-    betaDeathCheckCooldown.set(characterName, now + BETA_DEATH_CHECK_COOLDOWN_MS);
-
+const getNotPokedKills = async (kills = []) => (
+  new Promise(async (resolve, reject) => {
     try {
-      console.log(`[DEATH-BETA] Checando ${characterName}`);
-      const siteDeaths = await getCharacterDeathsFromTibiaSite(characterName);
-      if (!Array.isArray(siteDeaths) || siteDeaths.length === 0) {
-        console.log(`[DEATH-BETA] ${characterName} sem deaths no site.`);
-        continue;
+      const deathsCache = await getDeathsCache();
+      const cachedKeys = new Set(
+        deathsCache.map(({ characterName, time }) => getDeathCacheKey({ characterName, time }))
+      );
+
+      const killsToPoke = [];
+
+      for (const death of kills) {
+        const {
+          type,
+          level,
+          killers = [],
+          time,
+          characterName,
+        } = death;
+
+        if (type !== 'friend' && type !== 'enemy') {
+          continue;
+        }
+
+        const cacheKey = getDeathCacheKey({ characterName, time });
+        const mainKiller = killers.length > 0 ? killers[0].name : 'unknown';
+        const isCached = cachedKeys.has(cacheKey);
+
+        console.log(
+          `[DEATH] ${characterName} | type=${type} | level=${level} | time=${time} | cached=${isCached}`
+        );
+
+        if (isCached) {
+          continue;
+        }
+
+        killsToPoke.push(formatDeathMessage({
+          type,
+          characterName,
+          level,
+          mainKiller,
+          time,
+        }));
+
+        await addDeathsCache({ characterName, time });
       }
 
-      const newestDeath = siteDeaths[0];
-      if (!newestDeath?.time || !newestDeath?.level || !newestDeath?.killer) {
-        console.log(`[DEATH-BETA] ${characterName} death inválida: ${JSON.stringify(newestDeath)}`);
-        continue;
-      }
-
-      const parsedTime = parseTibiaSiteTimeToUtc(newestDeath.time);
-      console.log(`[DEATH-BETA] ${characterName} rawTime=${newestDeath.time} parsedTime=${parsedTime} level=${newestDeath.level} killer=${newestDeath.killer}`);
-
-      if (!parsedTime) {
-        continue;
-      }
-
-      const deathMoment = moment(parsedTime);
-      if (!deathMoment.isValid()) {
-        continue;
-      }
-
-      const minutesAgo = moment().diff(deathMoment, 'minutes');
-      console.log(`[DEATH-BETA] ${characterName} minutesAgo=${minutesAgo}`);
-
-      if (minutesAgo < 0 || minutesAgo > BETA_DEATH_LOOKBACK_MINUTES) {
-        console.log(`[DEATH-BETA] ${characterName} descartado por lookback.`);
-        continue;
-      }
-
-      const cacheTime = `site::${parsedTime}::${newestDeath.level}::${newestDeath.killer}`;
-
-      if (betaSentCache.has(cacheTime)) {
-        console.log(`[DEATH-BETA] ${characterName} já enviado na memória.`);
-        continue;
-      }
-
-      betaSentCache.add(cacheTime);
-
-      const betaMessage = formatDeathMessage({
-        type,
-        characterName,
-        level: newestDeath.level,
-        mainKiller: newestDeath.killer,
-        time: parsedTime,
-        prefix: '[BETA]',
-      });
-
-      console.log(`[DEATH-BETA] Enviando poke: ${betaMessage}`);
-      await sendMassPoke(teamspeak, betaMessage);
+      console.log(`[DEATH] Kills para poke: ${killsToPoke.length}`);
+      resolve(killsToPoke);
     } catch (error) {
-      console.error(`[DEATH-BETA] Erro checando ${characterName} no tibia.com:`, error?.message || error);
+      reject(error);
     }
-  }
-};
+  })
+);
 
 const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
   try {
@@ -590,10 +576,54 @@ export const startTasks = (teamspeak) => {
       const enemyCharacters = await Characters.find({ type: 'enemy' });
       const friendCharacters = await Characters.find({ type: 'friend' });
 
+      const monitoredCharacters = [
+        ...enemyCharacters.map(({ type, characterName }) => ({ type, characterName })),
+        ...friendCharacters.map(({ type, characterName }) => ({ type, characterName })),
+      ];
+
       const playersOnline = await tibiaAPI.getWorldOnline();
       const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
 
       updateRecentlyOfflineMap(onlinePlayerNames);
+
+      const onlineEnemyCharacters = enemyCharacters
+        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
+        .map(({ type, characterName }) => ({ type, characterName }));
+
+      const onlineFriendCharacters = friendCharacters
+        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
+        .map(({ type, characterName }) => ({ type, characterName }));
+
+      const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
+
+      const deathPriorityCharacters = [
+        ...onlineEnemyCharacters,
+        ...onlineFriendCharacters,
+        ...recentlyOfflineCharacters,
+      ].filter(({ characterName }) => characterName);
+
+      const allCharactersInformation = await getInformationFromCharacters(deathPriorityCharacters);
+      const deathListByCharacters = [];
+
+      if (allCharactersInformation && allCharactersInformation.length > 0) {
+        allCharactersInformation.forEach((data) => {
+          if (data && data.kills) {
+            deathListByCharacters.push(...data.kills);
+          }
+        });
+      }
+
+      console.log(`[DEATH] Characters monitorados online: ${onlineEnemyCharacters.length + onlineFriendCharacters.length}`);
+      console.log(`[DEATH] Characters monitorados recem-offline: ${recentlyOfflineCharacters.length}`);
+      console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
+
+      const killsToPoke = await getNotPokedKills(deathListByCharacters);
+      if (killsToPoke.length > 0) {
+        for (const killMessage of killsToPoke) {
+          console.log(`[DEATH] Enviando poke: ${killMessage}`);
+          await sendMassPoke(teamspeak, killMessage);
+        }
+      }
 
       await processLevelUps(playersOnline, friendCharacters, teamspeak);
       await syncOnlineTrackers(playersOnline);
@@ -614,52 +644,6 @@ export const startTasks = (teamspeak) => {
       console.error('[CRON] Erro na fastTask:', error);
     } finally {
       isFastTaskRunning = false;
-    }
-  }, {
-    scheduled: false,
-  });
-
-  const betaDeathTask = cron.schedule('0-59/10 * * * * *', async () => {
-    if (isBetaDeathTaskRunning) {
-      console.log('[CRON] betaDeathTask ainda em execução. Pulando esta rodada.');
-      return;
-    }
-
-    isBetaDeathTaskRunning = true;
-
-    try {
-      const enemyCharacters = await Characters.find({ type: 'enemy' });
-      const friendCharacters = await Characters.find({ type: 'friend' });
-
-      const playersOnline = await tibiaAPI.getWorldOnline();
-      const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
-
-      const onlineEnemyCharacters = enemyCharacters
-        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(({ type, characterName }) => ({ type, characterName }));
-
-      const onlineFriendCharacters = friendCharacters
-        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(({ type, characterName }) => ({ type, characterName }));
-
-      const monitoredCharacters = [
-        ...enemyCharacters.map(({ type, characterName }) => ({ type, characterName })),
-        ...friendCharacters.map(({ type, characterName }) => ({ type, characterName })),
-      ];
-
-      const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
-
-      const betaTargets = [
-        ...onlineFriendCharacters,
-        ...onlineEnemyCharacters,
-      ].filter(({ characterName }) => characterName);
-
-      console.log(`[DEATH-BETA] Targets disponíveis: ${betaTargets.length}`);
-      await processBetaSiteDeaths(betaTargets, teamspeak);
-    } catch (error) {
-      console.error('[CRON] Erro na betaDeathTask:', error);
-    } finally {
-      isBetaDeathTaskRunning = false;
     }
   }, {
     scheduled: false,
@@ -735,6 +719,5 @@ export const startTasks = (teamspeak) => {
   });
 
   fastTask.start();
-  betaDeathTask.start();
   neutralTask.start();
 };
