@@ -179,51 +179,59 @@ const splitByProfessions = (onlineCharacters = []) => {
   };
 };
 
-const getInformationFromCharacters = async (characterNames = []) => (
-  new Promise(async (resolve, reject) => {
-    try {
-      const uniqueCharacters = [];
-      const seen = new Set();
+const chunkArray = (array = [], size = 5) => {
+  const chunks = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+};
 
-      for (const entry of characterNames) {
-        const key = `${entry.type}:${entry.characterName}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        uniqueCharacters.push(entry);
-      }
+const getInformationFromCharacters = async (characterNames = []) => {
+  try {
+    const uniqueCharacters = [];
+    const seen = new Set();
 
-      const characterInformations = await Promise.all(uniqueCharacters.map(({
-        type,
-        characterName,
-      }) => (
-        new Promise(async (resolve) => {
-          try {
-            const information = await tibiaAPI.getCharacterInformation(characterName);
-
-            if (information.kills && Array.isArray(information.kills)) {
-              information.kills.forEach((death) => {
-                death.type = type;
-                death.characterName = characterName;
-              });
-            }
-
-            resolve({
-              ...information,
-              monitoredType: type,
-              monitoredCharacterName: characterName,
-            });
-          } catch (error) {
-            resolve();
-          }
-        })
-      )));
-
-      resolve(characterInformations);
-    } catch (error) {
-      reject(error);
+    for (const entry of characterNames) {
+      const key = `${entry.type}:${entry.characterName}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueCharacters.push(entry);
     }
-  })
-);
+
+    const chunks = chunkArray(uniqueCharacters, 5);
+    const results = [];
+
+    for (const chunk of chunks) {
+      const chunkResults = await Promise.all(chunk.map(async ({ type, characterName }) => {
+        try {
+          const information = await tibiaAPI.getCharacterInformation(characterName);
+
+          if (information.kills && Array.isArray(information.kills)) {
+            information.kills.forEach((death) => {
+              death.type = type;
+              death.characterName = characterName;
+            });
+          }
+
+          return {
+            ...information,
+            monitoredType: type,
+            monitoredCharacterName: characterName,
+          };
+        } catch (error) {
+          return undefined;
+        }
+      }));
+
+      results.push(...chunkResults);
+    }
+
+    return results;
+  } catch (error) {
+    throw error;
+  }
+};
 
 const formatOnlineDuration = (firstSeenOnline) => {
   if (!firstSeenOnline) return '0m';
