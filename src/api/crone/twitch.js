@@ -9,20 +9,9 @@ const {
 
 const liveAnnounced = new Set();
 
-const formatLiveMessage = ({ userName, title, gameName }) => {
-  const channelUrl = `https://twitch.tv/${userName.toLowerCase()}`;
-
-  let message = `🟢 LIVE ON - [B]${userName}[/B] está online na Twitch! [URL]${channelUrl}[/URL]`;
-
-  if (title) {
-    message += ` | ${title}`;
-  }
-
-  if (gameName) {
-    message += ` | 🎮 ${gameName}`;
-  }
-
-  return message;
+const formatLiveMessage = ({ userName }) => {
+  const channelUrl = `twitch.tv/${userName.toLowerCase()}`;
+  return `🟢 LIVE ON - ${userName} - ${channelUrl}`;
 };
 
 export const startTwitchTask = (teamspeak) => {
@@ -54,12 +43,15 @@ export const startTwitchTask = (teamspeak) => {
 
         const message = formatLiveMessage({
           userName: stream.user_name,
-          title: stream.title,
-          gameName: stream.game_name,
         });
 
         console.log(`[TWITCH] ${message}`);
-        await sendMassPoke(teamspeak, message);
+
+        try {
+          await sendMassPoke(teamspeak, message);
+        } catch (pokeError) {
+          console.error(`[TWITCH] Erro no poke: ${pokeError.message}`);
+        }
 
         liveAnnounced.add(channelName);
       }
