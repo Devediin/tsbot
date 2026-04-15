@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { getStreamsStatus } from '../../twitch';
-import { sendMassPoke } from '../../scripts/client';
+import { sendMassPoke, sendMassPrivateMessage } from '../../scripts/client';
 
 const {
   TWITCH_CHANNELS = '',
@@ -9,9 +9,14 @@ const {
 
 const liveAnnounced = new Set();
 
-const formatLiveMessage = ({ userName }) => {
+const formatPokeMessage = ({ userName }) => {
   const channelUrl = `twitch.tv/${userName.toLowerCase()}`;
-  return `🟢 LIVE ON - ${userName} - ${channelUrl}`;
+  return `>> LIVE ON - ${userName} - ${channelUrl}`;
+};
+
+const formatPrivateMessage = ({ userName }) => {
+  const channelUrl = `https://twitch.tv/${userName.toLowerCase()}`;
+  return `🟢 LIVE ON - [B]${userName}[/B] está ao vivo na Twitch! [URL]${channelUrl}[/URL]`;
 };
 
 export const startTwitchTask = (teamspeak) => {
@@ -41,16 +46,26 @@ export const startTwitchTask = (teamspeak) => {
           continue;
         }
 
-        const message = formatLiveMessage({
+        const pokeMessage = formatPokeMessage({
           userName: stream.user_name,
         });
 
-        console.log(`[TWITCH] ${message}`);
+        const privateMessage = formatPrivateMessage({
+          userName: stream.user_name,
+        });
+
+        console.log(`[TWITCH] ${pokeMessage}`);
 
         try {
-          await sendMassPoke(teamspeak, message);
+          await sendMassPoke(teamspeak, pokeMessage);
         } catch (pokeError) {
           console.error(`[TWITCH] Erro no poke: ${pokeError.message}`);
+        }
+
+        try {
+          await sendMassPrivateMessage(teamspeak, privateMessage);
+        } catch (pmError) {
+          console.error(`[TWITCH] Erro no PM: ${pmError.message}`);
         }
 
         liveAnnounced.add(channelName);
