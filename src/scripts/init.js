@@ -1,6 +1,7 @@
 import { BOT_NAME } from '../utils/constants';
 import { TeamSpeak } from 'ts3-nodejs-library';
 import { startTasks } from '../api/crone/lists';
+import { startTwitchTask } from '../api/crone/twitch';
 import { proceesCommand } from '../scripts/command';
 import { sendJoinMessage } from '../scripts/client';
 
@@ -28,6 +29,7 @@ export default async (props = {}) => {
       teamspeak.registerEvent('channel', 0);
 
       startTasks(teamspeak);
+      startTwitchTask(teamspeak);
       resolve(teamspeak);
     });
     
