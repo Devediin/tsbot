@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { getStreamsStatus } from '../twitch';
+import { getStreamsStatus } from '../../twitch';
 import { sendMassPoke } from '../../scripts/client';
 
 const {
