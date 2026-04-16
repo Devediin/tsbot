@@ -7,8 +7,8 @@
 <style>
 body {
   background:#2b1b10;
-  font-family:Tahoma, Arial;
-  color:#fff;
+  font-family:Tahoma;
+  color:white;
   margin:0;
 }
 
@@ -26,16 +26,15 @@ body {
   font-weight:bold;
 }
 
-h1 {
-  text-align:center;
-  color:#ffd700;
-  margin-top:30px;
-}
-
 .container {
   width:90%;
   margin:auto;
-  padding-bottom:40px;
+  padding:40px;
+}
+
+h1 {
+  text-align:center;
+  color:#ffd700;
 }
 
 .card {
@@ -46,54 +45,35 @@ h1 {
   margin-top:30px;
 }
 
-.card h2 {
+h2 {
   color:#ffd700;
-  margin-bottom:15px;
-  border-bottom:1px solid #8b5a2b;
-  padding-bottom:10px;
+  text-align:center;
 }
 
 table {
   width:100%;
   border-collapse:collapse;
-  margin-top:10px;
+  margin-top:15px;
 }
 
 th {
   background:#4e3420;
-  color:#ffd700;
   padding:8px;
-  text-align:left;
+  text-align:center;
+  color:#ffd700;
 }
 
 td {
   padding:8px;
+  text-align:center;
   border-bottom:1px solid #5e3f24;
 }
 
-a {
-  color:#00AAFF;
-  text-decoration:none;
-}
-
-.friend { color:#00ff00; }
-.enemy { color:#ff4444; }
-
 .counter {
-  text-align:right;
-  margin-top:10px;
-  font-size:12px;
-  color:#aaa;
-}
-
-.footer {
   text-align:center;
-  margin-top:40px;
-  padding:15px;
-  background:#3e2a17;
-  border-top:2px solid #8b5a2b;
-  color:#aaa;
+  margin-top:15px;
   font-size:12px;
+  color:#aaa;
 }
 </style>
 </head>
@@ -107,42 +87,30 @@ a {
   <a href="/login.html">🔐 Admin</a>
 </div>
 
-<h1>⚔️ NiideHelper Dashboard ⚔️</h1>
-
 <div class="container">
 
-  <div class="card">
-    <h2>📅 Daily Info</h2>
-    <div id="daily"></div>
-  </div>
+<h1>⚔️ Online Members ⚔️</h1>
 
-  <div class="card">
-    <h2>🟢 Online Members</h2>
-    <div id="online"></div>
-  </div>
+<div id="online"></div>
 
-  <div class="card">
-    <h2>💀 Últimas Mortes</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Personagem</th>
-          <th>Level</th>
-          <th>Killer</th>
-        </tr>
-      </thead>
-      <tbody id="deathsTable"></tbody>
-    </table>
-  </div>
-
-  <div class="counter">
-    Atualizando em <span id="timer">15</span>s
-  </div>
-
+<div class="card">
+  <h2>💀 Últimas Mortes</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Personagem</th>
+        <th>Level</th>
+        <th>Killer</th>
+      </tr>
+    </thead>
+    <tbody id="deathsTable"></tbody>
+  </table>
 </div>
 
-<div class="footer">
-  NiideHelper v1.0 — Dashboard automático
+<div class="counter">
+  Atualiza em <span id="timer">15</span>s
+</div>
+
 </div>
 
 <script>
@@ -152,15 +120,6 @@ let timer = refreshInterval;
 
 function tibiaLink(name) {
   return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
-}
-
-async function loadDaily() {
-  const res = await fetch('/api/public/daily');
-  const data = await res.json();
-
-  if (data.description) {
-    document.getElementById('daily').innerHTML = data.description;
-  }
 }
 
 async function loadOnline() {
@@ -173,33 +132,30 @@ async function loadOnline() {
     if (data[vocation].length > 0) {
 
       html += `
-        <h3>${vocation}</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Level</th>
-              <th>Tempo Online</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div class="card">
+          <h2>${vocation}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Level</th>
+                <th>Tempo Online</th>
+              </tr>
+            </thead>
+            <tbody>
       `;
 
       data[vocation].forEach(p => {
         html += `
           <tr>
-            <td>
-              <a href="${tibiaLink(p.name)}" target="_blank">
-                ${p.name}
-              </a>
-            </td>
+            <td><a href="${tibiaLink(p.name)}" target="_blank">${p.name}</a></td>
             <td>${p.level}</td>
             <td>${p.onlineTime}</td>
           </tr>
         `;
       });
 
-      html += `</tbody></table>`;
+      html += `</tbody></table></div>`;
     }
   }
 
@@ -216,11 +172,7 @@ async function loadDeaths() {
   data.deaths.forEach(d => {
     tbody.innerHTML += `
       <tr>
-        <td>
-          <a href="${tibiaLink(d.characterName)}" target="_blank">
-            ${d.characterName}
-          </a>
-        </td>
+        <td><a href="${tibiaLink(d.characterName)}" target="_blank">${d.characterName}</a></td>
         <td>${d.level}</td>
         <td>${d.killer}</td>
       </tr>
@@ -234,13 +186,11 @@ function updateTimer() {
 
   if (timer <= 0) {
     timer = refreshInterval;
-    loadDaily();
     loadOnline();
     loadDeaths();
   }
 }
 
-loadDaily();
 loadOnline();
 loadDeaths();
 setInterval(updateTimer, 1000);
