@@ -27,7 +27,7 @@ router.get('/online', async (req, res) => {
           type: char.type,
           level: info.info.level,
           vocation: info.info.vocation,
-          onlineTime: tracker.firstSeenOnline
+          firstSeenOnline: tracker.firstSeenOnline
         });
       }
     }
@@ -39,7 +39,15 @@ router.get('/online', async (req, res) => {
 // ÚLTIMAS MORTES
 router.get('/deaths', async (req, res) => {
   const deaths = await getDeathsCache();
-  res.json({ deaths: deaths.slice(-10).reverse() });
+
+  const formatted = deaths.slice(-10).reverse().map(d => ({
+    characterName: d.characterName,
+    level: d.level,
+    killer: d.mainKiller || 'Unknown',
+    type: d.type
+  }));
+
+  res.json({ deaths: formatted });
 });
 
 export default router;
