@@ -25,12 +25,24 @@ h1 {
   margin-bottom:30px;
 }
 
+table {
+  width:100%;
+  border-collapse:collapse;
+}
+
+th, td {
+  border-bottom:1px solid #8b5a2b;
+  padding:5px;
+  text-align:left;
+}
+
 .friend { color:#00ff00; }
 .enemy { color:#ff4444; }
 
-a {
-  color:#ffd700;
-  text-decoration:none;
+.counter {
+  text-align:right;
+  font-size:12px;
+  color:#aaa;
 }
 </style>
 </head>
@@ -39,16 +51,43 @@ a {
 <h1>⚔️ NiideHelper Dashboard ⚔️</h1>
 
 <div class="card">
-  <h2>🟢 Online</h2>
-  <div id="online"></div>
+  <h2>🟢 Online Members</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Level</th>
+        <th>Vocação</th>
+        <th>Tipo</th>
+      </tr>
+    </thead>
+    <tbody id="onlineTable"></tbody>
+  </table>
 </div>
 
 <div class="card">
   <h2>💀 Últimas Mortes</h2>
-  <div id="deaths"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Personagem</th>
+        <th>Level</th>
+        <th>Killer</th>
+        <th>Tipo</th>
+      </tr>
+    </thead>
+    <tbody id="deathsTable"></tbody>
+  </table>
+</div>
+
+<div class="counter">
+  Atualização automática em <span id="timer">15</span>s
 </div>
 
 <script>
+
+let refreshInterval = 15;
+let timer = refreshInterval;
 
 function tibiaLink(name) {
   return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
@@ -58,49 +97,53 @@ async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
 
-  let html = '';
+  const tbody = document.getElementById('onlineTable');
+  tbody.innerHTML = '';
 
   data.online.forEach(p => {
-    html += `
-    <div class="${p.type}">
-      <a href="${tibiaLink(p.name)}" target="_blank">
-        ${p.name}
-      </a>
-      - ${p.level} (${p.vocation})
-    </div>
+    tbody.innerHTML += `
+      <tr class="${p.type}">
+        <td><a href="${tibiaLink(p.name)}" target="_blank">${p.name}</a></td>
+        <td>${p.level}</td>
+        <td>${p.vocation}</td>
+        <td>${p.type}</td>
+      </tr>
     `;
   });
-
-  document.getElementById('online').innerHTML = html;
 }
 
 async function loadDeaths() {
   const res = await fetch('/api/public/deaths');
   const data = await res.json();
 
-  let html = '';
+  const tbody = document.getElementById('deathsTable');
+  tbody.innerHTML = '';
 
   data.deaths.forEach(d => {
-    html += `
-    <div>
-      💀 <a href="${tibiaLink(d.characterName)}" target="_blank">
-      ${d.characterName}
-      </a>
-    </div>
+    tbody.innerHTML += `
+      <tr>
+        <td><a href="${tibiaLink(d.characterName)}" target="_blank">${d.characterName}</a></td>
+        <td>${d.level}</td>
+        <td>${d.killer}</td>
+        <td>${d.type}</td>
+      </tr>
     `;
   });
+}
 
-  document.getElementById('deaths').innerHTML = html;
+function updateTimer() {
+  timer--;
+  document.getElementById('timer').innerText = timer;
+  if (timer <= 0) {
+    timer = refreshInterval;
+    loadOnline();
+    loadDeaths();
+  }
 }
 
 loadOnline();
 loadDeaths();
-
-// Atualização automática a cada 15 segundos
-setInterval(() => {
-  loadOnline();
-  loadDeaths();
-}, 15000);
+setInterval(updateTimer, 1000);
 
 </script>
 
