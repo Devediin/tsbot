@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { capitalize } from 'lodash';
 import TibiaAPI from '../tibia';
 import Characters from '../models/characters';
@@ -561,19 +561,26 @@ const processServerSaveStatus = async (teamspeak) => {
       return;
     }
 
-    if (serverSaveStatus?.isOffline) {
-      const message = buildServerSaveMessage({
-        worldName: worldOverview.name || WORLD_NAME,
-        boostedCreature: worldOverview.boostedCreature,
-        boostedBoss: worldOverview.boostedBoss,
-      });
+if (serverSaveStatus?.isOffline) {
+  const message = buildServerSaveMessage({
+    worldName: worldOverview.name || WORLD_NAME,
+    boostedCreature: worldOverview.boostedCreature,
+    boostedBoss: worldOverview.boostedBoss,
+  });
 
-      console.log(`[SERVERSAVE] Mundo voltou. Mensagem: ${message}`);
-      await sendMassPrivateMessage(teamspeak, message);
-      await setServerSaveOnline();
-      await setServerSaveAnnounced();
-      await updateDailyInfoChannel(teamspeak);
-    }
+  console.log(`[SERVERSAVE] Mundo voltou. Mensagem: ${message}`);
+
+  // ✅ Salva horário correto do SS em BRT
+  const serverSaveTime = moment().tz('America/Sao_Paulo').format('HH:mm');
+  global.lastServerSaveTime = serverSaveTime;
+
+  await sendMassPrivateMessage(teamspeak, message);
+  await setServerSaveOnline();
+  await setServerSaveAnnounced();
+
+  // ✅ Atualiza Daily Info automaticamente no SS
+  await updateDailyInfoChannel(teamspeak);
+}
   } catch (error) {
     console.error('[SERVERSAVE] Erro processando status do server save:', error);
   }
