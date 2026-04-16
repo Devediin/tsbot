@@ -1,12 +1,14 @@
-export const sendJoinMessage = async (event = {}) => (
-  new Promise(async (resolve) => {
-    event.client.message('Bem-vindo ao servidor.');
-    event.client.message('É obrigatório ter sua descrição adicionada para liberar seu acesso.');
-    event.client.message('Envie para quem vai te registrar exatamente neste formato: Main: Nome do seu personagem principal');
-    event.client.message('Depois aguarde alguns segundos para o NiideHelper validar seu personagem e aplicar seus grupos.');
-    resolve();
-  })
-);
+export const sendJoinMessage = async (event, teamspeak) => {
+  try {
+    const client = await teamspeak.getClientById(event.clid);
+
+    await client.message(
+      `👋 Bem-vindo ao servidor!\n\n📜 Gere sua descrição correta usando:\n!desc`
+    );
+  } catch (error) {
+    console.error(error);
+  }
+};
 
 export const massKick = async (teamspeak, message) => (
   new Promise(async (resolve) => {
