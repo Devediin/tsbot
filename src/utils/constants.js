@@ -654,26 +654,7 @@ export const COMMANDS_MAP = {
       }
     },
     howToUse: '!dailyinfo <texto do world board>',
-  },
-'!desc': {
-  exec: async () => {
-    try {
-      const link = `http://${process.env.WEB_PUBLIC_URL}:3000`;
-      return {
-        ok: true,
-        message: `📜 Gere sua descrição aqui:\n${link}`,
-      };
-    } catch (error) {
-      console.error(error);
-      return {
-        ok: false,
-        message: 'Erro ao gerar link.',
-      };
-    }
-  },
-  howToUse: '!desc - envia o link do gerador de descrição',
-},
-  
+  }, 
   '!removeModerator': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
