@@ -44,6 +44,10 @@ export const proceesCommand = async (event = {}, teamspeak) => {
       invoker.message(formatHelpMessage(dbUserGroups));
       return;
     }
+    if (command === '!desc') {
+  const link = `http://${process.env.WEB_PUBLIC_URL}:3000`;
+  return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
+}
 
     const { ok, message } = await canDo(command, dbUserGroups);
     const isServerAdmin = await isUserServerAdmin(teamspeak, parsedServerGroups);
