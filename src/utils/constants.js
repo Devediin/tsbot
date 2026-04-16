@@ -29,6 +29,9 @@ export const INITIAL_CHANNELS = [{
   name: '[cspacer]Help channel',
   description: 'Send !help to see all the availables commands',
 }, {
+  type: 'dailyInfo',
+  name: '[cspacer]Daily Info',
+}, {
   type: 'spacer',
   name: '[*cspacer]▂▂▂▂▂▂',
 },{
