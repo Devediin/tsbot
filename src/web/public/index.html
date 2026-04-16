@@ -1,103 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>NiideHelper - Gerador</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #eee;
-      padding: 40px;
-    }
-    input {
-      padding: 10px;
-      margin: 10px 0;
-      width: 300px;
-    }
-    button {
-      padding: 10px 20px;
-      background: #00AAFF;
-      border: none;
-      color: white;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    .box {
-      margin-top: 30px;
-      padding: 20px;
-      background: #1a1a1a;
-      border-radius: 10px;
-    }
-    textarea {
-      width: 100%;
-      height: 60px;
-      resize: none;
-      background: #222;
-      color: #fff;
-      border: none;
-      padding: 10px;
-      font-size: 16px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>NiideHelper</title>
+
+<style>
+body {
+  background:#2b1b10;
+  font-family:Tahoma;
+  color:white;
+  text-align:center;
+  padding-top:100px;
+}
+
+h1 {
+  color:#ffd700;
+  text-shadow:2px 2px #000;
+}
+
+.menu {
+  margin-top:50px;
+}
+
+a {
+  display:block;
+  margin:20px auto;
+  width:300px;
+  padding:15px;
+  background:#3e2a17;
+  border:2px solid #8b5a2b;
+  border-radius:10px;
+  color:#ffd700;
+  text-decoration:none;
+  font-size:18px;
+}
+
+a:hover {
+  background:#5a3a1f;
+}
+</style>
 </head>
 <body>
 
-<h1>📜 Gerador de Descrição</h1>
+<h1>⚔️ NiideHelper ⚔️</h1>
 
-<input id="charName" placeholder="Nome do personagem"><br>
-<button onclick="generate()">Validar e Gerar</button>
-
-<div class="box" id="characterInfo" style="display:none;">
-  <h2>📌 Dados do Personagem</h2>
-  <div id="infoContent"></div>
+<div class="menu">
+  <a href="/">📜 Gerador de Descrição</a>
+  <a href="/dashboard.html">📊 Dashboard Público</a>
+  <a href="/login.html">🔐 Painel Administrativo</a>
 </div>
-
-<div class="box" id="descriptionBox" style="display:none;">
-  <h2>📋 Descrição Gerada</h2>
-  <textarea id="result" readonly></textarea><br>
-  <button onclick="copy()">Copiar</button>
-</div>
-
-<script>
-async function generate() {
-  const characterName = document.getElementById('charName').value;
-
-  const res = await fetch('/api/description/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ characterName })
-  });
-
-  const data = await res.json();
-
-  if (data.error) {
-    alert(data.error);
-    return;
-  }
-
-  // Mostrar dados do personagem
-  document.getElementById('characterInfo').style.display = 'block';
-  document.getElementById('infoContent').innerHTML = `
-    <b>Nome:</b> ${data.character.name}<br>
-    <b>Level:</b> ${data.character.level}<br>
-    <b>Vocação:</b> ${data.character.vocation}<br>
-    <b>Guild:</b> ${data.character.guild || 'Sem guild'}<br>
-    <b>Mundo:</b> ${data.character.world}
-  `;
-
-  // Mostrar descrição
-  document.getElementById('descriptionBox').style.display = 'block';
-  document.getElementById('result').value = data.description;
-}
-
-function copy() {
-  const textarea = document.getElementById('result');
-  textarea.select();
-  document.execCommand("copy");
-  alert("Copiado!");
-}
-</script>
 
 </body>
 </html>
