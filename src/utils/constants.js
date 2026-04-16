@@ -626,7 +626,35 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!addNewModerator ${username}',
   },
+  '!dailyinfo': {
+    groups: [ADMIN_GROUP_NAME],
+    exec: async (teamspeak, msgAsList) => {
+      try {
+        const { updateDailyInfoChannel, parseWorldBoard } = require('../api/crone/daily-info');
 
+        msgAsList.shift();
+        const boardText = msgAsList.join(' ');
+
+        if (boardText) {
+          parseWorldBoard(boardText);
+        }
+
+        await updateDailyInfoChannel(teamspeak);
+
+        return {
+          ok: true,
+          message: '✅ Daily Info atualizado com sucesso.',
+        };
+      } catch (error) {
+        console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao atualizar Daily Info.',
+        };
+      }
+    },
+    howToUse: '!dailyinfo <texto do world board>',
+  },
   '!removeModerator': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
