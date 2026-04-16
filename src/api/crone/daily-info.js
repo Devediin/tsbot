@@ -116,19 +116,20 @@ ${yasirOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}
 📅 ${tibiadrome.start} até ${tibiadrome.end}
 `;
 
-    const channelLists = await teamspeak.channelList();
-    const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
+    const channelList = await teamspeak.channelList();
 
-    await updateChannel(
-      teamspeak,
-      'dailyInfo',
-      {
-        online: [],
-        dbCharacters: [],
-        description,
-      },
-      channelListsName
+    const dailyChannel = channelList.find(c =>
+      c.propcache.channel_name === '[cspacer]Daily Info'
     );
+
+    if (!dailyChannel) {
+      console.log('[DAILY INFO] Canal não encontrado no TS.');
+      return;
+    }
+
+    await dailyChannel.edit({
+      channel_description: description.trim(),
+    });
 
     console.log('[DAILY INFO] Canal atualizado com sucesso.');
   } catch (error) {
