@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Login - NiideHelper</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      text-align: center;
+      padding-top: 100px;
+    }
+    input {
+      padding: 10px;
+      margin: 10px;
+      width: 200px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #00AAFF;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🔐 Login</h1>
+
+<input id="username" placeholder="Usuário"><br>
+<input id="password" type="password" placeholder="Senha"><br>
+<button onclick="login()">Entrar</button>
+
+<p id="error"></p>
+
+<script>
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (res.ok) {
+    window.location.href = "/description.html";
+  } else {
+    document.getElementById('error').innerText = "Login inválido";
+  }
+}
+</script>
+
+</body>
+</html>
