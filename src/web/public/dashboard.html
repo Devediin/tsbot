@@ -3,74 +3,146 @@
 <head>
 <meta charset="UTF-8">
 <title>NiideHelper Dashboard</title>
+
+<style>
+body {
+  background:#2b1b10;
+  font-family:Tahoma, Arial;
+  color:#fff;
+  margin:0;
+}
+
+.navbar {
+  background:#3e2a17;
+  padding:15px;
+  text-align:center;
+  border-bottom:2px solid #8b5a2b;
+}
+
+.navbar a {
+  color:#ffd700;
+  text-decoration:none;
+  margin:0 20px;
+  font-weight:bold;
+}
+
+h1 {
+  text-align:center;
+  color:#ffd700;
+  margin-top:30px;
+}
+
+.container {
+  width:90%;
+  margin:auto;
+  padding-bottom:40px;
+}
+
+.card {
+  background:#3e2a17;
+  border:2px solid #8b5a2b;
+  border-radius:8px;
+  padding:20px;
+  margin-top:30px;
+}
+
+.card h2 {
+  color:#ffd700;
+  margin-bottom:15px;
+  border-bottom:1px solid #8b5a2b;
+  padding-bottom:10px;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+
+th {
+  background:#4e3420;
+  color:#ffd700;
+  padding:8px;
+  text-align:left;
+}
+
+td {
+  padding:8px;
+  border-bottom:1px solid #5e3f24;
+}
+
+a {
+  color:#00AAFF;
+  text-decoration:none;
+}
+
+.friend { color:#00ff00; }
+.enemy { color:#ff4444; }
+
+.counter {
+  text-align:right;
+  margin-top:10px;
+  font-size:12px;
+  color:#aaa;
+}
+
+.footer {
+  text-align:center;
+  margin-top:40px;
+  padding:15px;
+  background:#3e2a17;
+  border-top:2px solid #8b5a2b;
+  color:#aaa;
+  font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
 <div class="navbar">
   <a href="/">🏠 Home</a>
   <a href="/description.html">📜 Gerador</a>
   <a href="/dashboard.html">📊 Dashboard</a>
   <a href="/login.html">🔐 Admin</a>
 </div>
-<style>
-body { background:#2b1b10; font-family:Tahoma; color:white; padding:40px; }
-h1 { text-align:center; color:#ffd700; }
-
-.card {
-  background:#3e2a17;
-  border:2px solid #8b5a2b;
-  border-radius:10px;
-  padding:20px;
-  margin-bottom:30px;
-}
-
-h2 { color:#ffd700; }
-
-table {
-  width:100%;
-  border-collapse:collapse;
-  margin-bottom:15px;
-}
-
-th, td {
-  border-bottom:1px solid #8b5a2b;
-  padding:5px;
-}
-
-.counter {
-  text-align:right;
-  font-size:12px;
-  color:#aaa;
-}
-</style>
-</head>
-<body>
 
 <h1>⚔️ NiideHelper Dashboard ⚔️</h1>
 
-<div class="card">
-  <h2>📅 Daily Info</h2>
-  <div id="daily"></div>
+<div class="container">
+
+  <div class="card">
+    <h2>📅 Daily Info</h2>
+    <div id="daily"></div>
+  </div>
+
+  <div class="card">
+    <h2>🟢 Online Members</h2>
+    <div id="online"></div>
+  </div>
+
+  <div class="card">
+    <h2>💀 Últimas Mortes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Personagem</th>
+          <th>Level</th>
+          <th>Killer</th>
+        </tr>
+      </thead>
+      <tbody id="deathsTable"></tbody>
+    </table>
+  </div>
+
+  <div class="counter">
+    Atualizando em <span id="timer">15</span>s
+  </div>
+
 </div>
 
-<div class="card">
-  <h2>🟢 Online Members</h2>
-  <div id="online"></div>
-</div>
-
-<div class="card">
-  <h2>💀 Últimas Mortes</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Personagem</th>
-        <th>Level</th>
-        <th>Killer</th>
-      </tr>
-    </thead>
-    <tbody id="deathsTable"></tbody>
-  </table>
-</div>
-
-<div class="counter">
-  Atualização automática em <span id="timer">15</span>s
+<div class="footer">
+  NiideHelper v1.0 — Dashboard automático
 </div>
 
 <script>
@@ -85,6 +157,7 @@ function tibiaLink(name) {
 async function loadDaily() {
   const res = await fetch('/api/public/daily');
   const data = await res.json();
+
   if (data.description) {
     document.getElementById('daily').innerHTML = data.description;
   }
@@ -98,17 +171,35 @@ async function loadOnline() {
 
   for (const vocation in data) {
     if (data[vocation].length > 0) {
-      html += `<h3>${vocation}</h3><table><tr><th>Nome</th><th>Level</th><th>Tempo Online</th></tr>`;
+
+      html += `
+        <h3>${vocation}</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Level</th>
+              <th>Tempo Online</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
       data[vocation].forEach(p => {
         html += `
           <tr>
-            <td><a href="${tibiaLink(p.name)}" target="_blank">${p.name}</a></td>
+            <td>
+              <a href="${tibiaLink(p.name)}" target="_blank">
+                ${p.name}
+              </a>
+            </td>
             <td>${p.level}</td>
             <td>${p.onlineTime}</td>
           </tr>
         `;
       });
-      html += `</table>`;
+
+      html += `</tbody></table>`;
     }
   }
 
@@ -125,7 +216,11 @@ async function loadDeaths() {
   data.deaths.forEach(d => {
     tbody.innerHTML += `
       <tr>
-        <td><a href="${tibiaLink(d.characterName)}" target="_blank">${d.characterName}</a></td>
+        <td>
+          <a href="${tibiaLink(d.characterName)}" target="_blank">
+            ${d.characterName}
+          </a>
+        </td>
         <td>${d.level}</td>
         <td>${d.killer}</td>
       </tr>
@@ -136,6 +231,7 @@ async function loadDeaths() {
 function updateTimer() {
   timer--;
   document.getElementById('timer').innerText = timer;
+
   if (timer <= 0) {
     timer = refreshInterval;
     loadDaily();
