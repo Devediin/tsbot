@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>NiideHelper - Dashboard</title>
+  <style>
+    body {
+      background: #2b1b10;
+      font-family: Tahoma, Arial, sans-serif;
+      color: #fff;
+      padding: 40px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ffd700;
+      text-shadow: 2px 2px #000;
+    }
+
+    .container {
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .card {
+      background: #3e2a17;
+      border: 2px solid #8b5a2b;
+      border-radius: 10px;
+      padding: 20px;
+      width: 400px;
+      box-shadow: 0 0 10px #000;
+    }
+
+    .card h2 {
+      color: #ffd700;
+      border-bottom: 1px solid #8b5a2b;
+      padding-bottom: 10px;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    li {
+      margin: 5px 0;
+      padding: 5px;
+      background: #4e3420;
+      border-radius: 5px;
+    }
+
+    .online {
+      color: #00ff00;
+    }
+
+    .offline {
+      color: #ff4444;
+    }
+  </style>
+</head>
+<body>
+
+<h1>⚔️ NiideHelper Dashboard ⚔️</h1>
+
+<div class="container">
+
+  <div class="card">
+    <h2>📅 Daily Info</h2>
+    <div id="daily"></div>
+  </div>
+
+  <div class="card">
+    <h2>🟢 Online Members</h2>
+    <ul id="online"></ul>
+  </div>
+
+</div>
+
+<script>
+async function loadDaily() {
+  const res = await fetch('/api/public/daily');
+  const data = await res.json();
+
+  if (data.description) {
+    document.getElementById('daily').innerHTML = data.description;
+  }
+}
+
+async function loadOnline() {
+  const res = await fetch('/api/public/online');
+  const data = await res.json();
+
+  const list = document.getElementById('online');
+  list.innerHTML = '';
+
+  data.online.forEach(name => {
+    const li = document.createElement('li');
+    li.className = 'online';
+    li.innerText = name;
+    list.appendChild(li);
+  });
+}
+
+loadDaily();
+loadOnline();
+</script>
+
+</body>
+</html>
