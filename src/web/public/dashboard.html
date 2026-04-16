@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>NiideHelper - Dashboard</title>
+  <title>NiideHelper Dashboard</title>
   <style>
     body {
       background: #2b1b10;
@@ -19,7 +19,7 @@
 
     .container {
       display: flex;
-      gap: 40px;
+      gap: 30px;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -31,6 +31,7 @@
       padding: 20px;
       width: 400px;
       box-shadow: 0 0 10px #000;
+      margin-bottom: 20px;
     }
 
     .card h2 {
@@ -55,7 +56,7 @@
       color: #00ff00;
     }
 
-    .offline {
+    .death {
       color: #ff4444;
     }
   </style>
@@ -74,6 +75,11 @@
   <div class="card">
     <h2>🟢 Online Members</h2>
     <ul id="online"></ul>
+  </div>
+
+  <div class="card">
+    <h2>💀 Últimas Deaths</h2>
+    <ul id="deaths"></ul>
   </div>
 
 </div>
@@ -103,8 +109,24 @@ async function loadOnline() {
   });
 }
 
+async function loadDeaths() {
+  const res = await fetch('/api/public/deaths');
+  const data = await res.json();
+
+  const list = document.getElementById('deaths');
+  list.innerHTML = '';
+
+  data.deaths.forEach(death => {
+    const li = document.createElement('li');
+    li.className = 'death';
+    li.innerText = `${death.characterName} morreu`;
+    list.appendChild(li);
+  });
+}
+
 loadDaily();
 loadOnline();
+loadDeaths();
 </script>
 
 </body>
