@@ -40,26 +40,6 @@ import {
 } from '../../scripts/channels';
 
 const { WORLD_NAME } = process.env;
-// =============================
-// DREAM COURTS (Boss of the Day)
-// =============================
-
-const dreamCourtsRotation = [
-  'Plagueroot',
-  'Malofur Mangrinder',
-  'Maxxenius',
-  'Alptramun',
-  'Izcandar',
-];
-
-// Ajuste essa data base se necessário
-const DREAM_COURTS_BASE_DATE = moment('2026-04-12');
-
-const getDreamCourtsBoss = () => {
-  const diffDays = moment().diff(DREAM_COURTS_BASE_DATE, 'days');
-  const index = ((diffDays % 5) + 5) % 5;
-  return dreamCourtsRotation[index];
-};
 const {
   GUILD_AUTO_SYNC_NAME,
   GUILD_AUTO_SYNC_INTERVAL_MINUTES = '30',
@@ -591,7 +571,6 @@ const processServerSaveStatus = async (teamspeak) => {
       await sendMassPrivateMessage(teamspeak, message);
       await setServerSaveOnline();
       await setServerSaveAnnounced();
-      await updateDailyInfoChannel(teamspeak);
     }
   } catch (error) {
     console.error('[SERVERSAVE] Erro processando status do server save:', error);
@@ -662,120 +641,6 @@ const runGuildAutoSync = async (teamspeak) => {
     isGuildSyncRunning = false;
   }
 };
-const getRashidLocation = () => {
-  const day = moment().format('dddd');
-
-  const map = {
-    Monday: 'Svargrond — Taverna de Dankwart',
-    Tuesday: 'Liberty Bay — Taverna de Lyonel',
-    Wednesday: 'Port Hope — Taverna de Clyde',
-    Thursday: 'Ankrahmun — Taverna de Arito',
-    Friday: 'Darashia — Taverna de Miraia',
-    Saturday: 'Edron — Taverna de Mirabell',
-    Sunday: 'Carlin — Primeiro andar do depot',
-  };
-
-  return map[day] || 'Desconhecido';
-};
-const updateDailyInfoChannel = async (teamspeak) => {
-  try {
-    const worldOverview = await tibiaAPI.getWorldOverview();
-    const serverName = worldOverview?.name || WORLD_NAME;
-    const serverSaveTime = moment().format('HH:mm');
-
-    const rashid = getRashidLocation();
-    const dreamBoss = getDreamCourtsBoss();
-    const tibiadrome = getTibiadromeInfo();
-
-    const description = `
-[b][color=#00AAFF]Server Save[/color][/b]
-🟢 ${serverName} voltou às ${serverSaveTime}
-
-[b][color=#00AAFF]Rashid[/color][/b]
-📍 ${rashid}
-
-[b][color=#00AAFF]Dream Courts Boss[/color][/b]
-👑 ${dreamBoss}
-
-[b][color=#00AAFF]Tibiadrome[/color][/b]
-🎭 Rotação #${tibiadrome.number}
-📅 ${tibiadrome.start} até ${tibiadrome.end}
-`;
-
-    const channelLists = await teamspeak.channelList();
-    const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
-
-    await updateChannel(
-      teamspeak,
-      'dailyInfo',
-      {
-        online: [],
-        dbCharacters: [],
-        description,
-      },
-      channelListsName
-    );
-
-    console.log('[DAILY INFO] Canal atualizado com sucesso.');
-  } catch (error) {
-    console.error('[DAILY INFO] Erro ao atualizar canal:', error);
-  }
-};
-
-    const channelLists = await teamspeak.channelList();
-    const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
-
-    await updateChannel(
-      teamspeak,
-      'dailyInfo',
-      {
-        online: [],
-        dbCharacters: [],
-        description,
-      },
-      channelListsName
-    );
-
-    console.log('[DAILY INFO] Canal atualizado com sucesso.');
-  } catch (error) {
-    console.error('[DAILY INFO] Erro ao atualizar canal:', error);
-  }
-};
-const dreamCourtsRotation = [
-  'Faceless Bane',
-  'The Pale Worm',
-  'The Unwelcome',
-  'The Dread Maiden',
-  'The Fear Feaster',
-  'The Realityquake',
-  'The Nightstalker',
-];
-
-const getDreamCourtsBoss = () => {
-  const baseDate = moment('2026-04-15'); // pode ajustar depois se necessário
-  const diffDays = moment().diff(baseDate, 'days');
-  const index = ((diffDays % 7) + 7) % 7;
-  return dreamCourtsRotation[index];
-};
-const TIBIADROME_BASE_NUMBER = 125;
-const TIBIADROME_BASE_DATE = moment('2026-04-15T05:00:00');
-
-const getTibiadromeInfo = () => {
-  const now = moment();
-  const diffDays = now.diff(TIBIADROME_BASE_DATE, 'days');
-  const rotationOffset = Math.floor(diffDays / 15);
-
-  const currentRotation = TIBIADROME_BASE_NUMBER + rotationOffset;
-  const rotationStart = TIBIADROME_BASE_DATE.clone().add(rotationOffset * 15, 'days');
-  const rotationEnd = rotationStart.clone().add(15, 'days');
-
-  return {
-    number: currentRotation,
-    start: rotationStart.format('DD/MM/YYYY'),
-    end: rotationEnd.format('DD/MM/YYYY'),
-  };
-};
-
 
 export const startTasks = (teamspeak) => {
   const fastTask = cron.schedule('0-59/5 * * * * *', async () => {
@@ -934,7 +799,6 @@ export const startTasks = (teamspeak) => {
 
   fastTask.start();
   neutralTask.start();
-  updateDailyInfoChannel(teamspeak);
   if (GUILD_AUTO_SYNC_NAME) {
   const interval = Number(GUILD_AUTO_SYNC_INTERVAL_MINUTES) || 30;
 
