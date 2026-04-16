@@ -23,9 +23,20 @@ router.post('/generate', async (req, res) => {
       return res.status(400).json({ error: 'Character not in correct world' });
     }
 
+    const characterData = {
+      name: info.info.name,
+      level: info.info.level,
+      vocation: info.info.vocation,
+      guild: info.info.guild?.name || null,
+      world: info.info.world
+    };
+
     const description = `Main: ${info.info.name}`;
 
-    res.json({ description });
+    res.json({
+      character: characterData,
+      description
+    });
 
   } catch (error) {
     console.error(error);
