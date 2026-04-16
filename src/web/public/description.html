@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Gerar Descrição - NiideHelper</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      text-align: center;
+      padding-top: 50px;
+    }
+    input {
+      padding: 10px;
+      margin: 10px;
+      width: 300px;
+    }
+    textarea {
+      width: 600px;
+      height: 200px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #00AAFF;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>📜 Gerador de Descrição</h1>
+
+<input id="charName" placeholder="Nome do personagem"><br>
+<button onclick="generate()">Gerar</button>
+
+<br>
+<textarea id="result"></textarea><br>
+<button onclick="copy()">Copiar</button>
+
+<script>
+async function generate() {
+  const characterName = document.getElementById('charName').value;
+
+  const res = await fetch('/api/description/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ characterName })
+  });
+
+  const data = await res.json();
+
+  if (data.description) {
+    document.getElementById('result').value = data.description;
+  } else {
+    document.getElementById('result').value = "Erro ao gerar descrição.";
+  }
+}
+
+function copy() {
+  const textarea = document.getElementById('result');
+  textarea.select();
+  document.execCommand("copy");
+  alert("Copiado!");
+}
+</script>
+
+</body>
+</html>
