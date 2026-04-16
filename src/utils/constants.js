@@ -656,10 +656,9 @@ export const COMMANDS_MAP = {
     howToUse: '!dailyinfo <texto do world board>',
   },
 '!desc': {
-  groups: [], // público
-  exec: async (teamspeak) => {
+  exec: async () => {
     try {
-      const link = `http://${process.env.WEB_PUBLIC_URL || 'SEU_IP_AQUI'}:3000`;
+      const link = `http://${process.env.WEB_PUBLIC_URL}:3000`;
       return {
         ok: true,
         message: `📜 Gere sua descrição aqui:\n${link}`,
