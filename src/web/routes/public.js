@@ -8,15 +8,7 @@ import moment from 'moment';
 const router = express.Router();
 const tibiaAPI = new TibiaAPI({ worldName: process.env.WORLD_NAME });
 
-function getVocationGroup(vocation) {
-  if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
-  if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return 'Royal Paladin';
-  if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return 'Master Sorcerer';
-  if (vocation.includes('Elder Druid') || vocation === 'Druid') return 'Elder Druid';
-  if (vocation.includes('Exalted Monk') || vocation === 'Monk') return 'Exalted Monk';
-  return 'Other';
-}
-
+// ONLINE FRIENDS
 router.get('/online', async (req, res) => {
   const characters = await Characters.find({ type: 'friend' });
 
@@ -28,6 +20,15 @@ router.get('/online', async (req, res) => {
     'Exalted Monk': [],
   };
 
+  function getGroup(vocation) {
+    if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
+    if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return 'Royal Paladin';
+    if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return 'Master Sorcerer';
+    if (vocation.includes('Elder Druid') || vocation === 'Druid') return 'Elder Druid';
+    if (vocation.includes('Exalted Monk') || vocation === 'Monk') return 'Exalted Monk';
+    return null;
+  }
+
   for (const char of characters) {
     const tracker = await getOnlineTrackerByName(char.characterName);
 
@@ -35,7 +36,9 @@ router.get('/online', async (req, res) => {
       const info = await tibiaAPI.getCharacterInformation(char.characterName);
 
       if (info?.info) {
-        const group = getVocationGroup(info.info.vocation);
+        const group = getGroup(info.info.vocation);
+
+        if (!group) continue;
 
         const onlineMinutes = tracker.firstSeenOnline
           ? moment().diff(moment(tracker.firstSeenOnline), 'minutes')
@@ -53,21 +56,18 @@ router.get('/online', async (req, res) => {
   res.json(grouped);
 });
 
+// ÚLTIMAS MORTES (formato real)
 router.get('/deaths', async (req, res) => {
   const deaths = await getDeathsCache();
 
   const formatted = deaths.slice(-10).reverse().map(d => ({
     characterName: d.characterName,
-    level: d.level || '???',
-    killer: d.mainKiller || 'Unknown'
+    level: d.level,
+    killer: d.mainKiller,
+    type: d.type
   }));
 
   res.json({ deaths: formatted });
-});
-
-router.get('/daily', async (req, res) => {
-  const channel = await Channels.findOne({ type: 'dailyInfo' });
-  res.json(channel || {});
 });
 
 export default router;
