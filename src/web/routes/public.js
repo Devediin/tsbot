@@ -68,14 +68,35 @@ router.get('/online', async (req, res) => {
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
+    const tibiaAPI = new TibiaAPI({ worldName: process.env.WORLD_NAME });
 
-    const formatted = deaths.slice(-10).reverse().map(d => ({
-      characterName: d.characterName || 'Unknown',
-      level: d.level || d.info?.level || '???',
-      killer: d.mainKiller || (d.killers && d.killers[0]?.name) || 'Unknown'
-    }));
+    const detailedDeaths = [];
 
-    res.json({ deaths: formatted });
+    for (const d of deaths.slice(-10).reverse()) {
+      const info = await tibiaAPI.getCharacterInformation(d.characterName);
+
+      if (info?.kills) {
+        const match = info.kills.find(k => k.time === d.time);
+
+        if (match) {
+          detailedDeaths.push({
+            characterName: d.characterName,
+            level: match.level,
+            killer: match.killers?.[0]?.name || 'Unknown'
+          });
+          continue;
+        }
+      }
+
+      detailedDeaths.push({
+        characterName: d.characterName,
+        level: '???',
+        killer: 'Unknown'
+      });
+    }
+
+    res.json({ deaths: detailedDeaths });
+
   } catch (error) {
     console.error(error);
     res.json({ deaths: [] });
