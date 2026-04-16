@@ -6,74 +6,83 @@
 
 <style>
 body {
-  background:#2b1b10;
-  font-family:Tahoma;
-  color:white;
-  margin:0;
+  background: radial-gradient(circle at center, #3e2a17 0%, #2b1b10 70%);
+  font-family: "Trebuchet MS", Tahoma;
+  color: #fff;
+  margin: 0;
 }
 
 .navbar {
-  background:#3e2a17;
-  padding:15px;
-  text-align:center;
-  border-bottom:2px solid #8b5a2b;
+  background: linear-gradient(#4e3420, #3e2a17);
+  padding: 15px;
+  text-align: center;
+  border-bottom: 3px solid gold;
 }
 
 .navbar a {
-  color:#ffd700;
-  text-decoration:none;
-  margin:0 20px;
-  font-weight:bold;
-}
-
-.container {
-  width:90%;
-  margin:auto;
-  padding:40px;
+  color: gold;
+  text-decoration: none;
+  margin: 0 20px;
+  font-weight: bold;
 }
 
 h1 {
-  text-align:center;
-  color:#ffd700;
+  text-align: center;
+  color: gold;
+  margin: 30px 0;
+  text-shadow: 2px 2px black;
 }
 
-.card {
-  background:#3e2a17;
-  border:2px solid #8b5a2b;
-  border-radius:8px;
-  padding:20px;
-  margin-top:30px;
+.container {
+  width: 80%;
+  margin: auto;
 }
 
-h2 {
-  color:#ffd700;
-  text-align:center;
+.vocation-box {
+  border: 2px solid gold;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 25px;
+  background: #3e2a17;
 }
 
-table {
-  width:100%;
-  border-collapse:collapse;
-  margin-top:15px;
+.vocation-box h2 {
+  margin-top: 0;
+  color: gold;
+  border-bottom: 1px solid gold;
+  padding-bottom: 5px;
 }
 
-th {
-  background:#4e3420;
-  padding:8px;
-  text-align:center;
-  color:#ffd700;
+ul {
+  list-style: none;
+  padding-left: 0;
 }
 
-td {
-  padding:8px;
-  text-align:center;
-  border-bottom:1px solid #5e3f24;
+li {
+  padding: 6px 0;
+  border-bottom: 1px solid #5e3f24;
+}
+
+.death-box {
+  border: 2px solid red;
+  border-radius: 8px;
+  padding: 15px;
+  background: #3e2a17;
+}
+
+.death-box h2 {
+  color: red;
 }
 
 .counter {
-  text-align:center;
-  margin-top:15px;
-  font-size:12px;
-  color:#aaa;
+  text-align: center;
+  margin-top: 20px;
+  color: #aaa;
+}
+
+a {
+  color: #00AAFF;
+  text-decoration: none;
 }
 </style>
 </head>
@@ -84,33 +93,19 @@ td {
   <a href="/">🏠 Home</a>
   <a href="/description.html">📜 Gerador</a>
   <a href="/dashboard.html">📊 Dashboard</a>
-  <a href="/login.html">🔐 Admin</a>
 </div>
-
-<div class="container">
 
 <h1>⚔️ Online Members ⚔️</h1>
 
-<div id="online"></div>
+<div class="container" id="online"></div>
 
-<div class="card">
+<div class="container death-box">
   <h2>💀 Últimas Mortes</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Personagem</th>
-        <th>Level</th>
-        <th>Killer</th>
-      </tr>
-    </thead>
-    <tbody id="deathsTable"></tbody>
-  </table>
+  <ul id="deaths"></ul>
 </div>
 
 <div class="counter">
   Atualiza em <span id="timer">15</span>s
-</div>
-
 </div>
 
 <script>
@@ -126,56 +121,46 @@ async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
 
-  let html = '';
+  const container = document.getElementById('online');
+  container.innerHTML = '';
 
   for (const vocation in data) {
     if (data[vocation].length > 0) {
 
-      html += `
-        <div class="card">
-          <h2>${vocation}</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Level</th>
-                <th>Tempo Online</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
+      let html = `<div class="vocation-box">
+        <h2>${vocation}</h2>
+        <ul>`;
 
       data[vocation].forEach(p => {
         html += `
-          <tr>
-            <td><a href="${tibiaLink(p.name)}" target="_blank">${p.name}</a></td>
-            <td>${p.level}</td>
-            <td>${p.onlineTime}</td>
-          </tr>
+          <li>
+            <a href="${tibiaLink(p.name)}" target="_blank">${p.name}</a>
+            — Level ${p.level}
+            — ${p.onlineTime}
+          </li>
         `;
       });
 
-      html += `</tbody></table></div>`;
+      html += `</ul></div>`;
+
+      container.innerHTML += html;
     }
   }
-
-  document.getElementById('online').innerHTML = html;
 }
 
 async function loadDeaths() {
   const res = await fetch('/api/public/deaths');
   const data = await res.json();
 
-  const tbody = document.getElementById('deathsTable');
-  tbody.innerHTML = '';
+  const list = document.getElementById('deaths');
+  list.innerHTML = '';
 
   data.deaths.forEach(d => {
-    tbody.innerHTML += `
-      <tr>
-        <td><a href="${tibiaLink(d.characterName)}" target="_blank">${d.characterName}</a></td>
-        <td>${d.level}</td>
-        <td>${d.killer}</td>
-      </tr>
+    list.innerHTML += `
+      <li>
+        <a href="${tibiaLink(d.characterName)}" target="_blank">${d.characterName}</a>
+        morreu no level ${d.level} para ${d.killer}
+      </li>
     `;
   });
 }
