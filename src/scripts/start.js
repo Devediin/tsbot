@@ -2,7 +2,7 @@ import ora from 'ora';
 import mongoose from 'mongoose';
 import initServer from './init';
 import { updateMeta } from '../api/models/meta';
-import './web/server.js';
+import '../web/server.js';
 
 const spinner = ora('Starting TS server BOT');
 
