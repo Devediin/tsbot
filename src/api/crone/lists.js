@@ -4,6 +4,7 @@ import { capitalize } from 'lodash';
 import TibiaAPI from '../tibia';
 import Characters from '../models/characters';
 import Channels from '../models/channels';
+import { updateDailyInfoChannel } from './daily-info';
 import { syncCharactersByGuildName } from '../models/characters';
 import Meta, {
   updateMeta,
@@ -571,6 +572,7 @@ const processServerSaveStatus = async (teamspeak) => {
       await sendMassPrivateMessage(teamspeak, message);
       await setServerSaveOnline();
       await setServerSaveAnnounced();
+      await updateDailyInfoChannel(teamspeak);
     }
   } catch (error) {
     console.error('[SERVERSAVE] Erro processando status do server save:', error);
