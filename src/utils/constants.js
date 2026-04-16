@@ -1,6 +1,6 @@
 import { promoteUser } from '../scripts/server-groups';
 import { massKick, massMove, sendMassPoke } from '../scripts/client';
-import { insertCharacter, removeCharacter, addCharactersByGuildName } from '../api/models/characters';
+import { insertCharacter, removeCharacter, addCharactersByGuildName, syncCharactersByGuildName } from '../api/models/characters';
 
 export const ADMIN_GROUP_NAME = 'Bot Admin';
 export const MODERATOR_GROUP_NAME = 'Bot Moderator';
@@ -67,7 +67,7 @@ export const VOCATIONS = [
 ];
 
 export const COMMANDS_MAP = {
-    '!mk': {
+  '!mk': {
     groups: [MODERATOR_GROUP_NAME, ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
       try {
@@ -138,6 +138,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!mmove ${senhaDoCanal} - move todos para o canal onde você está',
   },
+
   '!addEnemy': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -314,6 +315,68 @@ export const COMMANDS_MAP = {
     howToUse: '!addFriendsByGuild ${guild} - adiciona todos os membros da guild como friends',
   },
 
+  '!syncGuildFriends': {
+    groups: [ADMIN_GROUP_NAME],
+    exec: async (teamspeak, msgAsList) => {
+      try {
+        msgAsList.shift();
+        const guildName = msgAsList.join(' ');
+
+        if (!guildName) {
+          return {
+            ok: false,
+            message: '❌ Você precisa informar o nome da guild.',
+          };
+        }
+
+        const result = await syncCharactersByGuildName(guildName, 'friend');
+
+        return {
+          ok: true,
+          message: `✅ Sync de friends da guild ${guildName} concluído. Adicionados: ${result.added}. Removidos: ${result.removed}. Total na guild: ${result.total}.`,
+        };
+      } catch (error) {
+        console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao sincronizar a guild de friends.',
+        };
+      }
+    },
+    howToUse: '!syncGuildFriends ${guild} - sincroniza friends com a guild atual, removendo quem saiu e adicionando quem entrou',
+  },
+
+  '!syncGuildEnemys': {
+    groups: [ADMIN_GROUP_NAME],
+    exec: async (teamspeak, msgAsList) => {
+      try {
+        msgAsList.shift();
+        const guildName = msgAsList.join(' ');
+
+        if (!guildName) {
+          return {
+            ok: false,
+            message: '❌ Você precisa informar o nome da guild.',
+          };
+        }
+
+        const result = await syncCharactersByGuildName(guildName, 'enemy');
+
+        return {
+          ok: true,
+          message: `✅ Sync de enemys da guild ${guildName} concluído. Adicionados: ${result.added}. Removidos: ${result.removed}. Total na guild: ${result.total}.`,
+        };
+      } catch (error) {
+        console.error(error);
+        return {
+          ok: false,
+          message: '❌ Erro ao sincronizar a guild de enemys.',
+        };
+      }
+    },
+    howToUse: '!syncGuildEnemys ${guild} - sincroniza enemys com a guild atual, removendo quem saiu e adicionando quem entrou',
+  },
+
   '!removeFriend': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -351,6 +414,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!removeFriend ${nome} - remove um personagem da lista de friends',
   },
+
   '!addNeutral': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -369,6 +433,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!addNeutral ${enemyName}',
   },
+
   '!removeNeutral': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -387,6 +452,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!removeNeutral ${enemyName}',
   },
+
   '!addMakersEnemy': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -405,6 +471,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!addMakersEnemy ${enemyName}',
   },
+
   '!removeMakersEnemy': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -423,6 +490,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!removeMakersEnemy ${enemyName}',
   },
+
   '!addMakersFriend': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -441,6 +509,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!addMakersFriend ${enemyName}',
   },
+
   '!removeMakersFriend': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -459,6 +528,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!removeMakersFriend ${enemyName}',
   },
+
   '!addPossibleEnemys': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -477,6 +547,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!addPossibleEnemys ${enemyName}',
   },
+
   '!removePossibleEnemys': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -495,6 +566,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!removePossibleEnemys ${enemyName}',
   },
+
   '!addNewAdmin': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -513,6 +585,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!addNewAdmin ${username}',
   },
+
   '!removeAdmin': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -529,8 +602,9 @@ export const COMMANDS_MAP = {
         console.error(error);
       }
     },
-    howToUse: '!removeModerator ${username}',
+    howToUse: '!removeAdmin ${username}',
   },
+
   '!addNewModerator': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
@@ -549,6 +623,7 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!addNewModerator ${username}',
   },
+
   '!removeModerator': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
