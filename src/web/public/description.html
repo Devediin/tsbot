@@ -1,39 +1,89 @@
-import express from 'express';
-import { requireAuth } from '../middleware/auth.js';
-import TibiaAPI from '../../api/tibia/index.js';
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Gerador de Descrição</title>
 
-const router = express.Router();
+<style>
+body {
+  background:#2b1b10;
+  font-family:Tahoma;
+  color:white;
+  padding:40px;
+  text-align:center;
+}
 
-const tibiaAPI = new TibiaAPI({ worldName: process.env.WORLD_NAME });
+input {
+  padding:10px;
+  width:300px;
+  margin-top:20px;
+}
 
-router.post('/generate', requireAuth, async (req, res) => {
-  try {
-    const { characterName } = req.body;
+button {
+  padding:10px 20px;
+  background:#00AAFF;
+  border:none;
+  color:white;
+  margin-top:20px;
+}
 
-    if (!characterName) {
-      return res.status(400).json({ error: 'Character required' });
-    }
+textarea {
+  width:600px;
+  height:80px;
+  margin-top:20px;
+  resize:none;
+  background:#222;
+  color:white;
+  border:none;
+  padding:10px;
+}
+</style>
+</head>
+<body>
 
-    const info = await tibiaAPI.getCharacterInformation(characterName);
+<h1>📜 Gerador de Descrição</h1>
 
-    if (!info?.info) {
-      return res.status(404).json({ error: 'Character not found' });
-    }
+<input id="charName" placeholder="Nome do personagem"><br>
+<button onclick="generate()">Validar e Gerar</button>
 
-    // ✅ Confirma mundo correto
-    if (info.info.world !== process.env.WORLD_NAME) {
-      return res.status(400).json({ error: 'Character not in correct world' });
-    }
+<div id="info" style="margin-top:30px;"></div>
 
-    // ✅ Gera descrição simples
-    const description = `Main: ${info.info.name}`;
+<textarea id="result" readonly></textarea><br>
+<button onclick="copy()">Copiar</button>
 
-    res.json({ description });
+<script>
+async function generate() {
+  const characterName = document.getElementById('charName').value;
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error' });
+  const res = await fetch('/api/description/generate', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({characterName})
+  });
+
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+    return;
   }
-});
 
-export default router;
+  document.getElementById('info').innerHTML = `
+    <b>Level:</b> ${data.character.level}<br>
+    <b>Vocação:</b> ${data.character.vocation}<br>
+    <b>Guild:</b> ${data.character.guild || 'Sem guild'}
+  `;
+
+  document.getElementById('result').value = data.description;
+}
+
+function copy() {
+  const textarea = document.getElementById('result');
+  textarea.select();
+  document.execCommand("copy");
+  alert("Copiado!");
+}
+</script>
+
+</body>
+</html>
