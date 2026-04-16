@@ -1,132 +1,107 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>NiideHelper Dashboard</title>
-  <style>
-    body {
-      background: #2b1b10;
-      font-family: Tahoma, Arial, sans-serif;
-      color: #fff;
-      padding: 40px;
-    }
+<meta charset="UTF-8">
+<title>NiideHelper Dashboard</title>
 
-    h1 {
-      text-align: center;
-      color: #ffd700;
-      text-shadow: 2px 2px #000;
-    }
+<style>
+body {
+  background:#2b1b10;
+  font-family:Tahoma;
+  color:white;
+  padding:40px;
+}
 
-    .container {
-      display: flex;
-      gap: 30px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+h1 {
+  color:#ffd700;
+  text-align:center;
+}
 
-    .card {
-      background: #3e2a17;
-      border: 2px solid #8b5a2b;
-      border-radius: 10px;
-      padding: 20px;
-      width: 400px;
-      box-shadow: 0 0 10px #000;
-      margin-bottom: 20px;
-    }
+.card {
+  background:#3e2a17;
+  border:2px solid #8b5a2b;
+  border-radius:10px;
+  padding:20px;
+  margin-bottom:30px;
+}
 
-    .card h2 {
-      color: #ffd700;
-      border-bottom: 1px solid #8b5a2b;
-      padding-bottom: 10px;
-    }
+.friend { color:#00ff00; }
+.enemy { color:#ff4444; }
 
-    ul {
-      list-style: none;
-      padding-left: 0;
-    }
-
-    li {
-      margin: 5px 0;
-      padding: 5px;
-      background: #4e3420;
-      border-radius: 5px;
-    }
-
-    .online {
-      color: #00ff00;
-    }
-
-    .death {
-      color: #ff4444;
-    }
-  </style>
+a {
+  color:#ffd700;
+  text-decoration:none;
+}
+</style>
 </head>
 <body>
 
 <h1>⚔️ NiideHelper Dashboard ⚔️</h1>
 
-<div class="container">
+<div class="card">
+  <h2>🟢 Online</h2>
+  <div id="online"></div>
+</div>
 
-  <div class="card">
-    <h2>📅 Daily Info</h2>
-    <div id="daily"></div>
-  </div>
-
-  <div class="card">
-    <h2>🟢 Online Members</h2>
-    <ul id="online"></ul>
-  </div>
-
-  <div class="card">
-    <h2>💀 Últimas Deaths</h2>
-    <ul id="deaths"></ul>
-  </div>
-
+<div class="card">
+  <h2>💀 Últimas Mortes</h2>
+  <div id="deaths"></div>
 </div>
 
 <script>
-async function loadDaily() {
-  const res = await fetch('/api/public/daily');
-  const data = await res.json();
 
-  if (data.description) {
-    document.getElementById('daily').innerHTML = data.description;
-  }
+function tibiaLink(name) {
+  return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
 }
 
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
 
-  const list = document.getElementById('online');
-  list.innerHTML = '';
+  let html = '';
 
-  data.online.forEach(name => {
-    const li = document.createElement('li');
-    li.className = 'online';
-    li.innerText = name;
-    list.appendChild(li);
+  data.online.forEach(p => {
+    html += `
+    <div class="${p.type}">
+      <a href="${tibiaLink(p.name)}" target="_blank">
+        ${p.name}
+      </a>
+      - ${p.level} (${p.vocation})
+    </div>
+    `;
   });
+
+  document.getElementById('online').innerHTML = html;
 }
 
 async function loadDeaths() {
   const res = await fetch('/api/public/deaths');
   const data = await res.json();
 
-  const list = document.getElementById('deaths');
-  list.innerHTML = '';
+  let html = '';
 
-  data.deaths.forEach(death => {
-    const li = document.createElement('li');
-    li.className = 'death';
-    li.innerText = `${death.characterName} morreu`;
-    list.appendChild(li);
+  data.deaths.forEach(d => {
+    html += `
+    <div>
+      💀 <a href="${tibiaLink(d.characterName)}" target="_blank">
+      ${d.characterName}
+      </a>
+    </div>
+    `;
   });
+
+  document.getElementById('deaths').innerHTML = html;
 }
 
-loadDaily();
 loadOnline();
 loadDeaths();
+
+// Atualização automática a cada 15 segundos
+setInterval(() => {
+  loadOnline();
+  loadDeaths();
+}, 15000);
+
 </script>
 
 </body>
