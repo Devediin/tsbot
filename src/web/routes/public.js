@@ -70,9 +70,9 @@ router.get('/deaths', async (req, res) => {
     const deaths = await getDeathsCache();
 
     const formatted = deaths.slice(-10).reverse().map(d => ({
-      characterName: d.characterName,
-      level: d.level || '???',
-      killer: d.mainKiller || 'Unknown'
+      characterName: d.characterName || 'Unknown',
+      level: d.level || d.info?.level || '???',
+      killer: d.mainKiller || (d.killers && d.killers[0]?.name) || 'Unknown'
     }));
 
     res.json({ deaths: formatted });
