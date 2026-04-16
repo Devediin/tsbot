@@ -77,7 +77,9 @@ const getTibiadromeInfo = () => {
 =========================== */
 
 export const parseWorldBoard = (text = '') => {
-  if (text.includes('Oriental ships sighted')) {
+  const normalized = text.toLowerCase();
+
+  if (normalized.includes('oriental ships sighted')) {
     yasirOnline = true;
   } else {
     yasirOnline = false;
@@ -92,7 +94,7 @@ export const updateDailyInfoChannel = async (teamspeak) => {
   try {
     const worldOverview = await tibiaAPI.getWorldOverview();
     const serverName = worldOverview?.name || WORLD_NAME;
-    const serverSaveTime = moment().format('HH:mm');
+    const serverSaveTime = global.lastServerSaveTime || '05:00';
 
     const rashid = getRashidLocation();
     const dreamBoss = getDreamCourtsBoss();
