@@ -3,6 +3,7 @@ import { capitalize } from 'lodash';
 import TibiaAPI from '../tibia';
 import Characters from '../models/characters';
 import Channels from '../models/channels';
+import { syncCharactersByGuildName } from '../models/characters';
 import Meta, {
   updateMeta,
   getDeathsCache,
@@ -38,12 +39,17 @@ import {
 } from '../../scripts/channels';
 
 const { WORLD_NAME } = process.env;
+const {
+  GUILD_AUTO_SYNC_NAME,
+  GUILD_AUTO_SYNC_INTERVAL_MINUTES = '30',
+} = process.env;
 const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 let isFastTaskRunning = false;
 let isSlowTaskRunning = false;
+let isGuildSyncRunning = false;
 const announcedLevelUps = new Map();
 let previousOnlineNames = new Set();
 const recentlyOfflineMap = new Map();
@@ -569,6 +575,71 @@ const processServerSaveStatus = async (teamspeak) => {
     console.error('[SERVERSAVE] Erro processando status do server save:', error);
   }
 };
+const runGuildAutoSync = async (teamspeak) => {
+  if (!GUILD_AUTO_SYNC_NAME) return;
+
+  if (isGuildSyncRunning) {
+    console.log('[CRON] guildSyncTask ainda em execução. Pulando.');
+    return;
+  }
+
+  isGuildSyncRunning = true;
+
+  try {
+    console.log(`[GUILD SYNC] Iniciando sync automático da guild ${GUILD_AUTO_SYNC_NAME}`);
+
+    const beforeFriends = await Characters.find({
+      type: 'friend',
+      guildName: GUILD_AUTO_SYNC_NAME,
+    });
+
+    const beforeNames = new Set(beforeFriends.map(c => c.characterName));
+
+    const result = await syncCharactersByGuildName(GUILD_AUTO_SYNC_NAME, 'friend');
+
+    const afterFriends = await Characters.find({
+      type: 'friend',
+      guildName: GUILD_AUTO_SYNC_NAME,
+    });
+
+    const afterNames = new Set(afterFriends.map(c => c.characterName));
+
+    const entered = [];
+    const left = [];
+
+    for (const name of afterNames) {
+      if (!beforeNames.has(name)) {
+        entered.push(name);
+      }
+    }
+
+    for (const name of beforeNames) {
+      if (!afterNames.has(name)) {
+        left.push(name);
+      }
+    }
+
+    for (const name of entered) {
+      await sendMassPrivateMessage(
+        teamspeak,
+        `🟢 [B]${name}[/B] ENTROU na guild ${GUILD_AUTO_SYNC_NAME}`
+      );
+    }
+
+    for (const name of left) {
+      await sendMassPrivateMessage(
+        teamspeak,
+        `🔴 [B]${name}[/B] SAIU da guild ${GUILD_AUTO_SYNC_NAME}`
+      );
+    }
+
+    console.log(`[GUILD SYNC] +${entered.length} / -${left.length}`);
+  } catch (error) {
+    console.error('[CRON] Erro no guildSyncTask:', error);
+  } finally {
+    isGuildSyncRunning = false;
+  }
+};
 
 export const startTasks = (teamspeak) => {
   const fastTask = cron.schedule('0-59/5 * * * * *', async () => {
@@ -727,4 +798,15 @@ export const startTasks = (teamspeak) => {
 
   fastTask.start();
   neutralTask.start();
+  if (GUILD_AUTO_SYNC_NAME) {
+  const interval = Number(GUILD_AUTO_SYNC_INTERVAL_MINUTES) || 30;
+
+  const guildSyncTask = cron.schedule(`*/${interval} * * * *`, async () => {
+    await runGuildAutoSync(teamspeak);
+  }, {
+    scheduled: false,
+  });
+
+  guildSyncTask.start();
+}
 };
