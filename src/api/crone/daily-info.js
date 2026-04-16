@@ -100,22 +100,32 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const dreamBoss = getDreamCourtsBoss();
     const tibiadrome = getTibiadromeInfo();
 
-    const description = `
-[b][color=#00AAFF]Server Save[/color][/b]
-🟢 ${serverName} voltou às ${serverSaveTime}
+const description = `
+[b][color=#00AAFF]📅 Server Save[/color][/b]
+🟢 [b]${serverName}[/b] voltou às ${serverSaveTime}
 
-[b][color=#00AAFF]Rashid[/color][/b]
-📍 ${rashid}
+━━━━━━━━━━━━━━━━━━
 
-[b][color=#00AAFF]Yasir (Oriental Trader)[/color][/b]
-${yasirOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}
+[b][color=#00AAFF]🧳 Rashid[/color][/b]
+[img]https://www.tibiawiki.com.br/images/f/f5/Rashid.gif[/img]
+📍 [b]${rashid}[/b]
 
-[b][color=#00AAFF]Dream Courts Boss[/color][/b]
-👑 ${dreamBoss}
+━━━━━━━━━━━━━━━━━━
 
-[b][color=#00AAFF]Tibiadrome[/color][/b]
-🎭 Rotação #${tibiadrome.number}
-📅 ${tibiadrome.start} até ${tibiadrome.end}
+[b][color=#00AAFF]🧞 Yasir (Oriental Trader)[/color][/b]
+[img]https://www.tibiawiki.com.br/images/4/4a/Yasir.gif[/img]
+${yasirOnline ? '🟢 [b]ONLINE[/b]' : '🔴 [b]OFFLINE[/b]'}
+
+━━━━━━━━━━━━━━━━━━
+
+[b][color=#00AAFF]👑 Dream Courts[/color][/b]
+[b]${dreamBoss}[/b]
+
+━━━━━━━━━━━━━━━━━━
+
+[b][color=#00AAFF]🎭 Tibiadrome[/color][/b]
+Rotação [b]#${tibiadrome.number}[/b]
+📅 ${tibiadrome.start} → ${tibiadrome.end}
 `;
 
     const channelList = await teamspeak.channelList();
