@@ -1,6 +1,6 @@
-export const sendJoinMessage = async (event, teamspeak) => {
+export const sendJoinMessage = async (event) => {
   try {
-    const client = await teamspeak.getClientById(event.clid);
+    const client = event.client;
 
     if (!client) return;
 
@@ -11,7 +11,7 @@ export const sendJoinMessage = async (event, teamspeak) => {
     );
 
   } catch (error) {
-    console.error(error);
+    console.error('Erro sendJoinMessage:', error);
   }
 };
 
