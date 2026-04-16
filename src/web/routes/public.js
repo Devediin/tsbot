@@ -8,66 +8,88 @@ import moment from 'moment';
 const router = express.Router();
 const tibiaAPI = new TibiaAPI({ worldName: process.env.WORLD_NAME });
 
-// ONLINE FRIENDS
+function getVocationGroup(vocation) {
+  if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
+  if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return 'Royal Paladin';
+  if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return 'Master Sorcerer';
+  if (vocation.includes('Elder Druid') || vocation === 'Druid') return 'Elder Druid';
+  if (vocation.includes('Exalted Monk') || vocation === 'Monk') return 'Exalted Monk';
+  return null;
+}
+
 router.get('/online', async (req, res) => {
-  const characters = await Characters.find({ type: 'friend' });
+  try {
+    const characters = await Characters.find({ type: 'friend' });
 
-  const grouped = {
-    'Elite Knight': [],
-    'Royal Paladin': [],
-    'Master Sorcerer': [],
-    'Elder Druid': [],
-    'Exalted Monk': [],
-  };
+    const grouped = {
+      'Elite Knight': [],
+      'Royal Paladin': [],
+      'Master Sorcerer': [],
+      'Elder Druid': [],
+      'Exalted Monk': [],
+    };
 
-  function getGroup(vocation) {
-    if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
-    if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return 'Royal Paladin';
-    if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return 'Master Sorcerer';
-    if (vocation.includes('Elder Druid') || vocation === 'Druid') return 'Elder Druid';
-    if (vocation.includes('Exalted Monk') || vocation === 'Monk') return 'Exalted Monk';
-    return null;
-  }
+    for (const char of characters) {
+      const tracker = await getOnlineTrackerByName(char.characterName);
 
-  for (const char of characters) {
-    const tracker = await getOnlineTrackerByName(char.characterName);
+      if (tracker?.isOnline) {
+        const info = await tibiaAPI.getCharacterInformation(char.characterName);
 
-    if (tracker?.isOnline) {
-      const info = await tibiaAPI.getCharacterInformation(char.characterName);
+        if (info?.info) {
+          const group = getVocationGroup(info.info.vocation);
+          if (!group) continue;
 
-      if (info?.info) {
-        const group = getGroup(info.info.vocation);
+          const diffMinutes = tracker.firstSeenOnline
+            ? moment().diff(moment(tracker.firstSeenOnline), 'minutes')
+            : 0;
 
-        if (!group) continue;
+          const hours = Math.floor(diffMinutes / 60);
+          const minutes = diffMinutes % 60;
 
-        const onlineMinutes = tracker.firstSeenOnline
-          ? moment().diff(moment(tracker.firstSeenOnline), 'minutes')
-          : 0;
+          const formattedTime =
+            hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
-        grouped[group].push({
-          name: char.characterName,
-          level: info.info.level,
-          onlineTime: `${onlineMinutes}m`
-        });
+          grouped[group].push({
+            name: char.characterName,
+            level: info.info.level,
+            onlineTime: formattedTime
+          });
+        }
       }
     }
-  }
 
-  res.json(grouped);
+    res.json(grouped);
+  } catch (error) {
+    console.error(error);
+    res.json({});
+  }
 });
 
-// ÚLTIMAS MORTES (formato real)
 router.get('/deaths', async (req, res) => {
-  const deaths = await getDeathsCache();
+  try {
+    const deaths = await getDeathsCache();
 
-  const formatted = deaths.slice(-10).reverse().map(d => ({
-    characterName: d.characterName,
-    level: d.level,
-    killer: d.mainKiller,
-    type: d.type
-  }));
+    const formatted = deaths.slice(-10).reverse().map(d => ({
+      characterName: d.characterName,
+      level: d.level || '???',
+      killer: d.mainKiller || 'Unknown'
+    }));
 
-  res.json({ deaths: formatted });
+    res.json({ deaths: formatted });
+  } catch (error) {
+    console.error(error);
+    res.json({ deaths: [] });
+  }
+});
+
+router.get('/daily', async (req, res) => {
+  try {
+    const channel = await Characters.db.collection('channels').findOne({ type: 'dailyInfo' });
+    res.json(channel || {});
+  } catch (error) {
+    console.error(error);
+    res.json({});
+  }
 });
 
 export default router;
