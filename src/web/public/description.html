@@ -1,72 +1,39 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Gerar Descrição - NiideHelper</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #eee;
-      text-align: center;
-      padding-top: 50px;
+import express from 'express';
+import { requireAuth } from '../middleware/auth.js';
+import TibiaAPI from '../../api/tibia/index.js';
+
+const router = express.Router();
+
+const tibiaAPI = new TibiaAPI({ worldName: process.env.WORLD_NAME });
+
+router.post('/generate', requireAuth, async (req, res) => {
+  try {
+    const { characterName } = req.body;
+
+    if (!characterName) {
+      return res.status(400).json({ error: 'Character required' });
     }
-    input {
-      padding: 10px;
-      margin: 10px;
-      width: 300px;
+
+    const info = await tibiaAPI.getCharacterInformation(characterName);
+
+    if (!info?.info) {
+      return res.status(404).json({ error: 'Character not found' });
     }
-    textarea {
-      width: 600px;
-      height: 200px;
-      margin-top: 20px;
+
+    // ✅ Confirma mundo correto
+    if (info.info.world !== process.env.WORLD_NAME) {
+      return res.status(400).json({ error: 'Character not in correct world' });
     }
-    button {
-      padding: 10px 20px;
-      background: #00AAFF;
-      border: none;
-      color: white;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
 
-<h1>📜 Gerador de Descrição</h1>
+    // ✅ Gera descrição simples
+    const description = `Main: ${info.info.name}`;
 
-<input id="charName" placeholder="Nome do personagem"><br>
-<button onclick="generate()">Gerar</button>
+    res.json({ description });
 
-<br>
-<textarea id="result"></textarea><br>
-<button onclick="copy()">Copiar</button>
-
-<script>
-async function generate() {
-  const characterName = document.getElementById('charName').value;
-
-  const res = await fetch('/api/description/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ characterName })
-  });
-
-  const data = await res.json();
-
-  if (data.description) {
-    document.getElementById('result').value = data.description;
-  } else {
-    document.getElementById('result').value = "Erro ao gerar descrição.";
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal error' });
   }
-}
+});
 
-function copy() {
-  const textarea = document.getElementById('result');
-  textarea.select();
-  document.execCommand("copy");
-  alert("Copiado!");
-}
-</script>
-
-</body>
-</html>
+export default router;
