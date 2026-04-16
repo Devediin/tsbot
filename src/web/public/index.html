@@ -9,46 +9,73 @@ body {
   background:#2b1b10;
   font-family:Tahoma;
   color:white;
-  text-align:center;
-  padding-top:100px;
+  margin:0;
 }
 
-h1 {
-  color:#ffd700;
-  text-shadow:2px 2px #000;
-}
-
-.menu {
-  margin-top:50px;
-}
-
-a {
-  display:block;
-  margin:20px auto;
-  width:300px;
+.navbar {
+  background:#3e2a17;
   padding:15px;
+  text-align:center;
+  border-bottom:2px solid #8b5a2b;
+}
+
+.navbar a {
+  color:#ffd700;
+  text-decoration:none;
+  margin:0 20px;
+  font-weight:bold;
+}
+
+.container {
+  padding:40px;
+}
+
+.card {
   background:#3e2a17;
   border:2px solid #8b5a2b;
   border-radius:10px;
-  color:#ffd700;
-  text-decoration:none;
-  font-size:18px;
+  padding:20px;
+  margin-bottom:30px;
 }
 
-a:hover {
-  background:#5a3a1f;
+h1 {
+  text-align:center;
+  color:#ffd700;
 }
 </style>
 </head>
 <body>
 
+<div class="navbar">
+  <a href="/">🏠 Home</a>
+  <a href="/description.html">📜 Gerador</a>
+  <a href="/dashboard.html">📊 Dashboard</a>
+  <a href="/login.html">🔐 Admin</a>
+</div>
+
+<div class="container">
+
 <h1>⚔️ NiideHelper ⚔️</h1>
 
-<div class="menu">
-  <a href="/">📜 Gerador de Descrição</a>
-  <a href="/dashboard.html">📊 Dashboard Público</a>
-  <a href="/login.html">🔐 Painel Administrativo</a>
+<div class="card">
+  <h2>📅 Daily Info</h2>
+  <div id="daily"></div>
 </div>
+
+</div>
+
+<script>
+async function loadDaily() {
+  const res = await fetch('/api/public/daily');
+  const data = await res.json();
+
+  if (data.description) {
+    document.getElementById('daily').innerHTML = data.description;
+  }
+}
+
+loadDaily();
+</script>
 
 </body>
 </html>
