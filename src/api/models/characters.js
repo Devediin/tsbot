@@ -12,6 +12,10 @@ const characterSchema = new mongoose.Schema({
   characterName: {
     type: String,
   },
+  guildName: {
+    type: String,
+    default: null,
+  },
 });
 
 const Characters = mongoose.model('Characters', characterSchema, 'characters');
@@ -38,7 +42,11 @@ export const addCharactersByGuildName = async (guildName, type) => (
     try {
       const members = await tibiaAPI.getGuildInformation(guildName);
 
-      const characters = members.map(({ name }) => ({ characterName: name, type }));
+      const characters = members.map(({ name }) => ({
+        characterName: name,
+        type,
+        guildName,
+      }));
 
       const results = await Promise.all(characters.map(insertCharacter));
 
@@ -55,6 +63,50 @@ export const addCharactersByGuildName = async (guildName, type) => (
     }
   })
 );
+
+export const syncCharactersByGuildName = async (guildName, type) => {
+  try {
+    const members = await tibiaAPI.getGuildInformation(guildName);
+    const currentMemberNames = new Set(members.map(({ name }) => name));
+
+    const dbCharacters = await Characters.find({ type, guildName });
+    const dbNames = new Set(dbCharacters.map(({ characterName }) => characterName));
+
+    let removed = 0;
+    for (const doc of dbCharacters) {
+      if (!currentMemberNames.has(doc.characterName)) {
+        await Characters.findOneAndDelete({
+          characterName: doc.characterName,
+          type,
+          guildName,
+        });
+        removed++;
+      }
+    }
+
+    let added = 0;
+    for (const member of members) {
+      if (!dbNames.has(member.name)) {
+        const newChar = new Characters({
+          characterName: member.name,
+          type,
+          guildName,
+        });
+        await newChar.save();
+        added++;
+      }
+    }
+
+    return {
+      added,
+      removed,
+      total: members.length,
+      currentInDb: members.length - removed + added,
+    };
+  } catch (error) {
+    throw error;
+  }
+};
 
 export const insertCharacter = async (character) => (
   new Promise(async (resolve, reject) => {
