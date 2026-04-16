@@ -2,28 +2,71 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>NiideHelper Panel</title>
+  <title>NiideHelper</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #111;
       color: #eee;
       text-align: center;
-      padding-top: 100px;
+      padding-top: 80px;
     }
-    a {
-      color: #00AAFF;
-      font-size: 20px;
-      text-decoration: none;
-      display: block;
-      margin: 20px;
+    input {
+      padding: 10px;
+      margin: 10px;
+      width: 300px;
+    }
+    textarea {
+      width: 600px;
+      height: 150px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #00AAFF;
+      border: none;
+      color: white;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>NiideHelper Web Panel</h1>
 
-  <a href="/login.html">🔐 Login</a>
-  <a href="/dashboard.html">📊 Public Dashboard</a>
+<h1>📜 Gerador de Descrição</h1>
+
+<input id="charName" placeholder="Nome do personagem"><br>
+<button onclick="generate()">Gerar</button>
+
+<br>
+<textarea id="result"></textarea><br>
+<button onclick="copy()">Copiar</button>
+
+<script>
+async function generate() {
+  const characterName = document.getElementById('charName').value;
+
+  const res = await fetch('/api/description/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ characterName })
+  });
+
+  const data = await res.json();
+
+  if (data.description) {
+    document.getElementById('result').value = data.description;
+  } else {
+    document.getElementById('result').value = data.error || "Erro";
+  }
+}
+
+function copy() {
+  const textarea = document.getElementById('result');
+  textarea.select();
+  document.execCommand("copy");
+  alert("Copiado!");
+}
+</script>
+
 </body>
 </html>
