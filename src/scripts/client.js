@@ -2,18 +2,14 @@ export const sendJoinMessage = async (event, teamspeak) => {
   try {
     const client = await teamspeak.getClientById(event.clid);
 
-    if (!client || !client.propcache) return;
+    if (!client) return;
 
-    const groupsRaw = client.propcache.client_servergroups || '';
-    const serverGroups = groupsRaw.split(',');
+    const link = `http://${process.env.WEB_PUBLIC_URL}:3000`;
 
-    const SEM_DESCRICAO_ID = process.env.TS3_SEM_DESCRICAO_ID;
+    await client.message(
+      `👋 Bem-vindo ao servidor!\n\n📜 Gere sua descrição usando:\n!desc\n\nou acesse:\n[url]${link}[/url]`
+    );
 
-    if (SEM_DESCRICAO_ID && serverGroups.includes(SEM_DESCRICAO_ID)) {
-      await client.message(
-        `📜 Você ainda não possui descrição.\n\nUse:\n!desc\n\nou acesse:\n[url]http://${process.env.WEB_PUBLIC_URL}:3000[/url]`
-      );
-    }
   } catch (error) {
     console.error(error);
   }
