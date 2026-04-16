@@ -5,17 +5,8 @@
 <title>NiideHelper Dashboard</title>
 
 <style>
-body {
-  background:#2b1b10;
-  font-family:Tahoma;
-  color:white;
-  padding:40px;
-}
-
-h1 {
-  color:#ffd700;
-  text-align:center;
-}
+body { background:#2b1b10; font-family:Tahoma; color:white; padding:40px; }
+h1 { text-align:center; color:#ffd700; }
 
 .card {
   background:#3e2a17;
@@ -25,19 +16,18 @@ h1 {
   margin-bottom:30px;
 }
 
+h2 { color:#ffd700; }
+
 table {
   width:100%;
   border-collapse:collapse;
+  margin-bottom:15px;
 }
 
 th, td {
   border-bottom:1px solid #8b5a2b;
   padding:5px;
-  text-align:left;
 }
-
-.friend { color:#00ff00; }
-.enemy { color:#ff4444; }
 
 .counter {
   text-align:right;
@@ -51,18 +41,13 @@ th, td {
 <h1>⚔️ NiideHelper Dashboard ⚔️</h1>
 
 <div class="card">
+  <h2>📅 Daily Info</h2>
+  <div id="daily"></div>
+</div>
+
+<div class="card">
   <h2>🟢 Online Members</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Nome</th>
-        <th>Level</th>
-        <th>Vocação</th>
-        <th>Tipo</th>
-      </tr>
-    </thead>
-    <tbody id="onlineTable"></tbody>
-  </table>
+  <div id="online"></div>
 </div>
 
 <div class="card">
@@ -73,7 +58,6 @@ th, td {
         <th>Personagem</th>
         <th>Level</th>
         <th>Killer</th>
-        <th>Tipo</th>
       </tr>
     </thead>
     <tbody id="deathsTable"></tbody>
@@ -93,23 +77,37 @@ function tibiaLink(name) {
   return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
 }
 
+async function loadDaily() {
+  const res = await fetch('/api/public/daily');
+  const data = await res.json();
+  if (data.description) {
+    document.getElementById('daily').innerHTML = data.description;
+  }
+}
+
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
 
-  const tbody = document.getElementById('onlineTable');
-  tbody.innerHTML = '';
+  let html = '';
 
-  data.online.forEach(p => {
-    tbody.innerHTML += `
-      <tr class="${p.type}">
-        <td><a href="${tibiaLink(p.name)}" target="_blank">${p.name}</a></td>
-        <td>${p.level}</td>
-        <td>${p.vocation}</td>
-        <td>${p.type}</td>
-      </tr>
-    `;
-  });
+  for (const vocation in data) {
+    if (data[vocation].length > 0) {
+      html += `<h3>${vocation}</h3><table><tr><th>Nome</th><th>Level</th><th>Tempo Online</th></tr>`;
+      data[vocation].forEach(p => {
+        html += `
+          <tr>
+            <td><a href="${tibiaLink(p.name)}" target="_blank">${p.name}</a></td>
+            <td>${p.level}</td>
+            <td>${p.onlineTime}</td>
+          </tr>
+        `;
+      });
+      html += `</table>`;
+    }
+  }
+
+  document.getElementById('online').innerHTML = html;
 }
 
 async function loadDeaths() {
@@ -125,7 +123,6 @@ async function loadDeaths() {
         <td><a href="${tibiaLink(d.characterName)}" target="_blank">${d.characterName}</a></td>
         <td>${d.level}</td>
         <td>${d.killer}</td>
-        <td>${d.type}</td>
       </tr>
     `;
   });
@@ -136,11 +133,13 @@ function updateTimer() {
   document.getElementById('timer').innerText = timer;
   if (timer <= 0) {
     timer = refreshInterval;
+    loadDaily();
     loadOnline();
     loadDeaths();
   }
 }
 
+loadDaily();
 loadOnline();
 loadDeaths();
 setInterval(updateTimer, 1000);
