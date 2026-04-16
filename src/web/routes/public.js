@@ -1,34 +1,42 @@
 import express from 'express';
-import Channels from '../../api/models/channels.js';
 import Characters from '../../api/models/characters.js';
 import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
-import { getLevelTrackerByName } from '../../api/models/level-tracker.js';
+import TibiaAPI from '../../api/tibia/index.js';
 
 const router = express.Router();
+const tibiaAPI = new TibiaAPI({ worldName: process.env.WORLD_NAME });
 
-// Daily Info
-router.get('/daily', async (req, res) => {
-  const channel = await Channels.findOne({ type: 'dailyInfo' });
-  res.json(channel || {});
-});
-
-// Online Members
+// ONLINE FRIENDS / ENEMIES
 router.get('/online', async (req, res) => {
-  const characters = await Characters.find({ type: 'friend' });
-  const online = [];
+  const characters = await Characters.find({
+    type: { $in: ['friend', 'enemy'] }
+  });
+
+  const onlineList = [];
 
   for (const char of characters) {
     const tracker = await getOnlineTrackerByName(char.characterName);
+
     if (tracker?.isOnline) {
-      online.push(char.characterName);
+      const info = await tibiaAPI.getCharacterInformation(char.characterName);
+
+      if (info?.info) {
+        onlineList.push({
+          name: char.characterName,
+          type: char.type,
+          level: info.info.level,
+          vocation: info.info.vocation,
+          onlineTime: tracker.firstSeenOnline
+        });
+      }
     }
   }
 
-  res.json({ online });
+  res.json({ online: onlineList });
 });
 
-// Últimos deaths
+// ÚLTIMAS MORTES
 router.get('/deaths', async (req, res) => {
   const deaths = await getDeathsCache();
   res.json({ deaths: deaths.slice(-10).reverse() });
