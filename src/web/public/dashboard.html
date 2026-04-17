@@ -35,17 +35,48 @@ body {
   font-weight: bold;
 }
 
+.navbar a:hover {
+  color: #fff;
+}
+
 h1 {
   text-align: center;
   color: gold;
   margin: 40px 0;
-  font-size: 30px;
 }
 
 .container {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: auto;
   padding: 0 20px 60px;
+}
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.stat-box {
+  background: rgba(62,42,23,0.95);
+  border: 1px solid gold;
+  padding: 15px 25px;
+  border-radius: 8px;
+  text-align: center;
+  min-width: 120px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.7);
+}
+
+.stat-box h3 {
+  margin: 0;
+  color: gold;
+}
+
+.stat-box span {
+  font-size: 22px;
+  font-weight: bold;
 }
 
 .card {
@@ -55,6 +86,7 @@ h1 {
   padding: 30px;
   margin-bottom: 40px;
   box-shadow: 0 0 25px rgba(0,0,0,0.7);
+  animation: fadeIn 0.4s ease-in-out;
 }
 
 .card h2 {
@@ -63,24 +95,72 @@ h1 {
   padding-bottom: 8px;
 }
 
-h3 {
+.vocation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 25px;
   margin-top: 20px;
+}
+
+.vocation-card {
+  background: rgba(0,0,0,0.3);
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,215,0,0.3);
+}
+
+.vocation-card h3 {
+  margin-top: 0;
   color: gold;
 }
 
 ul {
   list-style: none;
   padding-left: 0;
+  margin: 0;
 }
 
 li {
-  padding: 8px 0;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 14px;
+}
+
+a {
+  color: gold;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+a:visited {
+  color: gold;
+}
+
+a:hover {
+  color: #fff;
+  text-shadow: 0 0 5px gold;
 }
 
 .counter {
   text-align: center;
   opacity: 0.6;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .stats {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .vocation-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 </head>
@@ -99,9 +179,11 @@ li {
 
 <div class="container">
 
+  <div class="stats" id="stats"></div>
+
   <div class="card">
     <h2>🟢 Online Members</h2>
-    <div id="online"></div>
+    <div class="vocation-grid" id="online"></div>
   </div>
 
   <div class="card">
@@ -116,6 +198,7 @@ li {
 </div>
 
 <script>
+
 let refreshInterval = 15;
 let timer = refreshInterval;
 
@@ -126,26 +209,57 @@ function tibiaLink(name) {
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
-  const container = document.getElementById('online');
-  container.innerHTML = '';
+
+  const grid = document.getElementById('online');
+  const stats = document.getElementById('stats');
+
+  grid.innerHTML = '';
+  stats.innerHTML = '';
+
+  let totalOnline = 0;
 
   for (const vocation in data) {
     if (data[vocation] && data[vocation].length > 0) {
-      let html = `<h3>${vocation}</h3><ul>`;
+
+      const count = data[vocation].length;
+      totalOnline += count;
+
+      let html = `
+        <div class="vocation-card">
+          <h3>${vocation} (${count})</h3>
+          <ul>
+      `;
+
       data[vocation].forEach(p => {
         html += `
           <li>
             <a href="${tibiaLink(p.name)}" target="_blank">
               ${p.name}
             </a>
-            — Level ${p.level}
+            — Lv ${p.level}
             — ${p.onlineTime}
-          </li>`;
+          </li>
+        `;
       });
-      html += `</ul>`;
-      container.innerHTML += html;
+
+      html += `</ul></div>`;
+      grid.innerHTML += html;
+
+      stats.innerHTML += `
+        <div class="stat-box">
+          <h3>${vocation}</h3>
+          <span>${count}</span>
+        </div>
+      `;
     }
   }
+
+  stats.innerHTML = `
+    <div class="stat-box">
+      <h3>Total Online</h3>
+      <span>${totalOnline}</span>
+    </div>
+  ` + stats.innerHTML;
 }
 
 async function loadDeaths() {
@@ -162,7 +276,8 @@ async function loadDeaths() {
         </a>
         morreu no level ${d.level}
         para <b>${d.killers}</b>
-      </li>`;
+      </li>
+    `;
   });
 }
 
@@ -180,6 +295,7 @@ function updateTimer() {
 loadOnline();
 loadDeaths();
 setInterval(updateTimer, 1000);
+
 </script>
 
 </body>
