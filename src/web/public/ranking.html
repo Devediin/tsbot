@@ -10,7 +10,7 @@
 
 <div class="overlay"></div>
 <div id="navbar"></div>
-<p id="playerOfMonth">⏳ Carregando...</p>
+
 <div class="container">
 
 <h1>🏆 Ranking do Time</h1>
@@ -22,21 +22,21 @@
   <div class="card">
     <h3>📈 Quem Mais Upou</h3>
     <ul id="levelUpList">
-      <li class="loading">⏳ Carregando...</li>
+      <li class="loading">⏳ Carregando ranking...</li>
     </ul>
   </div>
 
   <div class="card">
     <h3>💀 Mais Mortes</h3>
     <ul id="deathList">
-      <li class="loading">⏳ Carregando...</li>
+      <li class="loading">⏳ Carregando ranking...</li>
     </ul>
   </div>
 
   <div class="card">
     <h3>⏳ Mais Tempo Online</h3>
     <ul id="onlineList">
-      <li class="loading">⏳ Carregando...</li>
+      <li class="loading">⏳ Carregando ranking...</li>
     </ul>
   </div>
 
@@ -47,50 +47,65 @@
 <script src="/assets/navbar.js"></script>
 
 <script>
-async function loadAdvanced() {
-
-  const levelList = document.getElementById('levelUpList');
-  const deathList = document.getElementById('deathList');
-  const onlineList = document.getElementById('onlineList');
-
+async function loadRanking() {
   try {
     const res = await fetch('/api/public/ranking-advanced');
     const data = await res.json();
+
+    const levelList = document.getElementById('levelUpList');
+    const deathList = document.getElementById('deathList');
+    const onlineList = document.getElementById('onlineList');
 
     levelList.innerHTML = '';
     deathList.innerHTML = '';
     onlineList.innerHTML = '';
 
-    data.levelUpRanking.slice(0,5).forEach((p, index) => {
-      levelList.innerHTML += `
-        <li class="${index === 0 ? 'top-1' : ''}">
-          🏆 ${p.name} — +${p.levelGain} levels
-        </li>`;
-    });
+    if (data.levelUpRanking && data.levelUpRanking.length > 0) {
+      data.levelUpRanking.slice(0,5).forEach((p, index) => {
+        levelList.innerHTML += `
+          <li class="${index === 0 ? 'top-1' : ''}">
+            🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
+              ${p.name}
+            </a> — +${p.levelGain} levels
+          </li>`;
+      });
+    } else {
+      levelList.innerHTML = '<li>Sem dados suficientes.</li>';
+    }
 
-    data.deathRanking.slice(0,5).forEach((p, index) => {
-      deathList.innerHTML += `
-        <li class="${index === 0 ? 'top-1' : ''}">
-          💀 ${p.name} — ${p.deaths} mortes
-        </li>`;
-    });
+    if (data.deathRanking && data.deathRanking.length > 0) {
+      data.deathRanking.slice(0,5).forEach((p, index) => {
+        deathList.innerHTML += `
+          <li class="${index === 0 ? 'top-1' : ''}">
+            💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
+              ${p.name}
+            </a> — ${p.deaths} mortes
+          </li>`;
+      });
+    } else {
+      deathList.innerHTML = '<li>Sem mortes no período.</li>';
+    }
 
-    data.onlineRanking.slice(0,5).forEach((p, index) => {
-      const hours = Math.floor(p.minutes / 60);
-      onlineList.innerHTML += `
-        <li class="${index === 0 ? 'top-1' : ''}">
-          ⏳ ${p.name} — ${hours}h online
-        </li>`;
-    });
+    if (data.onlineRanking && data.onlineRanking.length > 0) {
+      data.onlineRanking.slice(0,5).forEach((p, index) => {
+        const hours = Math.floor(p.minutes / 60);
+        onlineList.innerHTML += `
+          <li class="${index === 0 ? 'top-1' : ''}">
+            ⏳ <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
+              ${p.name}
+            </a> — ${hours}h online
+          </li>`;
+      });
+    } else {
+      onlineList.innerHTML = '<li>Sem dados de online.</li>';
+    }
 
   } catch (e) {
-    levelList.innerHTML = '<li>Erro ao carregar.</li>';
-    deathList.innerHTML = '<li>Erro ao carregar.</li>';
-    onlineList.innerHTML = '<li>Erro ao carregar.</li>';
+    console.log('Erro ao carregar ranking');
   }
 }
 
-loadAdvanced();
+loadRanking();
 </script>
 
 </body>
