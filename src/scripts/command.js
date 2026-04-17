@@ -3,6 +3,7 @@ import ServerGroups from '../api/models/server-groups';
 import { formatHelpMessage } from '../utils/help';
 import { isUserServerAdmin } from './server-groups';
 import { BOT_NAME, COMMANDS_MAP } from '../utils/constants';
+import { parseLootSession } from '../utils/lootSplit';
 
 const executeCommand = async (command, teamspeak, msgAsList, cid) => (
   new Promise(async (resolve, reject) => {
@@ -40,14 +41,55 @@ export const proceesCommand = async (event = {}, teamspeak) => {
 
     const dbUserGroups = await ServerGroups.find({ sgid: { $in: parsedServerGroups } });
 
+    /* ===== HELP ===== */
     if (command === '!help') {
       invoker.message(formatHelpMessage(dbUserGroups));
       return;
     }
+
+    /* ===== DESC (PUBLICO) ===== */
     if (command === '!desc') {
-  const link = `http://${process.env.WEB_PUBLIC_URL}:3000`;
-  return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
-}
+      const link = `http://${process.env.WEB_PUBLIC_URL}:3000`;
+      return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
+    }
+
+    /* ===== LOOT (PUBLICO) ===== */
+    if (command === '!loot') {
+
+      msgAsList.shift();
+      const text = msgAsList.join(' ').trim();
+
+      if (!text || text.length < 20) {
+        return invoker.message('❌ Log inválido ou incompleto.');
+      }
+
+      try {
+        const result = parseLootSession(text);
+
+        let response = '';
+
+        result.transfers.forEach(t => {
+          const roundedK = Math.round(t.amount / 1000);
+          const bankValue = t.amount - 1;
+
+          response += `${t.from} deve pagar ${roundedK}k para ${t.to} (transfer ${bankValue} to ${t.to})\n`;
+        });
+
+        const totalKK = (result.totalProfit / 1000000).toFixed(2);
+        const perPlayerK = Math.round(result.perPlayer / 1000);
+        const perHourK = Math.round(result.profitPerHour / 1000);
+
+        response += `\n💰 Lucro total: ${totalKK}kk (~${perPlayerK}k cada)\n`;
+        response += `⏱️ ${result.duration} (~${perHourK}k/h por jogador)`;
+
+        return invoker.message(response);
+
+      } catch (err) {
+        return invoker.message('❌ Erro ao processar loot.');
+      }
+    }
+
+    /* ===== RESTO DOS COMANDOS (COM PERMISSAO) ===== */
 
     const { ok, message } = await canDo(command, dbUserGroups);
     const isServerAdmin = await isUserServerAdmin(teamspeak, parsedServerGroups);
@@ -66,6 +108,7 @@ export const proceesCommand = async (event = {}, teamspeak) => {
     }
 
     return true;
+
   } catch (error) {
     invoker.message(String(error));
   }
