@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+<title>Ranking do Time</title>
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+
+<div class="overlay"></div>
+<div id="navbar"></div>
+
+<div class="container">
+
+<h1>🏆 Ranking do Time</h1>
+
+<div class="card">
+  <h2>👑 Maior Level</h2>
+  <p id="topLevel"></p>
+</div>
+
+<div class="card">
+  <h2>🔥 Mais Tempo Online Hoje</h2>
+  <p id="topOnline"></p>
+</div>
+
+<div class="card">
+  <h2>📊 Média de Level do Time</h2>
+  <p id="avgLevel"></p>
+</div>
+
+</div>
+
+<script src="/assets/navbar.js"></script>
+<script>
+
+async function loadRanking() {
+  const res = await fetch('/api/public/ranking');
+  const data = await res.json();
+
+  if (!data.topLevel) return;
+
+  document.getElementById('topLevel').innerText =
+    `${data.topLevel.name} — Level ${data.topLevel.level}`;
+
+  document.getElementById('topOnline').innerText =
+    `${data.topOnlineToday.name}`;
+
+  document.getElementById('avgLevel').innerText =
+    data.averageLevel;
+}
+
+loadRanking();
+
+</script>
+
+</body>
+</html>
