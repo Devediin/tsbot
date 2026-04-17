@@ -41,6 +41,9 @@ app.get('/tools', (req, res) => {
 app.get('/description', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/web/public/description.html'));
 });
+app.get('/ranking', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/web/public/ranking.html'));
+});
 // Pasta pública
 app.use(express.static(path.join(process.cwd(), 'src/web/public')));
 
