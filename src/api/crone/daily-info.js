@@ -78,7 +78,7 @@ const getDreamCourtsBoss = () => {
 
 const TIBIADROME_BASE_NUMBER = 125;
 const TIBIADROME_BASE_DATE = momentTimezone.tz(
-  '2026-04-16T05:00:00',
+  '2026-04-15T05:00:00',
   'America/Sao_Paulo'
 );
 
