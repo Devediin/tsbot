@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Loot Split</title>
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+
+<div class="overlay"></div>
+
+<div class="navbar">
+  <a href="/">🏠 Home</a>
+  <a href="/description.html">📜 Gerador</a>
+  <a href="/dashboard.html">📊 Dashboard</a>
+  <a href="/tools.html">🧮 Tools</a>
+  <span class="theme-toggle" onclick="toggleTheme()">🌓</span>
+</div>
+
+<h1>🧮 Tibia Loot Split</h1>
+
+<div class="container">
+
+  <div class="card">
+    <textarea id="lootText" placeholder="Cole aqui o log completo da hunt..."></textarea>
+    <button onclick="calculate()">Calcular</button>
+  </div>
+
+  <div class="card">
+    <pre id="result"></pre>
+  </div>
+
+</div>
+
+<script src="/assets/theme.js"></script>
+
+<script>
+async function calculate() {
+  const text = document.getElementById('lootText').value;
+
+  const res = await fetch('/api/public/loot', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  });
+
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  let output = '';
+
+  data.transfers.forEach(t => {
+    output += `${t.from} to pay ${Math.round(t.amount/1000)}k to ${t.to} (Bank: transfer ${t.amount} to ${t.to})\n\n`;
+  });
+
+  output += `Total profit: ${(data.totalProfit/1000000).toFixed(2)}kk which is: ${Math.round(data.perPlayer/1000)}k for each player.\n\n`;
+  output += `Session duration: ${data.duration}, which is: ${Math.round(data.profitPerHour/1000)}k per hour per player.`;
+
+  document.getElementById('result').innerText = output;
+}
+</script>
+
+</body>
+</html>
