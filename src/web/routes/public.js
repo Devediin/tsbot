@@ -185,45 +185,40 @@ router.get('/ranking', async (req, res) => {
 router.get('/ranking-advanced', async (req, res) => {
   try {
 
-    const oneMonthAgo = moment().subtract(30, 'days').toDate();
+    const startOfMonth = moment().startOf('month').toDate();
 
-    const characters = await Characters.find({ type: 'friend' });
-
-    // ===== LEVEL UP NO MÊS =====
     const histories = await PlayerHistory.find({
-      date: { $gte: oneMonthAgo }
-    });
+      date: { $gte: startOfMonth }
+    }).sort({ date: 1 });
 
     const groupedLevels = {};
 
     histories.forEach(entry => {
       if (!groupedLevels[entry.name]) {
-        groupedLevels[entry.name] = [];
+        groupedLevels[entry.name] = {
+          first: entry.level,
+          last: entry.level
+        };
+      } else {
+        groupedLevels[entry.name].last = entry.level;
       }
-      groupedLevels[entry.name].push(entry);
     });
 
-    const levelUpRanking = [];
+    const levelUpRanking = Object.keys(groupedLevels)
+      .map(name => ({
+        name,
+        levelGain: groupedLevels[name].last - groupedLevels[name].first
+      }))
+      .sort((a,b) => b.levelGain - a.levelGain);
 
-    Object.keys(groupedLevels).forEach(name => {
-      const records = groupedLevels[name].sort((a,b) => a.date - b.date);
-      const diff = records[records.length - 1].level - records[0].level;
-
-      levelUpRanking.push({ name, levelGain: diff });
-    });
-
-    levelUpRanking.sort((a,b) => b.levelGain - a.levelGain);
-
-    // ===== MAIS MORTES NO MÊS =====
     const deaths = await getDeathsCache();
-
-    const deathsLastMonth = deaths.filter(d =>
-      new Date(d.time) >= oneMonthAgo
+    const deathsThisMonth = deaths.filter(d =>
+      new Date(d.time) >= startOfMonth
     );
 
     const deathCount = {};
 
-    deathsLastMonth.forEach(d => {
+    deathsThisMonth.forEach(d => {
       deathCount[d.characterName] =
         (deathCount[d.characterName] || 0) + 1;
     });
@@ -235,11 +230,11 @@ router.get('/ranking-advanced', async (req, res) => {
       }))
       .sort((a,b) => b.deaths - a.deaths);
 
-    // ===== MAIS TEMPO ONLINE =====
+    const characters = await Characters.find({ type: 'friend' });
+
     const onlineRanking = [];
 
     for (const char of characters) {
-
       const tracker = await getOnlineTrackerByName(char.characterName);
 
       if (tracker?.firstSeenOnline) {
