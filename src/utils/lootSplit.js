@@ -14,7 +14,7 @@ function parseDurationToHours(duration) {
 
 function parseLootSession(text) {
 
-  // ✅ pega a linha principal da sessão (a primeira linha)
+  // Pega linha principal da sessão
   const headerMatch = text.match(/Session data:[^\n]+/);
   if (!headerMatch) {
     throw new Error('Formato inválido.');
@@ -33,15 +33,19 @@ function parseLootSession(text) {
   const duration = durationMatch ? durationMatch[1] : '00:00h';
   const durationHours = parseDurationToHours(duration);
 
-  // ✅ regex corrigida para pegar jogadores corretamente
+  // Regex correta para pegar apenas jogadores
   const playerRegex = /([A-Za-zÀ-ÿ' ]+?)(?:\s*\(Leader\))?\s+Loot:\s*([\d,]+)\s+Supplies:\s*([\d,]+)\s+Balance:\s*(-?[\d,]+)/g;
 
   const players = [];
   let match;
 
   while ((match = playerRegex.exec(text)) !== null) {
+
+    let name = match[1].trim();
+    name = name.replace(/\(Leader\)/gi, '').trim();
+
     players.push({
-      name: match[1].trim(),
+      name,
       loot: parseNumber(match[2]),
       supplies: parseNumber(match[3]),
       balance: parseNumber(match[4])
@@ -69,6 +73,10 @@ function parseLootSession(text) {
       receivers.push({ ...p, amount: Math.abs(diff) });
     }
   });
+
+  // Sempre leader paga (igual TibiaPal)
+  // Encontrar quem tem maior balance positivo
+  payers.sort((a, b) => b.balance - a.balance);
 
   payers.forEach(payer => {
     receivers.forEach(receiver => {
