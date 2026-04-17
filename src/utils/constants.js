@@ -656,16 +656,16 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!dailyinfo <texto do world board>',
   },
-if (command === '!loot') {
+'!loot': {
+  groups: [],
+  exec: async (teamspeak, msgAsList) => {
+    msgAsList.shift();
+    const text = msgAsList.join(' ').trim();
 
-  msgAsList.shift();
-  const text = msgAsList.join(' ').trim();
+    if (!text || text.length < 20) {
+      return { ok: false, message: 'Log invalido.' };
+    }
 
-  if (!text || text.length < 20) {
-    return teamspeak.sendTextMessage(2, cid, 'Log invalido ou incompleto.');
-  }
-
-  try {
     const result = parseLootSession(text);
 
     let response = '';
@@ -689,10 +689,7 @@ if (command === '!loot') {
     response += `Cada jogador: ${perPlayerK}k\n`;
     response += `Por hora: ${perHourK}k\n`;
 
-    return teamspeak.sendTextMessage(2, Number(cid), response);
-
-  } catch (err) {
-    return teamspeak.sendTextMessage(2, Number(cid), 'Erro ao processar loot.');
+    return { ok: true, message: response };
   }
 },
   '!removeModerator': {
