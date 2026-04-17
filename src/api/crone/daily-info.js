@@ -9,15 +9,19 @@ const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 global.dailyInfoCacheTS = '';
 global.dailyInfoCachePortal = {};
 global.lastServerSaveTime = null;
+global.lastServerSaveDate = null;
 
 /* ===========================
-   RASHID (usando horario Brasil)
+   RASHID (baseado no dia do Server Save)
 =========================== */
 
 const getRashidLocation = () => {
-  // Força horario de Sao Paulo
-  const now = momentTimezone.tz('America/Sao_Paulo');
-  const day = now.format('dddd');
+  // Usa a data do ultimo Server Save em BRT
+  const saveDate = global.lastServerSaveDate
+    ? momentTimezone(global.lastServerSaveDate).tz('America/Sao_Paulo')
+    : momentTimezone().tz('America/Sao_Paulo');
+
+  const day = saveDate.format('dddd');
 
   const map = {
     Monday: 'Svargrond',
@@ -33,7 +37,7 @@ const getRashidLocation = () => {
 };
 
 /* ===========================
-   DREAM COURTS
+   DREAM COURTS (baseado no dia atual BRT)
 =========================== */
 
 const dreamCourtsRotation = [
@@ -47,7 +51,8 @@ const dreamCourtsRotation = [
 const DREAM_COURTS_BASE_DATE = moment('2026-04-12');
 
 const getDreamCourtsBoss = () => {
-  const diffDays = moment().diff(DREAM_COURTS_BASE_DATE, 'days');
+  const nowBRT = momentTimezone().tz('America/Sao_Paulo');
+  const diffDays = nowBRT.diff(DREAM_COURTS_BASE_DATE, 'days');
   const index = ((diffDays % 5) + 5) % 5;
   return dreamCourtsRotation[index];
 };
@@ -60,7 +65,7 @@ const TIBIADROME_BASE_NUMBER = 125;
 const TIBIADROME_BASE_DATE = moment('2026-04-15T05:00:00');
 
 const getTibiadromeInfo = () => {
-  const now = moment();
+  const now = momentTimezone().tz('America/Sao_Paulo');
   const diffDays = now.diff(TIBIADROME_BASE_DATE, 'days');
   const rotationOffset = Math.floor(diffDays / 15);
 
@@ -84,11 +89,8 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const worldOverview = await tibiaAPI.getWorldOverview();
     const serverName = worldOverview?.name || WORLD_NAME;
 
-    /* Horario do Server Save em BRT */
-    const now = momentTimezone.tz('America/Sao_Paulo');
-    const serverSaveTime = global.lastServerSaveTime
-      ? global.lastServerSaveTime
-      : now.format('HH:mm');
+    /* Horario salvo no momento do Server Save */
+    const serverSaveTime = global.lastServerSaveTime || '05:00';
 
     const rashid = getRashidLocation();
     const dreamBoss = getDreamCourtsBoss();
@@ -142,7 +144,7 @@ ${tibiadrome.start} → ${tibiadrome.end}
       });
     }
 
-    console.log('[DAILY INFO] Atualizado. Rashid:', rashid);
+    console.log('[DAILY INFO] Atualizado. Rashid:', rashid, 'Dream Boss:', dreamBoss);
 
   } catch (error) {
     console.error('[DAILY INFO ERROR]', error);
