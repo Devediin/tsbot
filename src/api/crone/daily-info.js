@@ -63,7 +63,7 @@ const DREAM_COURTS_BASE_DATE = momentTimezone.tz(
 );
 
 const getDreamCourtsBoss = () => {
-  const tibiaDate = getTibiaDate();
+  const tibiaDate = getTibiaDate(); // ✅ usa regra 05:00
   const diffDays = tibiaDate.diff(DREAM_COURTS_BASE_DATE, 'days');
   const index = ((diffDays % 5) + 5) % 5;
   return dreamCourtsRotation[index];
