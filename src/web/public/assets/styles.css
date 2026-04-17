@@ -482,3 +482,6 @@ button {
 .highlight-card {
   text-align: center;
 }
+.live-wrapper iframe {
+  border-radius: 10px;
+}
