@@ -55,7 +55,7 @@
     <h3>📊 Resultado:</h3>
     <div id="result"></div>
     <br>
-    <button onclick="copyAll()">📎 Copiar tudo para Discord</button>
+    <button onclick="copyAll()">📎 Copiar resultado</button>
     <div class="success-box" id="successMsg">✅ Texto copiado com sucesso!</div>
   </div>
 
@@ -99,19 +99,7 @@ async function calculate() {
 
     const line = document.createElement('div');
     line.className = 'result-line';
-
-    const span = document.createElement('span');
-    span.innerText = lineText;
-
-    const btn = document.createElement('button');
-    btn.className = 'copy-btn';
-    btn.innerText = 'Copiar';
-    btn.onclick = function() {
-      copyToClipboard(`transfer ${bankValue} to ${t.to}`);
-    };
-
-    line.appendChild(span);
-    line.appendChild(btn);
+    line.innerText = lineText;
 
     resultDiv.appendChild(line);
     fullText += lineText + '\n\n';
@@ -122,40 +110,38 @@ async function calculate() {
   const perHourK = Math.round(data.profitPerHour / 1000);
 
   const summary1 =
-    `💰 Lucro total: <span class="green">${totalKK}kk~</span> ` +
-    `→ <span class="green">${perPlayerK}k~</span> para cada jogador.`;
+    `💰 Lucro total: ${totalKK}kk~ → ${perPlayerK}k~ para cada jogador.`;
 
   const summary2 =
-    `⏱️ Duração da hunt: ${data.duration} ` +
-    `→ <span class="green">${perHourK}k~</span> por hora para cada jogador.`;
+    `⏱️ Duração da hunt: ${data.duration} → ${perHourK}k~ por hora para cada jogador.`;
 
   const sumDiv1 = document.createElement('div');
-  sumDiv1.innerHTML = summary1;
+  sumDiv1.innerText = summary1;
 
   const sumDiv2 = document.createElement('div');
-  sumDiv2.innerHTML = summary2;
+  sumDiv2.innerText = summary2;
 
   resultDiv.appendChild(document.createElement('br'));
   resultDiv.appendChild(sumDiv1);
   resultDiv.appendChild(document.createElement('br'));
   resultDiv.appendChild(sumDiv2);
 
-  fullText += `💰 Lucro total: ${totalKK}kk~ → ${perPlayerK}k~ para cada jogador.\n\n`;
-  fullText += `⏱️ Duração da hunt: ${data.duration} → ${perHourK}k~ por hora para cada jogador.`;
-}
-
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text)
-    .then(() => {
-      showSuccess();
-    })
-    .catch(() => {
-      alert('Erro ao copiar.');
-    });
+  fullText += summary1 + '\n\n';
+  fullText += summary2;
 }
 
 function copyAll() {
-  copyToClipboard(fullText);
+
+  if (!fullText) return;
+
+  const textarea = document.createElement("textarea");
+  textarea.value = fullText;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+
+  showSuccess();
 }
 
 function showSuccess() {
