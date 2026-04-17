@@ -14,7 +14,7 @@ function parseDurationToHours(duration) {
 
 function parseLootSession(text) {
 
-  // Pega linha principal da sessão
+  // ===== HEADER =====
   const headerMatch = text.match(/Session data:[^\n]+/);
   if (!headerMatch) {
     throw new Error('Formato inválido.');
@@ -22,18 +22,22 @@ function parseLootSession(text) {
 
   const header = headerMatch[0];
 
-  const totalProfitMatch = header.match(/Balance:\s*([\d,]+)/);
+  const totalLootMatch = header.match(/Loot:\s*([\d,]+)/);
+  const totalSuppliesMatch = header.match(/Supplies:\s*([\d,]+)/);
   const durationMatch = header.match(/Session:\s*([\d:]+h)/);
 
-  if (!totalProfitMatch) {
-    throw new Error('Balance total não encontrado.');
+  if (!totalLootMatch || !totalSuppliesMatch) {
+    throw new Error('Loot ou Supplies totais não encontrados.');
   }
 
-  const totalProfit = parseNumber(totalProfitMatch[1]);
+  const totalLoot = parseNumber(totalLootMatch[1]);
+  const totalSupplies = parseNumber(totalSuppliesMatch[1]);
+  const totalProfit = totalLoot - totalSupplies;
+
   const duration = durationMatch ? durationMatch[1] : '00:00h';
   const durationHours = parseDurationToHours(duration);
 
-  // Regex correta para pegar apenas jogadores
+  // ===== PLAYERS =====
   const playerRegex = /([A-Za-zÀ-ÿ' ]+?)(?:\s*\(Leader\))?\s+Loot:\s*([\d,]+)\s+Supplies:\s*([\d,]+)\s+Balance:\s*(-?[\d,]+)/g;
 
   const players = [];
@@ -47,8 +51,7 @@ function parseLootSession(text) {
     players.push({
       name,
       loot: parseNumber(match[2]),
-      supplies: parseNumber(match[3]),
-      balance: parseNumber(match[4])
+      supplies: parseNumber(match[3])
     });
   }
 
@@ -56,30 +59,34 @@ function parseLootSession(text) {
     throw new Error('Nenhum jogador encontrado.');
   }
 
-  const perPlayer = Math.floor(totalProfit / players.length);
-  const profitPerHour = Math.floor(perPlayer / durationHours);
+  const perPlayerProfit = Math.floor(totalProfit / players.length);
+  const profitPerHour = Math.floor(perPlayerProfit / durationHours);
 
   const transfers = [];
 
-  const payers = [];
-  const receivers = [];
+  const balances = players.map(p => {
 
-  players.forEach(p => {
-    const diff = p.balance - perPlayer;
+    // Quanto ele deveria terminar com
+    const shouldHave = perPlayerProfit + p.supplies;
 
-    if (diff > 0) {
-      payers.push({ ...p, amount: diff });
-    } else if (diff < 0) {
-      receivers.push({ ...p, amount: Math.abs(diff) });
-    }
+    // Diferença entre o que deveria ter e o que realmente lootou
+    const diff = shouldHave - p.loot;
+
+    return {
+      name: p.name,
+      diff
+    };
   });
 
-  // Sempre leader paga (igual TibiaPal)
-  // Encontrar quem tem maior balance positivo
-  payers.sort((a, b) => b.balance - a.balance);
+  const payers = balances.filter(b => b.diff < 0)
+    .map(b => ({ ...b, amount: Math.abs(b.diff) }));
+
+  const receivers = balances.filter(b => b.diff > 0)
+    .map(b => ({ ...b, amount: b.diff }));
 
   payers.forEach(payer => {
     receivers.forEach(receiver => {
+
       if (payer.amount <= 0 || receiver.amount <= 0) return;
 
       const value = Math.min(payer.amount, receiver.amount);
@@ -97,7 +104,7 @@ function parseLootSession(text) {
 
   return {
     totalProfit,
-    perPlayer,
+    perPlayer: perPlayerProfit,
     duration,
     profitPerHour,
     transfers,
