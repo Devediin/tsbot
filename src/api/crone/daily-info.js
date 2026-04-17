@@ -104,30 +104,30 @@ const descriptionTS = `
 [hr]
 
 [b]🌍 SERVIDOR[/b]
-🟢 ${serverName}
+🟢 [b]${serverName}[/b]
 
 [hr]
 
 [b]🧳 RASHID HOJE[/b]
 [img]https://www.tibiawiki.com.br/images/f/f5/Rashid.gif[/img]
-📍 ${rashid}
+📍 [b]${rashid}[/b]
 
 [hr]
 
 [b]🧞 YASIR (ORIENTAL TRADER)[/b]
 [img]https://www.tibiawiki.com.br/images/4/4a/Yasir.gif[/img]
-${global.isYasirActive ? '🟢 DISPONÍVEL HOJE EM UMA DAS CIDADES' : '🔴 NÃO ATIVO HOJE'}
+${global.isYasirActive ? '🟢 [b]DISPONÍVEL[/b] HOJE EM UMA DAS CIDADES' : '🔴 [b]NÃO ATIVO HOJE[/b]'}
 
 [hr]
 
 [b]👑 DREAM COURTS[/b]
 Boss Atual:
-⭐ ${dreamBoss}
+⭐ [b]${dreamBoss}[/b]
 
 [hr]
 
 [b]🎭 TIBIADROME[/b]
-🏆 Rotação #${tibiadrome.number}
+🏆 Rotação [b]#${tibiadrome.number}[/b]
 📅 ${tibiadrome.start} → ${tibiadrome.end}
 
 [hr]
@@ -135,13 +135,31 @@ Boss Atual:
 `;
 
     global.dailyInfoCacheTS = descriptionTS.trim();
-    global.dailyInfoCachePortal = {
-      server: serverName,
-      rashid,
-      yasirActive: global.isYasirActive,
-      dreamBoss,
-      tibiadrome,
-    };
+global.dailyInfoCachePortal = {
+  server: {
+    name: serverName,
+  },
+  rashid: {
+    city: rashid,
+  },
+  yasir: {
+    active: global.isYasirActive,
+    label: global.isYasirActive
+      ? 'Disponível hoje'
+      : 'Não ativo hoje',
+  },
+  dreamCourts: {
+    boss: dreamBoss,
+  },
+  tibiadrome: {
+    rotation: tibiadrome.number,
+    start: tibiadrome.start,
+    end: tibiadrome.end,
+  },
+  updatedAt: momentTimezone
+    .tz('America/Sao_Paulo')
+    .format('DD/MM/YYYY HH:mm'),
+};
 
     const channelList = await teamspeak.channelList();
 
