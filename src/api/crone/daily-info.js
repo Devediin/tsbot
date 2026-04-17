@@ -6,7 +6,8 @@ const { WORLD_NAME } = process.env;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 
-global.dailyInfoCache = '';
+global.dailyInfoCacheTS = '';
+global.dailyInfoCachePortal = {};
 global.lastServerSaveTime = null;
 
 /* ===========================
@@ -89,7 +90,9 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const dreamBoss = getDreamCourtsBoss();
     const tibiadrome = getTibiadromeInfo();
 
-    const description = `
+    /* ===== TS FORMAT ===== */
+
+    const descriptionTS = `
 [b]📅 Server Save[/b]
 🟢 ${serverName} voltou às ${serverSaveTime}
 
@@ -109,7 +112,20 @@ Rotação #${tibiadrome.number}
 ${tibiadrome.start} → ${tibiadrome.end}
 `;
 
-    global.dailyInfoCache = description;
+    global.dailyInfoCacheTS = descriptionTS.trim();
+
+    /* ===== PORTAL FORMAT ===== */
+
+    global.dailyInfoCachePortal = {
+      server: serverName,
+      serverSaveTime,
+      rashid,
+      yasirOnline: global.isTwitchLive || false,
+      dreamBoss,
+      tibiadrome
+    };
+
+    /* ===== UPDATE TS ===== */
 
     const channelList = await teamspeak.channelList();
     const dailyChannel = channelList.find(c =>
@@ -118,7 +134,7 @@ ${tibiadrome.start} → ${tibiadrome.end}
 
     if (dailyChannel) {
       await dailyChannel.edit({
-        channel_description: description.trim()
+        channel_description: descriptionTS.trim()
       });
     }
 
