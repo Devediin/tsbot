@@ -196,17 +196,31 @@ async function loadLive() {
   const liveTitle = document.getElementById('liveTitle');
   const liveContent = document.getElementById('liveContent');
 
+  const channel = data.data?.user || "SEU_CANAL_AQUI";
+
   if (data.live && data.data) {
     liveTitle.innerHTML = '🟢 LIVE ONLINE';
     liveContent.innerHTML = `
       <img src="${data.data.thumbnail}" style="width:100%;border-radius:8px;" />
       <p><b>${data.data.user}</b></p>
       <p>${data.data.title}</p>
-      <a href="https://twitch.tv/${data.data.user}" target="_blank">Assistir</a>
+      <a href="https://twitch.tv/${data.data.user}" target="_blank">
+        Assistir na Twitch
+      </a>
     `;
   } else {
     liveTitle.innerHTML = '🔴 LIVE OFFLINE';
-    liveContent.innerHTML = '';
+
+    liveContent.innerHTML = `
+      <img 
+        src="https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg" 
+        style="width:100%;border-radius:8px;opacity:0.8;" 
+      />
+      <p><b>${channel}</b></p>
+      <a href="https://twitch.tv/${channel}" target="_blank">
+        Visitar Canal
+      </a>
+    `;
   }
 }
 
