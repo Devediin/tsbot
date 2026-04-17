@@ -45,6 +45,21 @@ h1 {
   margin: 40px 0;
 }
 
+/* TOTAL ONLINE BOX */
+.total-box {
+  text-align: center;
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 25px;
+  color: gold;
+  text-shadow: 0 0 10px rgba(255,215,0,0.5);
+  transition: 0.3s ease;
+}
+
+.total-box.glow {
+  text-shadow: 0 0 20px gold, 0 0 40px rgba(255,215,0,0.6);
+}
+
 .container {
   max-width: 1200px;
   margin: auto;
@@ -58,6 +73,11 @@ h1 {
   padding: 30px;
   margin-bottom: 40px;
   box-shadow: 0 0 25px rgba(0,0,0,0.7);
+  transition: box-shadow 0.3s ease;
+}
+
+.card.glow {
+  box-shadow: 0 0 35px gold;
 }
 
 .card h2 {
@@ -131,7 +151,7 @@ a:hover {
   text-shadow: 0 0 6px gold;
 }
 
-/* Death table improvement */
+/* Death layout */
 .death-row {
   display: grid;
   grid-template-columns: 1fr 120px 1.5fr;
@@ -192,12 +212,16 @@ a:hover {
 
 <div class="container">
 
-  <div class="card">
+  <div class="total-box" id="totalOnline">
+    Total Online: 0
+  </div>
+
+  <div class="card" id="onlineCard">
     <h2>🟢 Online Members</h2>
     <div class="vocation-grid" id="online"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="deathsCard">
     <h2>💀 Últimas 10 Mortes</h2>
     <div id="deaths"></div>
   </div>
@@ -217,6 +241,18 @@ function tibiaLink(name) {
   return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
 }
 
+function triggerGlow() {
+  document.getElementById('onlineCard').classList.add('glow');
+  document.getElementById('deathsCard').classList.add('glow');
+  document.getElementById('totalOnline').classList.add('glow');
+
+  setTimeout(() => {
+    document.getElementById('onlineCard').classList.remove('glow');
+    document.getElementById('deathsCard').classList.remove('glow');
+    document.getElementById('totalOnline').classList.remove('glow');
+  }, 800);
+}
+
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
@@ -224,15 +260,16 @@ async function loadOnline() {
   const grid = document.getElementById('online');
   grid.innerHTML = '';
 
+  let total = 0;
+
   for (const vocation in data) {
     if (!data[vocation] || data[vocation].length === 0) continue;
 
     const players = data[vocation];
-
-    // Ordenar por level DESC
     players.sort((a, b) => b.level - a.level);
 
     const topLevel = players[0].level;
+    total += players.length;
 
     let html = `
       <div class="vocation-card">
@@ -241,9 +278,7 @@ async function loadOnline() {
     `;
 
     players.forEach(p => {
-
       const topClass = p.level === topLevel ? 'top-player' : '';
-
       html += `
         <li class="${topClass}">
           <div class="player-name">
@@ -261,6 +296,9 @@ async function loadOnline() {
     html += `</ul></div>`;
     grid.innerHTML += html;
   }
+
+  document.getElementById('totalOnline').innerText =
+    `Total Online: ${total}`;
 }
 
 async function loadDeaths() {
@@ -296,6 +334,7 @@ function updateTimer() {
     timer = refreshInterval;
     loadOnline();
     loadDeaths();
+    triggerGlow();
   }
 }
 
