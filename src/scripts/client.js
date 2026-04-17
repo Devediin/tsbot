@@ -1,14 +1,24 @@
 export const sendJoinMessage = async (event) => {
   try {
     const client = event.client;
-
     if (!client) return;
 
-    const link = `http://${process.env.WEB_PUBLIC_URL}:3000`;
+    const link = 'https://spkteam.duckdns.org';
 
     await client.message(
-      `👋 Bem-vindo ao servidor!\n\n📜 Gere sua descrição usando:\n!desc\n\nou acesse:\n[url]${link}[/url]`
+`👋 Bem-vindo ao servidor!
+
+📜 Gere sua descrição usando:
+!desc
+
+🌐 Ou acesse o portal:
+[url]${link}[/url]`
     );
+
+  } catch (err) {
+    console.error('JOIN MESSAGE ERROR:', err);
+  }
+};
 
   } catch (error) {
     console.error('Erro sendJoinMessage:', error);
