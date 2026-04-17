@@ -3,7 +3,6 @@ function parseNumber(str) {
 }
 
 function parseDurationToHours(duration) {
-  // formato 01:12h
   const match = duration.match(/(\d+):(\d+)h/);
   if (!match) return 1;
 
@@ -14,33 +13,43 @@ function parseDurationToHours(duration) {
 }
 
 function parseLootSession(text) {
-  const totalProfitMatch = text.match(/Balance:\s*([\d,]+)/);
-  const durationMatch = text.match(/Session:\s*([\d:]+h)/);
+
+  // ✅ pega a linha principal da sessão (a primeira linha)
+  const headerMatch = text.match(/Session data:[^\n]+/);
+  if (!headerMatch) {
+    throw new Error('Formato inválido.');
+  }
+
+  const header = headerMatch[0];
+
+  const totalProfitMatch = header.match(/Balance:\s*([\d,]+)/);
+  const durationMatch = header.match(/Session:\s*([\d:]+h)/);
 
   if (!totalProfitMatch) {
-    throw new Error('Não foi possível encontrar o Balance total.');
+    throw new Error('Balance total não encontrado.');
   }
 
   const totalProfit = parseNumber(totalProfitMatch[1]);
   const duration = durationMatch ? durationMatch[1] : '00:00h';
   const durationHours = parseDurationToHours(duration);
 
-  const playerRegex = /([A-Za-zÀ-ÿ'() ]+?)\s+Loot:\s*([\d,]+)\s+Supplies:\s*([\d,]+)\s+Balance:\s*(-?[\d,]+)/g;
+  // ✅ regex corrigida para pegar jogadores corretamente
+  const playerRegex = /([A-Za-zÀ-ÿ' ]+?)(?:\s*\(Leader\))?\s+Loot:\s*([\d,]+)\s+Supplies:\s*([\d,]+)\s+Balance:\s*(-?[\d,]+)/g;
 
   const players = [];
   let match;
 
   while ((match = playerRegex.exec(text)) !== null) {
-    const name = match[1].trim().replace('(Leader)', '').trim();
-    const loot = parseNumber(match[2]);
-    const supplies = parseNumber(match[3]);
-    const balance = parseNumber(match[4]);
-
-    players.push({ name, loot, supplies, balance });
+    players.push({
+      name: match[1].trim(),
+      loot: parseNumber(match[2]),
+      supplies: parseNumber(match[3]),
+      balance: parseNumber(match[4])
+    });
   }
 
   if (players.length === 0) {
-    throw new Error('Nenhum jogador encontrado no log.');
+    throw new Error('Nenhum jogador encontrado.');
   }
 
   const perPlayer = Math.floor(totalProfit / players.length);
@@ -53,6 +62,7 @@ function parseLootSession(text) {
 
   players.forEach(p => {
     const diff = p.balance - perPlayer;
+
     if (diff > 0) {
       payers.push({ ...p, amount: diff });
     } else if (diff < 0) {
@@ -87,4 +97,4 @@ function parseLootSession(text) {
   };
 }
 
-module.exports = { parseLootSession };
+export { parseLootSession };
