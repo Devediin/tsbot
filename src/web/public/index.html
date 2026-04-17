@@ -85,7 +85,20 @@ h1 {
 async function loadDaily() {
   const res = await fetch('/api/public/daily');
   const data = await res.json();
-  document.getElementById('daily').innerHTML = data.description;
+
+  if (!data.server) {
+    document.getElementById('daily').innerHTML = 'Daily Info ainda não disponível.';
+    return;
+  }
+
+  document.getElementById('daily').innerHTML = `
+    <b>Server Save:</b> ${data.server} voltou às ${data.serverSaveTime}<br><br>
+    <b>Rashid:</b> ${data.rashid}<br><br>
+    <b>Yasir:</b> ${data.yasirOnline ? 'ONLINE' : 'OFFLINE'}<br><br>
+    <b>Dream Courts:</b> ${data.dreamBoss}<br><br>
+    <b>Tibiadrome:</b> Rotação #${data.tibiadrome.number}<br>
+    ${data.tibiadrome.start} → ${data.tibiadrome.end}
+  `;
 }
 
 async function loadLive() {
