@@ -6,9 +6,8 @@
 <link rel="stylesheet" href="/assets/styles.css">
 <style>
 .result-line {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
-
 .copy-btn {
   margin-left: 10px;
   padding: 2px 8px;
@@ -87,10 +86,19 @@ async function calculate() {
     const line = document.createElement('div');
     line.className = 'result-line';
 
-    line.innerHTML = `
-      ${lineText}
-      <button class="copy-btn" onclick="copyText('${bankValue} to ${t.to}')">Copy</button>
-    `;
+    const span = document.createElement('span');
+    span.innerText = lineText;
+
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.innerText = 'Copy';
+    btn.onclick = function() {
+      navigator.clipboard.writeText(`transfer ${bankValue} to ${t.to}`);
+      alert('Transfer copied!');
+    };
+
+    line.appendChild(span);
+    line.appendChild(btn);
 
     resultDiv.appendChild(line);
     fullText += lineText + '\n\n';
@@ -100,8 +108,8 @@ async function calculate() {
   const perPlayerK = Math.round(data.perPlayer / 1000);
   const perHourK = Math.round(data.profitPerHour / 1000);
 
-  const summary1 = `Total profit: <span class="green">${totalKK}kk~</span> which is: <span class="green">${perPlayerK}k~</span> for each player.`;
-  const summary2 = `Session duration: ${data.duration}, which is: <span class="green">${perHourK}k~</span> for each player per hour.`;
+  const summary1 = `Total profit: ${totalKK}kk~ which is: ${perPlayerK}k~ for each player.`;
+  const summary2 = `Session duration: ${data.duration}, which is: ${perHourK}k~ for each player per hour.`;
 
   const sumDiv1 = document.createElement('div');
   sumDiv1.innerHTML = summary1;
@@ -114,13 +122,8 @@ async function calculate() {
   resultDiv.appendChild(document.createElement('br'));
   resultDiv.appendChild(sumDiv2);
 
-  fullText += `Total profit: ${totalKK}kk~ which is: ${perPlayerK}k~ for each player.\n\n`;
-  fullText += `Session duration: ${data.duration}, which is: ${perHourK}k~ for each player per hour.`;
-}
-
-function copyText(text) {
-  navigator.clipboard.writeText(`transfer ${text}`);
-  alert('Transfer copied!');
+  fullText += summary1 + '\n\n';
+  fullText += summary2;
 }
 
 function copyAll() {
