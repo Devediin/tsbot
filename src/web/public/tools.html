@@ -9,14 +9,6 @@
 
 <div class="overlay"></div>
 
-<script>
-fetch('/partials/navbar.html')
-  .then(res => res.text())
-  .then(data => {
-    document.getElementById('navbar').innerHTML = data;
-  });
-</script>
-
 <h1>💰 Divisão de Loot</h1>
 
 <div class="container">
@@ -153,6 +145,12 @@ function showSuccess() {
 }
 
 </script>
-
+<script>
+fetch('/partials/navbar.html')
+  .then(res => res.text())
+  .then(data => {
+    document.getElementById('navbar').innerHTML = data;
+  });
+</script>
 </body>
 </html>
