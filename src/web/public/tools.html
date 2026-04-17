@@ -2,20 +2,31 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tibia Loot Split</title>
+<title>💰 Tibia Loot Split</title>
 <link rel="stylesheet" href="/assets/styles.css">
 <style>
 .result-line {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
+
 .copy-btn {
   margin-left: 10px;
-  padding: 2px 8px;
+  padding: 3px 8px;
   font-size: 12px;
   cursor: pointer;
 }
+
 .green {
   color: #00ff66;
+}
+
+.success-box {
+  margin-top: 15px;
+  padding: 8px;
+  background: rgba(0,255,100,0.15);
+  border: 1px solid #00ff66;
+  border-radius: 6px;
+  display: none;
 }
 </style>
 </head>
@@ -31,20 +42,21 @@
   <span class="theme-toggle" onclick="toggleTheme()">🌓</span>
 </div>
 
-<h1>🧮 Tibia Loot Split</h1>
+<h1>💰 Divisão de Loot</h1>
 
 <div class="container">
 
   <div class="card">
-    <textarea id="lootText" placeholder="Cole aqui o log completo da hunt..."></textarea>
-    <button onclick="calculate()">Calcular</button>
+    <textarea id="lootText" placeholder="📋 Cole aqui o log completo da hunt..."></textarea>
+    <button onclick="calculate()">⚔️ Calcular Divisão</button>
   </div>
 
   <div class="card">
-    <h3>Results:</h3>
+    <h3>📊 Resultado:</h3>
     <div id="result"></div>
     <br>
-    <button onclick="copyAll()">Copy all to Discord!</button>
+    <button onclick="copyAll()">📎 Copiar tudo para Discord</button>
+    <div class="success-box" id="successMsg">✅ Texto copiado com sucesso!</div>
   </div>
 
 </div>
@@ -81,7 +93,9 @@ async function calculate() {
     const roundedK = Math.round(t.amount / 1000);
     const bankValue = t.amount - 1;
 
-    const lineText = `${t.from} to pay ${roundedK}k to ${t.to} (Bank: transfer ${bankValue} to ${t.to})`;
+    const lineText =
+      `💸 ${t.from} deve pagar ${roundedK}k para ${t.to} ` +
+      `(Banco: transfer ${bankValue} to ${t.to})`;
 
     const line = document.createElement('div');
     line.className = 'result-line';
@@ -91,10 +105,9 @@ async function calculate() {
 
     const btn = document.createElement('button');
     btn.className = 'copy-btn';
-    btn.innerText = 'Copy';
+    btn.innerText = 'Copiar';
     btn.onclick = function() {
-      navigator.clipboard.writeText(`transfer ${bankValue} to ${t.to}`);
-      alert('Transfer copied!');
+      copyToClipboard(`transfer ${bankValue} to ${t.to}`);
     };
 
     line.appendChild(span);
@@ -108,8 +121,13 @@ async function calculate() {
   const perPlayerK = Math.round(data.perPlayer / 1000);
   const perHourK = Math.round(data.profitPerHour / 1000);
 
-  const summary1 = `Total profit: ${totalKK}kk~ which is: ${perPlayerK}k~ for each player.`;
-  const summary2 = `Session duration: ${data.duration}, which is: ${perHourK}k~ for each player per hour.`;
+  const summary1 =
+    `💰 Lucro total: <span class="green">${totalKK}kk~</span> ` +
+    `→ <span class="green">${perPlayerK}k~</span> para cada jogador.`;
+
+  const summary2 =
+    `⏱️ Duração da hunt: ${data.duration} ` +
+    `→ <span class="green">${perHourK}k~</span> por hora para cada jogador.`;
 
   const sumDiv1 = document.createElement('div');
   sumDiv1.innerHTML = summary1;
@@ -122,13 +140,31 @@ async function calculate() {
   resultDiv.appendChild(document.createElement('br'));
   resultDiv.appendChild(sumDiv2);
 
-  fullText += summary1 + '\n\n';
-  fullText += summary2;
+  fullText += `💰 Lucro total: ${totalKK}kk~ → ${perPlayerK}k~ para cada jogador.\n\n`;
+  fullText += `⏱️ Duração da hunt: ${data.duration} → ${perHourK}k~ por hora para cada jogador.`;
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text)
+    .then(() => {
+      showSuccess();
+    })
+    .catch(() => {
+      alert('Erro ao copiar.');
+    });
 }
 
 function copyAll() {
-  navigator.clipboard.writeText(fullText);
-  alert('All copied!');
+  copyToClipboard(fullText);
+}
+
+function showSuccess() {
+  const box = document.getElementById('successMsg');
+  box.style.display = 'block';
+
+  setTimeout(() => {
+    box.style.display = 'none';
+  }, 2000);
 }
 
 </script>
