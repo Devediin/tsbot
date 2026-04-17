@@ -13,19 +13,9 @@ const router = express.Router();
 =========================== */
 
 router.get('/daily', async (req, res) => {
-  try {
-    const channel = await Channels.findOne({ type: 'dailyInfo' });
-
-    if (!channel || !channel.description) {
-      return res.json({ description: 'Daily Info ainda não disponível.' });
-    }
-
-    res.json({ description: channel.description });
-
-  } catch (error) {
-    console.error(error);
-    res.json({ description: 'Erro ao carregar Daily Info.' });
-  }
+  res.json({
+    description: global.dailyInfoCache || 'Daily Info ainda não disponível.'
+  });
 });
 
 /* ===========================
