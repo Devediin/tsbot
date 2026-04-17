@@ -10,15 +10,6 @@
 <body>
 
 <div class="overlay"></div>
-
-<script>
-fetch('/partials/navbar.html')
-  .then(res => res.text())
-  .then(data => {
-    document.getElementById('navbar').innerHTML = data;
-  });
-</script>
-
 <div class="container">
 
 <h1>⚔️ NiideHelper ⚔️</h1>
@@ -142,6 +133,12 @@ loadDaily();
 loadLive();
 setInterval(loadLive, 60000);
 </script>
-
+<script>
+fetch('/partials/navbar.html')
+  .then(res => res.text())
+  .then(data => {
+    document.getElementById('navbar').innerHTML = data;
+  });
+</script>
 </body>
 </html>
