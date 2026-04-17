@@ -7,6 +7,7 @@ const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 
 global.dailyInfoCacheTS = '';
 global.dailyInfoCachePortal = {};
+global.isYasirActive = false;
 
 const getRashidLocation = () => {
   const nowBRT = momentTimezone.tz('America/Sao_Paulo');
@@ -50,6 +51,24 @@ const getTibiadromeInfo = () => {
   };
 };
 
+/*
+  ✅ Agora detecta Yasir automaticamente pelo World Overview
+*/
+const detectMiniWorldChange = (worldOverview) => {
+  try {
+    const miniWorld = worldOverview?.world_information?.world_quest_titles || [];
+
+    const hasYasir = miniWorld.some(title =>
+      title.toLowerCase().includes('oriental trader')
+    );
+
+    global.isYasirActive = hasYasir;
+
+  } catch (err) {
+    console.error('[MINI WORLD DETECTION ERROR]', err);
+  }
+};
+
 export const parseWorldBoard = (text) => {
   if (!text || typeof text !== 'string') return;
 
@@ -59,12 +78,8 @@ export const parseWorldBoard = (text) => {
       global.lastServerSaveTime = timeMatch[0];
     }
 
-    if (/online/i.test(text)) {
-      global.isTwitchLive = true;
-    }
-
-    if (/offline/i.test(text)) {
-      global.isTwitchLive = false;
+    if (/oriental trader/i.test(text) || /yasir/i.test(text)) {
+      global.isYasirActive = true;
     }
 
     console.log('[WORLD BOARD] Parseado com sucesso.');
@@ -76,6 +91,9 @@ export const parseWorldBoard = (text) => {
 export const updateDailyInfoChannel = async (teamspeak) => {
   try {
     const worldOverview = await tibiaAPI.getWorldOverview();
+
+    detectMiniWorldChange(worldOverview);
+
     const serverName = worldOverview?.name || WORLD_NAME;
     const serverSaveTime = global.lastServerSaveTime || '05:00';
     const rashid = getRashidLocation();
@@ -92,7 +110,7 @@ export const updateDailyInfoChannel = async (teamspeak) => {
 
 [b]🧞 Yasir (Oriental Trader)[/b]
 [img]https://www.tibiawiki.com.br/images/4/4a/Yasir.gif[/img]
-${global.isTwitchLive ? '🟢 ONLINE' : '🔴 OFFLINE'}
+${global.isYasirActive ? '🟢 DISPONÍVEL HOJE' : '🔴 NÃO ATIVO'}
 
 [b]👑 Dream Courts Boss[/b]
 ${dreamBoss}
@@ -107,21 +125,28 @@ ${tibiadrome.start} → ${tibiadrome.end}
       server: serverName,
       serverSaveTime,
       rashid,
-      yasirOnline: global.isTwitchLive || false,
+      yasirActive: global.isYasirActive,
       dreamBoss,
       tibiadrome,
     };
 
     const channelList = await teamspeak.channelList();
-    const dailyChannel = channelList.find(
-      c => c.propcache.channel_name === '[cspacer]Daily Info'
+
+    const dailyChannel = channelList.find(c =>
+      c.propcache?.channel_name?.includes('Daily Info')
     );
 
-    if (dailyChannel) {
-      await dailyChannel.edit({ channel_description: descriptionTS.trim() });
+    if (!dailyChannel) {
+      console.log('[DAILY INFO] Canal Daily Info não encontrado.');
+      return;
     }
 
-    console.log('[DAILY INFO] Atualizado. Rashid:', rashid, 'Dream Boss:', dreamBoss);
+    await dailyChannel.edit({
+      channel_description: descriptionTS.trim(),
+    });
+
+    console.log('[DAILY INFO] Atualizado. Rashid:', rashid, 'Dream Boss:', dreamBoss, 'Yasir:', global.isYasirActive);
+
   } catch (error) {
     console.error('[DAILY INFO ERROR]', error);
   }
