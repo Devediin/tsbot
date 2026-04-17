@@ -1,17 +1,47 @@
 import express from 'express';
 import axios from 'axios';
 import Characters from '../../api/models/characters.js';
+import Channels from '../../api/models/channels.js';
 import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
 import moment from 'moment';
 
 const router = express.Router();
 
-/*
-==========================================
- ONLINE ROUTE
-==========================================
-*/
+/* ===========================
+   DAILY INFO
+=========================== */
+
+router.get('/daily', async (req, res) => {
+  try {
+    const channel = await Channels.findOne({ type: 'dailyInfo' });
+
+    if (!channel || !channel.description) {
+      return res.json({ description: 'Daily Info ainda não disponível.' });
+    }
+
+    res.json({ description: channel.description });
+
+  } catch (error) {
+    console.error(error);
+    res.json({ description: 'Erro ao carregar Daily Info.' });
+  }
+});
+
+/* ===========================
+   TWITCH LIVE STATUS
+=========================== */
+
+router.get('/live', async (req, res) => {
+  res.json({
+    live: global.isTwitchLive || false,
+    data: global.twitchLiveData || null
+  });
+});
+
+/* ===========================
+   ONLINE FRIENDS
+=========================== */
 
 function getVocationGroup(vocation) {
   if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
@@ -79,11 +109,9 @@ router.get('/online', async (req, res) => {
   }
 });
 
-/*
-==========================================
- DEATHS ROUTE
-==========================================
-*/
+/* ===========================
+   DEATHS
+=========================== */
 
 router.get('/deaths', async (req, res) => {
   try {
@@ -100,9 +128,7 @@ router.get('/deaths', async (req, res) => {
         const kills = response?.data?.character?.deaths;
 
         if (kills && kills.length > 0) {
-
-          const matched = kills.find(k => k.time === d.time);
-          const kill = matched || kills[0];
+          const kill = kills[0];
 
           const killers = kill.killers
             ? kill.killers.map(k => k.name).join(' e ')
@@ -113,25 +139,20 @@ router.get('/deaths', async (req, res) => {
             level: kill.level || '???',
             killers: killers
           });
-
         } else {
-
           detailed.push({
             characterName: d.characterName,
             level: '???',
             killers: 'Unknown'
           });
-
         }
 
-      } catch (err) {
-
+      } catch {
         detailed.push({
           characterName: d.characterName,
           level: '???',
           killers: 'Unknown'
         });
-
       }
     }
 
@@ -141,19 +162,6 @@ router.get('/deaths', async (req, res) => {
     console.error(error);
     res.json({ deaths: [] });
   }
-});
-
-/*
-==========================================
- TWITCH LIVE STATUS
-==========================================
-*/
-
-router.get('/live', async (req, res) => {
-  res.json({
-    live: global.isTwitchLive || false,
-    data: global.twitchLiveData || null
-  });
 });
 
 export default router;
