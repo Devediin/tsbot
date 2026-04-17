@@ -183,6 +183,18 @@ small {
 .live-button:hover {
   background: #fff;
 }
+.live-online {
+  background: #e91916;
+  color: white;
+  box-shadow: 0 0 10px #e91916;
+  animation: livePulse 1.2s infinite;
+}
+
+@keyframes livePulse {
+  0% { box-shadow: 0 0 5px #e91916; }
+  50% { box-shadow: 0 0 20px #ff0000; }
+  100% { box-shadow: 0 0 5px #e91916; }
+}
 </style>
 </head>
 
@@ -317,6 +329,7 @@ async function loadLive() {
 
 loadDaily();
 loadLive();
+setInterval(loadLive, 60000);
 </script>
 
 </body>
