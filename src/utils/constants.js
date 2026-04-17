@@ -1,6 +1,7 @@
 import { promoteUser } from '../scripts/server-groups';
 import { massKick, massMove, sendMassPoke } from '../scripts/client';
 import { insertCharacter, removeCharacter, addCharactersByGuildName, syncCharactersByGuildName } from '../api/models/characters';
+import { parseLootSession } from '../utils/lootSplit.js';
 
 export const ADMIN_GROUP_NAME = 'Bot Admin';
 export const MODERATOR_GROUP_NAME = 'Bot Moderator';
@@ -673,4 +674,52 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!removeModerator ${username}',
   },
+  '!loot': {
+  groups: null, // qualquer um pode usar (mude se quiser restringir)
+  exec: async (teamspeak, msgAsList) => {
+    try {
+
+      msgAsList.shift(); // remove "!loot"
+      const text = msgAsList.join(' ');
+
+      if (!text) {
+        return {
+          ok: false,
+          message: '❌ Cole o log completo após o comando.'
+        };
+      }
+
+      const result = parseLootSession(text);
+
+      let response = '';
+
+      result.transfers.forEach(t => {
+        const roundedK = Math.round(t.amount / 1000);
+        const bankValue = t.amount - 1;
+
+        response += `${t.from} deve pagar ${roundedK}k para ${t.to} (transfer ${bankValue} to ${t.to})\n`;
+      });
+
+      const totalKK = (result.totalProfit / 1000000).toFixed(2);
+      const perPlayerK = Math.round(result.perPlayer / 1000);
+      const perHourK = Math.round(result.profitPerHour / 1000);
+
+      response += `\n💰 Lucro total: ${totalKK}kk (~${perPlayerK}k cada)\n`;
+      response += `⏱️ ${result.duration} (~${perHourK}k/h por jogador)`;
+
+      return {
+        ok: true,
+        message: response
+      };
+
+    } catch (err) {
+      console.error(err);
+      return {
+        ok: false,
+        message: '❌ Erro ao processar o loot.'
+      };
+    }
+  },
+  howToUse: '!loot <cole o log completo>'
+},
 };
