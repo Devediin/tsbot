@@ -11,14 +11,9 @@ export const sendJoinMessage = async (event) => {
 📜 Gere sua descrição usando:
 !desc
 
-🌐 Ou acesse o portal:
-[url]${link}[/url]`
+🌐 Portal:
+${link}`
     );
-
-  } catch (err) {
-    console.error('JOIN MESSAGE ERROR:', err);
-  }
-};
 
   } catch (error) {
     console.error('Erro sendJoinMessage:', error);
