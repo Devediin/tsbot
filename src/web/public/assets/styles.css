@@ -352,3 +352,29 @@ button {
     text-align: left;
   }
 }
+
+/* ===== LOOT SPLIT ===== */
+
+.result-line {
+  margin-bottom: 10px;
+}
+
+.copy-btn {
+  margin-left: 10px;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.green {
+  color: #00ff66;
+}
+
+.success-box {
+  margin-top: 15px;
+  padding: 8px;
+  background: rgba(0,255,100,0.15);
+  border: 1px solid #00ff66;
+  border-radius: 6px;
+  display: none;
+}
