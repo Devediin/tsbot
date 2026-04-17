@@ -472,3 +472,13 @@ button {
   font-weight: bold;
   color: gold;
 }
+.highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  margin-bottom: 50px;
+}
+
+.highlight-card {
+  text-align: center;
+}
