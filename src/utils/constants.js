@@ -656,59 +656,44 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!dailyinfo <texto do world board>',
   },
-  '!loot': {
-  groups: [],
+if (command === '!loot') {
 
-  exec: async (teamspeak, msgAsList) => {
-    try {
+  msgAsList.shift();
+  const text = msgAsList.join(' ').trim();
 
-      msgAsList.shift();
-      const text = msgAsList.join(' ').trim();
+  if (!text || text.length < 20) {
+    return teamspeak.sendTextMessage(2, cid, 'Log invalido ou incompleto.');
+  }
 
-      if (!text || text.length < 20) {
-        return {
-          ok: false,
-          message: 'Log invalido ou incompleto.'
-        };
-      }
+  try {
+    const result = parseLootSession(text);
 
-      const result = parseLootSession(text);
+    let response = '';
+    response += 'RESULTADO DO LOOT SPLIT\n';
+    response += '------------------------\n';
 
-      let response = '';
-      response += 'RESULTADO DO LOOT SPLIT\n';
-      response += '------------------------\n';
+    result.transfers.forEach(t => {
+      const roundedK = Math.round(t.amount / 1000);
+      const bankValue = t.amount - 1;
 
-      result.transfers.forEach(t => {
-        const roundedK = Math.round(t.amount / 1000);
-        const bankValue = t.amount - 1;
+      response += `${t.from} paga ${roundedK}k para ${t.to}\n`;
+      response += `transfer ${bankValue} to ${t.to}\n\n`;
+    });
 
-        response += `${t.from} paga ${roundedK}k para ${t.to}\n`;
-        response += `transfer ${bankValue} to ${t.to}\n\n`;
-      });
+    const totalKK = (result.totalProfit / 1000000).toFixed(2);
+    const perPlayerK = Math.round(result.perPlayer / 1000);
+    const perHourK = Math.round(result.profitPerHour / 1000);
 
-      const totalKK = (result.totalProfit / 1000000).toFixed(2);
-      const perPlayerK = Math.round(result.perPlayer / 1000);
-      const perHourK = Math.round(result.profitPerHour / 1000);
+    response += '------------------------\n';
+    response += `Total: ${totalKK}kk\n`;
+    response += `Cada jogador: ${perPlayerK}k\n`;
+    response += `Por hora: ${perHourK}k\n`;
 
-      response += '------------------------\n';
-      response += `Total: ${totalKK}kk\n`;
-      response += `Cada jogador: ${perPlayerK}k\n`;
-      response += `Por hora: ${perHourK}k\n`;
+    return teamspeak.sendTextMessage(2, Number(cid), response);
 
-      return {
-        ok: true,
-        message: response
-      };
-
-    } catch (err) {
-      return {
-        ok: false,
-        message: 'Erro ao processar loot.'
-      };
-    }
-  },
-
-  howToUse: '!loot <log>'
+  } catch (err) {
+    return teamspeak.sendTextMessage(2, Number(cid), 'Erro ao processar loot.');
+  }
 },
   '!removeModerator': {
     groups: [ADMIN_GROUP_NAME],
