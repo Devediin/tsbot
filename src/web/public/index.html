@@ -2,64 +2,85 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>NiideHelper</title>
+<title>SPK Team - Ourobra</title>
 <link rel="stylesheet" href="/assets/styles.css">
-<script src="/assets/theme.js"></script>
 </head>
-
 <body>
 
 <div class="overlay"></div>
-<div class="container">
+
 <div id="navbar"></div>
 
-<h1>⚔️ NiideHelper ⚔️</h1>
+<div class="container">
 
-<div class="card daily-card">
-  <h2>⚔️ Daily Info</h2>
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <h1>⚔️ SPK TEAM ⚔️</h1>
+    <p class="subtitle">Ourobra • Portal Oficial do Time</p>
 
-  <div>
-    <h3>🌍 Servidor</h3>
-    <p id="serverName"></p>
-  </div>
+    <div class="hero-buttons">
+      <a href="ts3server://ts-spkteam.duckdns.org?port=9987" class="main-btn">
+        🎧 Entrar no TeamSpeak
+      </a>
 
-  <div>
-    <h3>🧳 Rashid</h3>
-    <p id="rashidCity"></p>
-  </div>
+      <a href="/dashboard" class="secondary-btn">
+        📊 Ver Dashboard
+      </a>
 
-  <div>
-    <h3>🧞 Yasir</h3>
-    <p id="yasirStatus"></p>
-  </div>
+      <a href="/tools" class="secondary-btn">
+        💰 Loot Split
+      </a>
+    </div>
+  </section>
 
-  <div>
-    <h3>👑 Dream Courts</h3>
-    <p id="dreamBoss"></p>
-  </div>
+  <!-- STATUS CARDS -->
+  <section class="status-grid">
+    <div class="status-card">
+      <h3>🌍 Servidor</h3>
+      <p id="serverName">Carregando...</p>
+    </div>
 
-  <div>
-    <h3>🎭 Tibiadrome</h3>
-    <p id="tibiadromeInfo"></p>
-  </div>
+    <div class="status-card">
+      <h3>👑 Dream Courts</h3>
+      <p id="dreamBoss">Carregando...</p>
+    </div>
 
-  <small id="updatedAt"></small>
+    <div class="status-card">
+      <h3>🎭 Tibiadrome</h3>
+      <p id="tibiadromeInfo">Carregando...</p>
+    </div>
+
+    <div class="status-card">
+      <h3>🧞 Yasir</h3>
+      <p id="yasirStatus">Carregando...</p>
+    </div>
+  </section>
+
+  <!-- DAILY + LIVE GRID -->
+  <section class="main-grid">
+
+    <div class="card daily-card">
+      <h2>📅 Daily Info</h2>
+
+      <div>
+        <h3>🧳 Rashid</h3>
+        <p id="rashidCity"></p>
+      </div>
+
+      <small id="updatedAt"></small>
+    </div>
+
+    <div class="card">
+      <h2 id="liveTitle">🔴 LIVE OFFLINE</h2>
+      <div id="liveContent"></div>
+    </div>
+
+  </section>
+
 </div>
-  
-<div class="card">
-  <h2>🎧 TeamSpeak</h2>
-  <p>Entre no nosso servidor:</p>
-  <a href="ts3server://ts-spkteam.duckdns.org?port=9987" class="ts-button">
-    🚀 Conectar ao TS
-  </a>
-</div>
 
-<div class="card">
-  <h2 id="liveTitle">🔴 LIVE OFFLINE</h2>
-  <div id="liveContent"></div>
-</div>
-
-</div>
+<script src="/assets/navbar.js"></script>
+<script src="/assets/theme.js"></script>
 
 <script>
 async function loadDaily() {
@@ -76,14 +97,14 @@ async function loadDaily() {
 
   document.getElementById('yasirStatus').innerText =
     data.yasir.active
-      ? '🟢 ' + data.yasir.label
-      : '🔴 ' + data.yasir.label;
+      ? '🟢 Disponível hoje'
+      : '🔴 Não ativo hoje';
 
   document.getElementById('dreamBoss').innerText =
     data.dreamCourts.boss;
 
   document.getElementById('tibiadromeInfo').innerText =
-    `Rotação #${data.tibiadrome.rotation} (${data.tibiadrome.start} → ${data.tibiadrome.end})`;
+    `#${data.tibiadrome.rotation} (${data.tibiadrome.start} → ${data.tibiadrome.end})`;
 
   document.getElementById('updatedAt').innerText =
     `Atualizado em ${data.updatedAt}`;
@@ -96,35 +117,20 @@ async function loadLive() {
   const liveTitle = document.getElementById('liveTitle');
   const liveContent = document.getElementById('liveContent');
 
-  const channel = data.data?.user || "EdiinTv";
+  const channel = data.data?.user || "ediintv";
 
-  let thumbnail;
+  const thumbnail = data.live && data.data?.thumbnail
+    ? data.data.thumbnail.replace('{width}', '640').replace('{height}', '360')
+    : `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg`;
 
-  if (data.live && data.data?.thumbnail) {
-    thumbnail = data.data.thumbnail
-      .replace('{width}', '640')
-      .replace('{height}', '360');
-  } else {
-    thumbnail = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg`;
-  }
+  const badge = data.live ? '🟢 AO VIVO' : '🔴 OFFLINE';
+  const title = data.live && data.data ? data.data.title : 'Canal offline';
 
-  const badgeClass = data.live ? 'live-online' : 'live-offline';
-  const badgeText = data.live ? '🔴 AO VIVO' : 'OFFLINE';
-
-  const title = data.live && data.data
-    ? data.data.title
-    : 'Canal offline no momento';
-
-  liveTitle.innerHTML = data.live
-    ? '🟢 LIVE ONLINE'
-    : '🔴 LIVE OFFLINE';
+  liveTitle.innerHTML = badge;
 
   liveContent.innerHTML = `
     <div class="live-wrapper">
       <img src="${thumbnail}" />
-      <div class="live-badge ${badgeClass}">
-        ${badgeText}
-      </div>
       <div class="live-overlay">
         <div class="live-info">
           <h3>${channel}</h3>
@@ -142,7 +148,6 @@ loadDaily();
 loadLive();
 setInterval(loadLive, 60000);
 </script>
-<script src="/assets/navbar.js"></script>
-<script src="/assets/theme.js"></script>
+
 </body>
 </html>
