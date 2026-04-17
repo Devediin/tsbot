@@ -7,9 +7,15 @@ import moment from 'moment';
 
 const router = express.Router();
 
-/*
-  ONLINE ROUTE
-*/
+function getVocationGroup(vocation) {
+  if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
+  if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return 'Royal Paladin';
+  if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return 'Master Sorcerer';
+  if (vocation.includes('Elder Druid') || vocation === 'Druid') return 'Elder Druid';
+  if (vocation.includes('Exalted Monk') || vocation === 'Monk') return 'Exalted Monk';
+  return null;
+}
+
 router.get('/online', async (req, res) => {
   try {
     const characters = await Characters.find({ type: 'friend' });
@@ -22,30 +28,19 @@ router.get('/online', async (req, res) => {
       'Exalted Monk': [],
     };
 
-    function getGroup(vocation) {
-      if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
-      if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return 'Royal Paladin';
-      if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return 'Master Sorcerer';
-      if (vocation.includes('Elder Druid') || vocation === 'Druid') return 'Elder Druid';
-      if (vocation.includes('Exalted Monk') || vocation === 'Monk') return 'Exalted Monk';
-      return null;
-    }
-
     for (const char of characters) {
       const tracker = await getOnlineTrackerByName(char.characterName);
 
-      if (tracker?.isOnline) {
-
+      if (tracker && tracker.isOnline) {
         try {
           const response = await axios.get(
             `https://api.tibiadata.com/v4/character/${encodeURIComponent(char.characterName)}`
           );
 
           const info = response?.data?.character?.character;
-
           if (!info) continue;
 
-          const group = getGroup(info.vocation);
+          const group = getVocationGroup(info.vocation);
           if (!group) continue;
 
           const diffMinutes = tracker.firstSeenOnline
@@ -64,7 +59,7 @@ router.get('/online', async (req, res) => {
             onlineTime: formattedTime
           });
 
-        } catch {
+        } catch (err) {
           continue;
         }
       }
@@ -78,9 +73,6 @@ router.get('/online', async (req, res) => {
   }
 });
 
-/*
-  DEATHS ROUTE
-*/
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
@@ -96,24 +88,24 @@ router.get('/deaths', async (req, res) => {
         const kills = response?.data?.character?.deaths;
 
         if (kills && kills.length > 0) {
-          const match = kills.find(k => k.time === d.time);
-          const death = match || kills[0];
+          const kill = kills[0];
 
-detailed.push({
-  characterName: d.characterName,
-  level: death.level,
-  killer: death.killers?.[0]?.name || 'Unknown',
-  killerIsPlayer: death.killers?.[0]?.player || false
-});
+          detailed.push({
+            characterName: d.characterName,
+            level: kill.level || '???',
+            killer: kill.killers && kill.killers.length > 0
+              ? kill.killers[0].name
+              : 'Unknown'
+          });
         } else {
-detailed.push({
-  characterName: d.characterName,
-  level: '???',
-  killer: 'Unknown',
-  killerIsPlayer: false
-});
+          detailed.push({
+            characterName: d.characterName,
+            level: '???',
+            killer: 'Unknown'
+          });
+        }
 
-      } catch {
+      } catch (err) {
         detailed.push({
           characterName: d.characterName,
           level: '???',
