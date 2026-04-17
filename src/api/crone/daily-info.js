@@ -15,7 +15,9 @@ global.lastServerSaveTime = null;
 =========================== */
 
 const getRashidLocation = () => {
-  const day = momentTimezone().tz('America/Sao_Paulo').format('dddd');
+  // Força horario de Sao Paulo
+  const now = momentTimezone.tz('America/Sao_Paulo');
+  const day = now.format('dddd');
 
   const map = {
     Monday: 'Svargrond',
@@ -83,9 +85,10 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const serverName = worldOverview?.name || WORLD_NAME;
 
     /* Horario do Server Save em BRT */
+    const now = momentTimezone.tz('America/Sao_Paulo');
     const serverSaveTime = global.lastServerSaveTime
       ? global.lastServerSaveTime
-      : momentTimezone().tz('America/Sao_Paulo').format('HH:mm');
+      : now.format('HH:mm');
 
     const rashid = getRashidLocation();
     const dreamBoss = getDreamCourtsBoss();
@@ -139,7 +142,7 @@ ${tibiadrome.start} → ${tibiadrome.end}
       });
     }
 
-    console.log('[DAILY INFO] Atualizado.');
+    console.log('[DAILY INFO] Atualizado. Rashid:', rashid);
 
   } catch (error) {
     console.error('[DAILY INFO ERROR]', error);
