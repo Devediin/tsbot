@@ -273,14 +273,20 @@ async function loadLive() {
   const liveTitle = document.getElementById('liveTitle');
   const liveContent = document.getElementById('liveContent');
 
-  const channel = data.data?.user || "EdiinTv";
+  const channel = data.data?.user || "SEU_CANAL_AQUI";
 
-  const thumbnail = data.live && data.data
-    ? data.data.thumbnail
-    : `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg`;
+  let thumbnail;
+
+  if (data.live && data.data?.thumbnail) {
+    thumbnail = data.data.thumbnail
+      .replace('{width}', '640')
+      .replace('{height}', '360');
+  } else {
+    thumbnail = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg`;
+  }
 
   const badgeClass = data.live ? 'live-online' : 'live-offline';
-  const badgeText = data.live ? 'LIVE AGORA' : 'OFFLINE';
+  const badgeText = data.live ? '🔴 AO VIVO' : 'OFFLINE';
 
   const title = data.live && data.data
     ? data.data.title
