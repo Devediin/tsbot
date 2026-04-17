@@ -63,9 +63,9 @@ export const proceesCommand = async (event = {}, teamspeak) => {
 
     const response = await executeCommand(command, teamspeak, msgAsList, cid);
 
-    if (response.message) {
-      invoker.message(response.message);
-    }
+if (response.message) {
+  teamspeak.sendTextMessage(2, cid, response.message);
+}
 
     return true;
 
