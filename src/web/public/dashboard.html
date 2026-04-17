@@ -178,13 +178,18 @@ async function loadDeaths() {
 
   data.deaths.forEach(d => {
 
-    const isPlayer =
-      d.killer &&
-      d.killer[0] === d.killer[0].toUpperCase(); // heuristic simples
+    let killerHTML = '';
 
-    const killerHTML = isPlayer
-      ? `<span style="cursor:pointer;color:gold;" onclick="copyName('${d.killer}')">${d.killer}</span>`
-      : `<a href="${tibiaLink(d.killer)}" target="_blank">${d.killer}</a>`;
+    if (d.killerIsPlayer) {
+      killerHTML = `<span style="cursor:pointer;color:gold;" onclick="copyName('${d.killer}')">${d.killer}</span>`;
+    } else {
+      killerHTML = `<a href="${tibiaLink(d.killer)}" target="_blank">${d.killer}</a>`;
+    }
+
+    // suicídio
+    if (d.killer === d.characterName) {
+      killerHTML = `<span style="color:orange;">Suicídio</span>`;
+    }
 
     list.innerHTML += `
       <li>
@@ -196,6 +201,25 @@ async function loadDeaths() {
       </li>
     `;
   });
+}
+
+function copyName(name) {
+  const text = `exiva "${name}`;
+  navigator.clipboard.writeText(text);
+
+  const alertBox = document.createElement('div');
+  alertBox.innerText = `${name} copiado.`;
+  alertBox.style.position = 'fixed';
+  alertBox.style.bottom = '20px';
+  alertBox.style.right = '20px';
+  alertBox.style.background = 'gold';
+  alertBox.style.color = 'black';
+  alertBox.style.padding = '10px';
+  alertBox.style.borderRadius = '5px';
+
+  document.body.appendChild(alertBox);
+
+  setTimeout(() => alertBox.remove(), 2000);
 }
 
 function copyName(name) {
