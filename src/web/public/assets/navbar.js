@@ -14,5 +14,4 @@ function renderNavbar() {
     container.innerHTML = navbarHTML;
   }
 }
-
 renderNavbar();
