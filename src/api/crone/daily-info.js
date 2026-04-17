@@ -9,9 +9,29 @@ global.dailyInfoCacheTS = '';
 global.dailyInfoCachePortal = {};
 global.isYasirActive = false;
 
-const getRashidLocation = () => {
+/* =========================
+   FUNÇÃO BASE COM SERVER SAVE 05:00
+========================= */
+
+const getTibiaDate = () => {
   const nowBRT = momentTimezone.tz('America/Sao_Paulo');
-  const day = nowBRT.format('dddd');
+
+  // Se for antes das 05:00, ainda conta como dia anterior
+  if (nowBRT.hour() < 5) {
+    nowBRT.subtract(1, 'day');
+  }
+
+  return nowBRT;
+};
+
+/* =========================
+   RASHID
+========================= */
+
+const getRashidLocation = () => {
+  const tibiaDate = getTibiaDate();
+  const day = tibiaDate.format('dddd');
+
   const map = {
     Monday: 'Svargrond',
     Tuesday: 'Liberty Bay',
@@ -21,8 +41,13 @@ const getRashidLocation = () => {
     Saturday: 'Edron',
     Sunday: 'Carlin',
   };
+
   return map[day] || 'Desconhecido';
 };
+
+/* =========================
+   DREAM COURTS
+========================= */
 
 const dreamCourtsRotation = [
   'Plagueroot',
@@ -33,16 +58,20 @@ const dreamCourtsRotation = [
 ];
 
 const DREAM_COURTS_BASE_DATE = momentTimezone.tz(
-  '2026-04-12',
+  '2026-04-12T05:00:00',
   'America/Sao_Paulo'
 );
 
 const getDreamCourtsBoss = () => {
-  const nowBRT = momentTimezone.tz('America/Sao_Paulo');
-  const diffDays = nowBRT.diff(DREAM_COURTS_BASE_DATE, 'days');
+  const tibiaDate = getTibiaDate();
+  const diffDays = tibiaDate.diff(DREAM_COURTS_BASE_DATE, 'days');
   const index = ((diffDays % 5) + 5) % 5;
   return dreamCourtsRotation[index];
 };
+
+/* =========================
+   TIBIADROME
+========================= */
 
 const TIBIADROME_BASE_NUMBER = 125;
 const TIBIADROME_BASE_DATE = momentTimezone.tz(
@@ -51,13 +80,15 @@ const TIBIADROME_BASE_DATE = momentTimezone.tz(
 );
 
 const getTibiadromeInfo = () => {
-  const nowBRT = momentTimezone.tz('America/Sao_Paulo');
-  const diffDays = nowBRT.diff(TIBIADROME_BASE_DATE, 'days');
+  const tibiaDate = getTibiaDate();
+  const diffDays = tibiaDate.diff(TIBIADROME_BASE_DATE, 'days');
   const rotationOffset = Math.floor(diffDays / 15);
   const currentRotation = TIBIADROME_BASE_NUMBER + rotationOffset;
+
   const rotationStart = TIBIADROME_BASE_DATE
     .clone()
     .add(rotationOffset * 15, 'days');
+
   const rotationEnd = rotationStart.clone().add(15, 'days');
 
   return {
@@ -67,13 +98,16 @@ const getTibiadromeInfo = () => {
   };
 };
 
+/* =========================
+   WORLD BOARD (YASIR)
+========================= */
+
 export const parseWorldBoard = (text) => {
   if (!text || typeof text !== 'string') return;
 
   try {
     const lower = text.toLowerCase();
 
-    // ✅ Detecta Yasir corretamente
     if (
       lower.includes('oriental ships sighted') ||
       lower.includes('oriental trader') ||
@@ -90,6 +124,10 @@ export const parseWorldBoard = (text) => {
   }
 };
 
+/* =========================
+   UPDATE DAILY INFO
+========================= */
+
 export const updateDailyInfoChannel = async (teamspeak) => {
   try {
     const worldOverview = await tibiaAPI.getWorldOverview();
@@ -99,7 +137,7 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const dreamBoss = getDreamCourtsBoss();
     const tibiadrome = getTibiadromeInfo();
 
-const descriptionTS = `
+    const descriptionTS = `
 [center][size=14][b]⚔️ NIIDE HELPER - DAILY INFO ⚔️[/b][/size][/center]
 [hr]
 
@@ -116,7 +154,7 @@ const descriptionTS = `
 
 [b]🧞 YASIR (ORIENTAL TRADER)[/b]
 [img]https://www.tibiawiki.com.br/images/4/4a/Yasir.gif[/img]
-${global.isYasirActive ? '🟢 [b]DISPONÍVEL[/b] HOJE EM UMA DAS CIDADES' : '🔴 [b]NÃO ATIVO HOJE[/b]'}
+${global.isYasirActive ? '🟢 [b]DISPONÍVEL[/b] HOJE' : '🔴 [b]NÃO ATIVO HOJE[/b]'}
 
 [hr]
 
@@ -135,31 +173,26 @@ Boss Atual:
 `;
 
     global.dailyInfoCacheTS = descriptionTS.trim();
-global.dailyInfoCachePortal = {
-  server: {
-    name: serverName,
-  },
-  rashid: {
-    city: rashid,
-  },
-  yasir: {
-    active: global.isYasirActive,
-    label: global.isYasirActive
-      ? 'Disponível hoje'
-      : 'Não ativo hoje',
-  },
-  dreamCourts: {
-    boss: dreamBoss,
-  },
-  tibiadrome: {
-    rotation: tibiadrome.number,
-    start: tibiadrome.start,
-    end: tibiadrome.end,
-  },
-  updatedAt: momentTimezone
-    .tz('America/Sao_Paulo')
-    .format('DD/MM/YYYY HH:mm'),
-};
+
+    global.dailyInfoCachePortal = {
+      server: { name: serverName },
+      rashid: { city: rashid },
+      yasir: {
+        active: global.isYasirActive,
+        label: global.isYasirActive
+          ? 'Disponível hoje'
+          : 'Não ativo hoje',
+      },
+      dreamCourts: { boss: dreamBoss },
+      tibiadrome: {
+        rotation: tibiadrome.number,
+        start: tibiadrome.start,
+        end: tibiadrome.end,
+      },
+      updatedAt: momentTimezone
+        .tz('America/Sao_Paulo')
+        .format('DD/MM/YYYY HH:mm'),
+    };
 
     const channelList = await teamspeak.channelList();
 
@@ -168,7 +201,7 @@ global.dailyInfoCachePortal = {
     );
 
     if (!dailyChannel) {
-      console.log('[DAILY INFO] Canal Daily Info não encontrado.');
+      console.log('[DAILY INFO] Canal não encontrado.');
       return;
     }
 
@@ -181,10 +214,9 @@ global.dailyInfoCachePortal = {
       'Rashid:',
       rashid,
       'Dream Boss:',
-      dreamBoss,
-      'Yasir:',
-      global.isYasirActive
+      dreamBoss
     );
+
   } catch (error) {
     console.error('[DAILY INFO ERROR]', error);
   }
