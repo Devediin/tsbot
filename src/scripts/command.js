@@ -54,40 +54,44 @@ if (command === '!loot') {
   msgAsList.shift();
   const text = msgAsList.join(' ').trim();
 
-  const channelId = propcache.cid;
-
   if (!text || text.length < 20) {
-    return teamspeak.sendTextMessage(2, channelId, 'Log invalido ou incompleto.');
+    return invoker.message(
+`[b]LOOT SPLIT[/b]
+Log inválido ou incompleto.`
+    );
   }
 
   try {
     const result = parseLootSession(text);
 
     let response = '';
-    response += 'RESULTADO DO LOOT SPLIT\n';
-    response += '------------------------\n';
+    response += '[b]RESULTADO DO LOOT SPLIT[/b]\n';
+    response += '━━━━━━━━━━━━━━━━━━\n';
 
     result.transfers.forEach(t => {
       const roundedK = Math.round(t.amount / 1000);
       const bankValue = t.amount - 1;
 
-      response += `${t.from} paga ${roundedK}k para ${t.to}\n`;
-      response += `transfer ${bankValue} to ${t.to}\n\n`;
+      response += `• ${t.from} paga [b]${roundedK}k[/b] para ${t.to}\n`;
+      response += `  transfer ${bankValue} to ${t.to}\n\n`;
     });
 
     const totalKK = (result.totalProfit / 1000000).toFixed(2);
     const perPlayerK = Math.round(result.perPlayer / 1000);
     const perHourK = Math.round(result.profitPerHour / 1000);
 
-    response += '------------------------\n';
-    response += `Total: ${totalKK}kk\n`;
-    response += `Cada jogador: ${perPlayerK}k\n`;
-    response += `Por hora: ${perHourK}k`;
+    response += '━━━━━━━━━━━━━━━━━━\n';
+    response += `Total: [b]${totalKK}kk[/b]\n`;
+    response += `Cada jogador: [b]${perPlayerK}k[/b]\n`;
+    response += `Por hora: [b]${perHourK}k[/b]`;
 
-    return teamspeak.sendTextMessage(2, channelId, response);
+    return invoker.message(response);
 
   } catch (err) {
-    return teamspeak.sendTextMessage(2, channelId, 'Erro ao processar loot.');
+    return invoker.message(
+`[b]LOOT SPLIT[/b]
+Erro ao processar o loot.`
+    );
   }
 }
 
