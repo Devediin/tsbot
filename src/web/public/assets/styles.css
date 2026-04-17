@@ -378,3 +378,18 @@ button {
   border-radius: 6px;
   display: none;
 }
+.ts-button {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 12px 20px;
+  background: gold;
+  color: #3e2a17;
+  font-weight: bold;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: 0.3s;
+}
+
+.ts-button:hover {
+  background: #fff;
+}
