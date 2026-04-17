@@ -570,16 +570,13 @@ if (serverSaveStatus?.isOffline) {
 
   console.log(`[SERVERSAVE] Mundo voltou. Mensagem: ${message}`);
 
-  // ✅ Salva horario e data em BRT
-  const nowBRT = momentTimezone().tz('America/Sao_Paulo');
-  global.lastServerSaveTime = nowBRT.format('HH:mm');
-  global.lastServerSaveDate = nowBRT.format('YYYY-MM-DD');
+  // ✅ Salva horário correto do SS em BRT
+  const serverSaveTime = moment().tz('America/Sao_Paulo').format('HH:mm');
+  global.lastServerSaveTime = serverSaveTime;
 
   await sendMassPrivateMessage(teamspeak, message);
   await setServerSaveOnline();
   await setServerSaveAnnounced();
-  await updateDailyInfoChannel(teamspeak);
-}
 
   // ✅ Atualiza Daily Info automaticamente no SS
   await updateDailyInfoChannel(teamspeak);
