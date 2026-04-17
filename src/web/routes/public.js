@@ -1,27 +1,20 @@
 import express from 'express';
 import axios from 'axios';
 import Characters from '../../api/models/characters.js';
-import Channels from '../../api/models/channels.js';
 import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
 import moment from 'moment';
 
 const router = express.Router();
 
-/* ===========================
-   DAILY INFO
-=========================== */
-
+/* DAILY */
 router.get('/daily', async (req, res) => {
   res.json({
     description: global.dailyInfoCache || 'Daily Info ainda não disponível.'
   });
 });
 
-/* ===========================
-   TWITCH LIVE STATUS
-=========================== */
-
+/* LIVE */
 router.get('/live', async (req, res) => {
   res.json({
     live: global.isTwitchLive || false,
@@ -29,19 +22,7 @@ router.get('/live', async (req, res) => {
   });
 });
 
-/* ===========================
-   ONLINE FRIENDS
-=========================== */
-
-function getVocationGroup(vocation) {
-  if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
-  if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return 'Royal Paladin';
-  if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return 'Master Sorcerer';
-  if (vocation.includes('Elder Druid') || vocation === 'Druid') return 'Elder Druid';
-  if (vocation.includes('Exalted Monk') || vocation === 'Monk') return 'Exalted Monk';
-  return null;
-}
-
+/* ONLINE */
 router.get('/online', async (req, res) => {
   try {
     const characters = await Characters.find({ type: 'friend' });
@@ -54,40 +35,35 @@ router.get('/online', async (req, res) => {
       'Exalted Monk': [],
     };
 
+    function getGroup(vocation) {
+      if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
+      if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return 'Royal Paladin';
+      if (vocation.includes('Master Sorcerer') || vocation === 'Sorcerer') return 'Master Sorcerer';
+      if (vocation.includes('Elder Druid') || vocation === 'Druid') return 'Elder Druid';
+      if (vocation.includes('Exalted Monk') || vocation === 'Monk') return 'Exalted Monk';
+      return null;
+    }
+
     for (const char of characters) {
       const tracker = await getOnlineTrackerByName(char.characterName);
 
       if (tracker && tracker.isOnline) {
-        try {
-          const response = await axios.get(
-            `https://api.tibiadata.com/v4/character/${encodeURIComponent(char.characterName)}`
-          );
 
-          const info = response?.data?.character?.character;
-          if (!info) continue;
+        const diffMinutes = tracker.firstSeenOnline
+          ? moment().diff(moment(tracker.firstSeenOnline), 'minutes')
+          : 0;
 
-          const group = getVocationGroup(info.vocation);
-          if (!group) continue;
+        const hours = Math.floor(diffMinutes / 60);
+        const minutes = diffMinutes % 60;
 
-          const diffMinutes = tracker.firstSeenOnline
-            ? moment().diff(moment(tracker.firstSeenOnline), 'minutes')
-            : 0;
+        const formattedTime =
+          hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
-          const hours = Math.floor(diffMinutes / 60);
-          const minutes = diffMinutes % 60;
-
-          const formattedTime =
-            hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-
-          grouped[group].push({
-            name: char.characterName,
-            level: info.level,
-            onlineTime: formattedTime
-          });
-
-        } catch (err) {
-          continue;
-        }
+        grouped[getGroup('Elite Knight')]?.push({
+          name: char.characterName,
+          level: 0,
+          onlineTime: formattedTime
+        });
       }
     }
 
@@ -99,10 +75,7 @@ router.get('/online', async (req, res) => {
   }
 });
 
-/* ===========================
-   DEATHS
-=========================== */
-
+/* DEATHS */
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
@@ -110,38 +83,23 @@ router.get('/deaths', async (req, res) => {
 
     for (const d of deaths.slice(-10).reverse()) {
 
-      try {
-        const response = await axios.get(
-          `https://api.tibiadata.com/v4/character/${encodeURIComponent(d.characterName)}`
-        );
+      const response = await axios.get(
+        `https://api.tibiadata.com/v4/character/${encodeURIComponent(d.characterName)}`
+      );
 
-        const kills = response?.data?.character?.deaths;
+      const kills = response?.data?.character?.deaths;
 
-        if (kills && kills.length > 0) {
-          const kill = kills[0];
+      if (kills && kills.length > 0) {
+        const kill = kills[0];
 
-          const killers = kill.killers
-            ? kill.killers.map(k => k.name).join(' e ')
-            : 'Unknown';
+        const killers = kill.killers
+          ? kill.killers.map(k => k.name).join(' e ')
+          : 'Unknown';
 
-          detailed.push({
-            characterName: d.characterName,
-            level: kill.level || '???',
-            killers: killers
-          });
-        } else {
-          detailed.push({
-            characterName: d.characterName,
-            level: '???',
-            killers: 'Unknown'
-          });
-        }
-
-      } catch {
         detailed.push({
           characterName: d.characterName,
-          level: '???',
-          killers: 'Unknown'
+          level: kill.level,
+          killers: killers
         });
       }
     }
