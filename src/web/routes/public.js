@@ -99,18 +99,19 @@ router.get('/deaths', async (req, res) => {
           const match = kills.find(k => k.time === d.time);
           const death = match || kills[0];
 
-          detailed.push({
-            characterName: d.characterName,
-            level: death.level,
-            killer: death.killers?.[0]?.name || 'Unknown'
-          });
+detailed.push({
+  characterName: d.characterName,
+  level: death.level,
+  killer: death.killers?.[0]?.name || 'Unknown',
+  killerIsPlayer: death.killers?.[0]?.player || false
+});
         } else {
-          detailed.push({
-            characterName: d.characterName,
-            level: '???',
-            killer: 'Unknown'
-          });
-        }
+detailed.push({
+  characterName: d.characterName,
+  level: '???',
+  killer: 'Unknown',
+  killerIsPlayer: false
+});
 
       } catch {
         detailed.push({
