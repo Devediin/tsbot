@@ -49,7 +49,7 @@ export const proceesCommand = async (event = {}, teamspeak) => {
       return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
     }
 
-   if (command === '!loot') {
+if (command === '!loot') {
 
   msgAsList.shift();
   const text = msgAsList.join(' ').trim();
@@ -62,27 +62,27 @@ export const proceesCommand = async (event = {}, teamspeak) => {
     const result = parseLootSession(text);
 
     let response = '';
-    response += 'RESULTADO DO LOOT SPLIT\n';
-    response += '------------------------\n';
+    response += 'RESULTADO DO LOOT SPLIT\\n';
+    response += '------------------------\\n';
 
     result.transfers.forEach(t => {
       const roundedK = Math.round(t.amount / 1000);
       const bankValue = t.amount - 1;
 
-      response += `${t.from} paga ${roundedK}k para ${t.to}\n`;
-      response += `transfer ${bankValue} to ${t.to}\n\n`;
+      response += `${t.from} paga ${roundedK}k para ${t.to}\\n`;
+      response += `transfer ${bankValue} to ${t.to}\\n\\n`;
     });
 
     const totalKK = (result.totalProfit / 1000000).toFixed(2);
     const perPlayerK = Math.round(result.perPlayer / 1000);
     const perHourK = Math.round(result.profitPerHour / 1000);
 
-    response += '------------------------\n';
-    response += `Total: ${totalKK}kk\n`;
-    response += `Cada jogador: ${perPlayerK}k\n`;
-    response += `Por hora: ${perHourK}k\n`;
+    response += '------------------------\\n';
+    response += `Total: ${totalKK}kk\\n`;
+    response += `Cada jogador: ${perPlayerK}k\\n`;
+    response += `Por hora: ${perHourK}k`;
 
-    return teamspeak.sendTextMessage(2, Number(cid), response);
+    return teamspeak.sendTextMessage(2, Number(cid), response, { skipEscape: true });
 
   } catch (err) {
     return teamspeak.sendTextMessage(2, Number(cid), 'Erro ao processar loot.');
