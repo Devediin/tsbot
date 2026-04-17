@@ -50,22 +50,25 @@ const getRashidLocation = () => {
 ========================= */
 
 const dreamCourtsRotation = [
+  'Izcandar',
   'Plagueroot',
   'Malofur Mangrinder',
   'Maxxenius',
   'Alptramun',
-  'Izcandar',
 ];
 
 const DREAM_COURTS_BASE_DATE = momentTimezone.tz(
-  '2026-04-12T05:00:00',
+  '2026-04-16T05:00:00',
   'America/Sao_Paulo'
 );
 
 const getDreamCourtsBoss = () => {
-  const tibiaDate = getTibiaDate(); // ✅ usa regra 05:00
-  const diffDays = tibiaDate.diff(DREAM_COURTS_BASE_DATE, 'days');
+  const tibiaDate = getTibiaDate().clone().startOf('day');
+  const baseDate = DREAM_COURTS_BASE_DATE.clone().startOf('day');
+
+  const diffDays = tibiaDate.diff(baseDate, 'days');
   const index = ((diffDays % 5) + 5) % 5;
+
   return dreamCourtsRotation[index];
 };
 
@@ -75,7 +78,7 @@ const getDreamCourtsBoss = () => {
 
 const TIBIADROME_BASE_NUMBER = 125;
 const TIBIADROME_BASE_DATE = momentTimezone.tz(
-  '2026-04-15T05:00:00',
+  '2026-04-16T05:00:00',
   'America/Sao_Paulo'
 );
 
