@@ -5,7 +5,7 @@ import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
 import moment from 'moment';
 import { parseLootSession } from '../../utils/lootSplit.js';
-import PlayerHistory from '../api/models/player-history.js';
+import PlayerHistory from '../../api/models/player-history.js';
 
 const router = express.Router();
 
