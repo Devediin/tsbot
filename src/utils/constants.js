@@ -656,7 +656,9 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!dailyinfo <texto do world board>',
   },
-   '!loot': {
+'!loot': {
+  groups: [], // ✅ comando público, array vazio
+
   exec: async (teamspeak, msgAsList) => {
     try {
 
@@ -664,7 +666,10 @@ export const COMMANDS_MAP = {
       const text = msgAsList.join(' ').trim();
 
       if (!text || text.length < 20) {
-        return { ok: false, message: '❌ Log inválido.' };
+        return {
+          ok: false,
+          message: '❌ Log inválido ou incompleto.'
+        };
       }
 
       const result = parseLootSession(text);
@@ -674,6 +679,7 @@ export const COMMANDS_MAP = {
       result.transfers.forEach(t => {
         const roundedK = Math.round(t.amount / 1000);
         const bankValue = t.amount - 1;
+
         response += `${t.from} deve pagar ${roundedK}k para ${t.to} (transfer ${bankValue} to ${t.to})\n`;
       });
 
@@ -684,14 +690,21 @@ export const COMMANDS_MAP = {
       response += `\n💰 Lucro total: ${totalKK}kk (~${perPlayerK}k cada)\n`;
       response += `⏱️ ${result.duration} (~${perHourK}k/h por jogador)`;
 
-      return { ok: true, message: response };
+      return {
+        ok: true,
+        message: response
+      };
 
     } catch (err) {
       console.error('LOOT ERROR:', err);
-      return { ok: false, message: '❌ Erro ao processar loot.' };
+      return {
+        ok: false,
+        message: '❌ Erro ao processar loot.'
+      };
     }
   },
-  howToUse: '!loot <log>',
+
+  howToUse: '!loot <cole o log completo>'
 },
   '!removeModerator': {
     groups: [ADMIN_GROUP_NAME],
