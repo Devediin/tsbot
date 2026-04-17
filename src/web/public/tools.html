@@ -4,6 +4,21 @@
 <meta charset="UTF-8">
 <title>Tibia Loot Split</title>
 <link rel="stylesheet" href="/assets/styles.css">
+<style>
+.result-line {
+  margin-bottom: 10px;
+}
+
+.copy-btn {
+  margin-left: 10px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.green {
+  color: #00ff66;
+}
+</style>
 </head>
 <body>
 
@@ -27,11 +42,10 @@
   </div>
 
   <div class="card">
-    <pre id="result"></pre>
-    <div style="margin-top:15px;">
-      <button onclick="copyResult()">Copiar Resultado Completo</button>
-      <button onclick="copyBank()">Copiar Apenas Bank Transfers</button>
-    </div>
+    <h3>Results:</h3>
+    <div id="result"></div>
+    <br>
+    <button onclick="copyAll()">Copy all to Discord!</button>
   </div>
 
 </div>
@@ -40,8 +54,7 @@
 
 <script>
 
-let lastResultText = '';
-let lastBankText = '';
+let fullText = '';
 
 async function calculate() {
 
@@ -60,42 +73,59 @@ async function calculate() {
     return;
   }
 
-  let output = '';
-  let bankOnly = '';
+  const resultDiv = document.getElementById('result');
+  resultDiv.innerHTML = '';
+  fullText = '';
 
   data.transfers.forEach(t => {
 
     const roundedK = Math.round(t.amount / 1000);
-    const bankValue = t.amount - 1; // igual TibiaPal
+    const bankValue = t.amount - 1;
 
-    output += `${t.from} to pay ${roundedK}k to ${t.to} (Bank: transfer ${bankValue} to ${t.to})\n\n`;
+    const lineText = `${t.from} to pay ${roundedK}k to ${t.to} (Bank: transfer ${bankValue} to ${t.to})`;
 
-    bankOnly += `transfer ${bankValue} to ${t.to}\n`;
+    const line = document.createElement('div');
+    line.className = 'result-line';
+
+    line.innerHTML = `
+      ${lineText}
+      <button class="copy-btn" onclick="copyText('${bankValue} to ${t.to}')">Copy</button>
+    `;
+
+    resultDiv.appendChild(line);
+    fullText += lineText + '\n\n';
   });
 
   const totalKK = (data.totalProfit / 1000000).toFixed(2);
   const perPlayerK = Math.round(data.perPlayer / 1000);
   const perHourK = Math.round(data.profitPerHour / 1000);
 
-  output += `Total profit: ${totalKK}kk~ which is: ${perPlayerK}k~ for each player.\n\n`;
-  output += `Session duration: ${data.duration}, which is: ${perHourK}k~ for each player per hour.`;
+  const summary1 = `Total profit: <span class="green">${totalKK}kk~</span> which is: <span class="green">${perPlayerK}k~</span> for each player.`;
+  const summary2 = `Session duration: ${data.duration}, which is: <span class="green">${perHourK}k~</span> for each player per hour.`;
 
-  document.getElementById('result').innerText = output;
+  const sumDiv1 = document.createElement('div');
+  sumDiv1.innerHTML = summary1;
 
-  lastResultText = output;
-  lastBankText = bankOnly;
+  const sumDiv2 = document.createElement('div');
+  sumDiv2.innerHTML = summary2;
+
+  resultDiv.appendChild(document.createElement('br'));
+  resultDiv.appendChild(sumDiv1);
+  resultDiv.appendChild(document.createElement('br'));
+  resultDiv.appendChild(sumDiv2);
+
+  fullText += `Total profit: ${totalKK}kk~ which is: ${perPlayerK}k~ for each player.\n\n`;
+  fullText += `Session duration: ${data.duration}, which is: ${perHourK}k~ for each player per hour.`;
 }
 
-function copyResult() {
-  if (!lastResultText) return;
-  navigator.clipboard.writeText(lastResultText);
-  alert('Resultado completo copiado!');
+function copyText(text) {
+  navigator.clipboard.writeText(`transfer ${text}`);
+  alert('Transfer copied!');
 }
 
-function copyBank() {
-  if (!lastBankText) return;
-  navigator.clipboard.writeText(lastBankText);
-  alert('Bank transfers copiado!');
+function copyAll() {
+  navigator.clipboard.writeText(fullText);
+  alert('All copied!');
 }
 
 </script>
