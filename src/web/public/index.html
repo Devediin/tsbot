@@ -83,7 +83,25 @@ async function loadDaily() {
     document.getElementById('daily').innerHTML = data.description;
   }
 }
+  <div class="card">
+  <h2 id="liveTitle">🔴 LIVE OFFLINE</h2>
+</div>
 
+async function loadLive() {
+  const res = await fetch('/api/public/live');
+  const data = await res.json();
+
+  const liveTitle = document.getElementById('liveTitle');
+
+  if (data.live) {
+    liveTitle.innerHTML = '🟢 LIVE ONLINE';
+  } else {
+    liveTitle.innerHTML = '🔴 LIVE OFFLINE';
+  }
+}
+
+loadLive();
+  
 loadDaily();
 </script>
 
