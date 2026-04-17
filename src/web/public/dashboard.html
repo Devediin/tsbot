@@ -11,6 +11,8 @@
 <body>
 
 <div class="overlay"></div>
+<div id="navbar"></div>
+  
 <h1>⚔️ NiideHelper Dashboard ⚔️</h1>
 
 <div class="container">
@@ -146,12 +148,7 @@ loadDeaths();
 setInterval(updateTimer, 1000);
 
 </script>
-<script>
-fetch('/partials/navbar.html')
-  .then(res => res.text())
-  .then(data => {
-    document.getElementById('navbar').innerHTML = data;
-  });
-</script>
+<script src="/assets/navbar.js"></script>
+<script src="/assets/theme.js"></script>
 </body>
 </html>
