@@ -656,6 +656,60 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!dailyinfo <texto do world board>',
   },
+  '!loot': {
+  groups: [],
+
+  exec: async (teamspeak, msgAsList) => {
+    try {
+
+      msgAsList.shift();
+      const text = msgAsList.join(' ').trim();
+
+      if (!text || text.length < 20) {
+        return {
+          ok: false,
+          message: 'Log invalido ou incompleto.'
+        };
+      }
+
+      const result = parseLootSession(text);
+
+      let response = '';
+      response += 'RESULTADO DO LOOT SPLIT\n';
+      response += '------------------------\n';
+
+      result.transfers.forEach(t => {
+        const roundedK = Math.round(t.amount / 1000);
+        const bankValue = t.amount - 1;
+
+        response += `${t.from} paga ${roundedK}k para ${t.to}\n`;
+        response += `transfer ${bankValue} to ${t.to}\n\n`;
+      });
+
+      const totalKK = (result.totalProfit / 1000000).toFixed(2);
+      const perPlayerK = Math.round(result.perPlayer / 1000);
+      const perHourK = Math.round(result.profitPerHour / 1000);
+
+      response += '------------------------\n';
+      response += `Total: ${totalKK}kk\n`;
+      response += `Cada jogador: ${perPlayerK}k\n`;
+      response += `Por hora: ${perHourK}k\n`;
+
+      return {
+        ok: true,
+        message: response
+      };
+
+    } catch (err) {
+      return {
+        ok: false,
+        message: 'Erro ao processar loot.'
+      };
+    }
+  },
+
+  howToUse: '!loot <log>'
+},
   '!removeModerator': {
     groups: [ADMIN_GROUP_NAME],
     exec: async (teamspeak, msgAsList) => {
