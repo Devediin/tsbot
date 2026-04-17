@@ -264,4 +264,62 @@ router.get('/ranking-advanced', async (req, res) => {
   }
 });
 
+router.get('/monthly-highlight', async (req, res) => {
+  try {
+
+    const startOfMonth = moment().startOf('month').toDate();
+
+    const histories = await PlayerHistory.find({
+      date: { $gte: startOfMonth }
+    }).sort({ date: 1 });
+
+    const groupedLevels = {};
+
+    histories.forEach(entry => {
+      if (!groupedLevels[entry.name]) {
+        groupedLevels[entry.name] = {
+          first: entry.level,
+          last: entry.level
+        };
+      } else {
+        groupedLevels[entry.name].last = entry.level;
+      }
+    });
+
+    const levelUpRanking = Object.keys(groupedLevels)
+      .map(name => ({
+        name,
+        levelGain: groupedLevels[name].last - groupedLevels[name].first
+      }))
+      .sort((a,b) => b.levelGain - a.levelGain);
+
+    const deaths = await getDeathsCache();
+    const deathsThisMonth = deaths.filter(d =>
+      new Date(d.time) >= startOfMonth
+    );
+
+    const deathCount = {};
+
+    deathsThisMonth.forEach(d => {
+      deathCount[d.characterName] =
+        (deathCount[d.characterName] || 0) + 1;
+    });
+
+    const deathRanking = Object.keys(deathCount)
+      .map(name => ({
+        name,
+        deaths: deathCount[name]
+      }))
+      .sort((a,b) => b.deaths - a.deaths);
+
+    res.json({
+      playerOfMonth: levelUpRanking[0] || null,
+      tragedyOfMonth: deathRanking[0] || null
+    });
+
+  } catch (e) {
+    res.json({});
+  }
+});
+
 export default router;
