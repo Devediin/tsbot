@@ -6,10 +6,20 @@
 
 <style>
 body {
-  background: radial-gradient(circle at center, #3e2a17 0%, #2b1b10 70%);
-  font-family: "Trebuchet MS", Tahoma;
+  font-family: Tahoma, Arial;
   color: #fff;
   margin: 0;
+  background: url('https://www.tibiabr.com/wp-content/uploads/2018/06/old_2002_tibia_art__extended_to_hd_widescreen__by_donotworr-dbpp9ky.png') no-repeat center center fixed;
+  background-size: cover;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.6);
+  z-index: -1;
 }
 
 .navbar {
