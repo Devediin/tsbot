@@ -99,24 +99,39 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const dreamBoss = getDreamCourtsBoss();
     const tibiadrome = getTibiadromeInfo();
 
-    const descriptionTS = `
-[b]🌍 Servidor[/b]
+const descriptionTS = `
+[center][size=14][b]⚔️ NIIDE HELPER - DAILY INFO ⚔️[/b][/size][/center]
+[hr]
+
+[b]🌍 SERVIDOR[/b]
 🟢 ${serverName}
 
-[b]🧳 Rashid[/b]
+[hr]
+
+[b]🧳 RASHID HOJE[/b]
 [img]https://www.tibiawiki.com.br/images/f/f5/Rashid.gif[/img]
 📍 ${rashid}
 
-[b]🧞 Yasir (Oriental Trader)[/b]
+[hr]
+
+[b]🧞 YASIR (ORIENTAL TRADER)[/b]
 [img]https://www.tibiawiki.com.br/images/4/4a/Yasir.gif[/img]
-${global.isYasirActive ? '🟢 DISPONÍVEL HOJE' : '🔴 NÃO ATIVO'}
+${global.isYasirActive ? '🟢 DISPONÍVEL HOJE EM UMA DAS CIDADES' : '🔴 NÃO ATIVO HOJE'}
 
-[b]👑 Dream Courts Boss[/b]
-${dreamBoss}
+[hr]
 
-[b]🎭 Tibiadrome[/b]
-Rotação #${tibiadrome.number}
-${tibiadrome.start} → ${tibiadrome.end}
+[b]👑 DREAM COURTS[/b]
+Boss Atual:
+⭐ ${dreamBoss}
+
+[hr]
+
+[b]🎭 TIBIADROME[/b]
+🏆 Rotação #${tibiadrome.number}
+📅 ${tibiadrome.start} → ${tibiadrome.end}
+
+[hr]
+[center][size=10]Atualizado automaticamente pelo NiideHelper[/size][/center]
 `;
 
     global.dailyInfoCacheTS = descriptionTS.trim();
