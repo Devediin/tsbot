@@ -674,18 +674,19 @@ export const COMMANDS_MAP = {
     },
     howToUse: '!removeModerator ${username}',
   },
-  '!loot': {
-  groups: null, // qualquer um pode usar (mude se quiser restringir)
+ '!loot': {
+  groups: null,
   exec: async (teamspeak, msgAsList) => {
     try {
 
-      msgAsList.shift(); // remove "!loot"
-      const text = msgAsList.join(' ');
+      msgAsList.shift();
 
-      if (!text) {
+      const text = msgAsList.join(' ').trim();
+
+      if (!text || text.length < 20) {
         return {
           ok: false,
-          message: '❌ Cole o log completo após o comando.'
+          message: '❌ Log inválido ou incompleto.'
         };
       }
 
@@ -713,7 +714,7 @@ export const COMMANDS_MAP = {
       };
 
     } catch (err) {
-      console.error(err);
+      console.error('LOOT ERROR:', err);
       return {
         ok: false,
         message: '❌ Erro ao processar o loot.'
