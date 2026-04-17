@@ -149,10 +149,11 @@ router.get('/deaths', async (req, res) => {
 ==========================================
 */
 
-import axios from 'axios';
-
 router.get('/live', async (req, res) => {
-  res.json({ live: global.isTwitchLive || false });
+  res.json({
+    live: global.isTwitchLive || false,
+    data: global.twitchLiveData || null
+  });
 });
 
 export default router;
