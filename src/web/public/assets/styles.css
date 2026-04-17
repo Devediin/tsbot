@@ -1,9 +1,14 @@
+/* =========================
+   VARIABLES / THEME
+========================= */
+
 :root {
   --bg-overlay: rgba(0,0,0,0.75);
   --card-bg: rgba(62, 42, 23, 0.95);
   --border-color: gold;
   --text-color: #f5e6c8;
   --accent: gold;
+  --secondary-text: rgba(255,255,255,0.7);
 }
 
 body.light-theme {
@@ -12,7 +17,12 @@ body.light-theme {
   --border-color: #333;
   --text-color: #222;
   --accent: #b8860b;
+  --secondary-text: #555;
 }
+
+/* =========================
+   BASE
+========================= */
 
 body {
   margin: 0;
@@ -30,6 +40,30 @@ body {
   z-index: -1;
 }
 
+h1 {
+  text-align: center;
+  color: var(--accent);
+  margin: 40px 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:visited {
+  color: var(--accent);
+}
+
+a:hover {
+  color: #fff;
+  text-shadow: 0 0 6px var(--accent);
+}
+
+/* =========================
+   NAVBAR
+========================= */
+
 .navbar {
   background: linear-gradient(#5a3b1f, #3e2a17);
   padding: 18px;
@@ -41,14 +75,8 @@ body {
 }
 
 .navbar a {
-  color: var(--accent);
-  text-decoration: none;
   margin: 0 25px;
   font-weight: bold;
-}
-
-.navbar a:hover {
-  color: #fff;
 }
 
 .theme-toggle {
@@ -57,4 +85,270 @@ body {
   top: 15px;
   cursor: pointer;
   font-size: 18px;
+}
+
+/* =========================
+   LAYOUT
+========================= */
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 0 20px 60px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 30px;
+  margin-bottom: 40px;
+  box-shadow: 0 0 25px rgba(0,0,0,0.7);
+  transition: box-shadow 0.3s ease;
+}
+
+.card.glow {
+  box-shadow: 0 0 35px var(--accent);
+}
+
+.card h2 {
+  color: var(--accent);
+  border-bottom: 1px solid rgba(255,215,0,0.4);
+  padding-bottom: 8px;
+}
+
+/* =========================
+   DAILY INFO
+========================= */
+
+.daily-card div {
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.daily-card div:last-child {
+  border-bottom: none;
+}
+
+small {
+  display: block;
+  margin-top: 15px;
+  font-size: 12px;
+  color: var(--secondary-text);
+}
+
+/* =========================
+   LIVE SECTION
+========================= */
+
+.live-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  margin-top: 15px;
+}
+
+.live-wrapper img {
+  width: 100%;
+  border-radius: 10px;
+  transition: transform 0.4s ease;
+}
+
+.live-wrapper:hover img {
+  transform: scale(1.05);
+}
+
+.live-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.2));
+  display: flex;
+  align-items: flex-end;
+  padding: 15px;
+}
+
+.live-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 6px 12px;
+  font-weight: bold;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.live-online {
+  background: #e91916;
+  color: white;
+  animation: livePulse 1.2s infinite;
+}
+
+.live-offline {
+  background: #555;
+  color: white;
+}
+
+@keyframes livePulse {
+  0% { box-shadow: 0 0 5px #e91916; }
+  50% { box-shadow: 0 0 20px #ff0000; }
+  100% { box-shadow: 0 0 5px #e91916; }
+}
+
+.live-button {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #3e2a17;
+  font-weight: bold;
+  border-radius: 6px;
+}
+
+/* =========================
+   DASHBOARD
+========================= */
+
+.total-box {
+  text-align: center;
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 25px;
+  color: var(--accent);
+  transition: 0.3s ease;
+}
+
+.total-box.glow {
+  text-shadow: 0 0 20px var(--accent);
+}
+
+.vocation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 25px;
+  margin-top: 20px;
+}
+
+.vocation-card {
+  background: rgba(0,0,0,0.25);
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,215,0,0.3);
+}
+
+.vocation-card h3 {
+  margin-top: 0;
+  color: var(--accent);
+}
+
+ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+li {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 14px;
+}
+
+li:last-child {
+  border-bottom: none;
+}
+
+.player-name {
+  font-weight: bold;
+}
+
+.top-player {
+  background: rgba(255,215,0,0.08);
+  border-left: 3px solid var(--accent);
+  padding-left: 8px;
+}
+
+.player-meta {
+  font-size: 13px;
+  color: var(--secondary-text);
+}
+
+/* =========================
+   DEATH TABLE
+========================= */
+
+.death-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 1.5fr;
+  gap: 15px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 14px;
+}
+
+.death-row:last-child {
+  border-bottom: none;
+}
+
+.death-level {
+  text-align: center;
+  color: #ffcc66;
+}
+
+.death-killer {
+  color: var(--secondary-text);
+}
+
+/* =========================
+   DESCRIPTION PAGE
+========================= */
+
+input {
+  padding: 12px;
+  width: 320px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+}
+
+textarea {
+  width: 100%;
+  height: 100px;
+  margin-top: 25px;
+  resize: none;
+  background: #1a1a1a;
+  color: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+button {
+  padding: 10px 25px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #3e2a17;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 768px) {
+
+  .vocation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .death-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .death-level {
+    text-align: left;
+  }
 }
