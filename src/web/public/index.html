@@ -163,6 +163,40 @@ loadDaily();
 loadLive();
 setInterval(loadLive, 60000);
 </script>
+<script>
+loadDaily();
+loadLive();
+
+async function loadHighlights() {
+  try {
+    const res = await fetch('/api/public/monthly-highlight');
+    const data = await res.json();
+
+    if (data.playerOfMonth) {
+      document.getElementById('playerOfMonth').innerHTML =
+        `🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(data.playerOfMonth.name)}" target="_blank">
+          ${data.playerOfMonth.name}
+        </a> — +${data.playerOfMonth.levelGain} levels`;
+    } else {
+      document.getElementById('playerOfMonth').innerText = 'Sem dados.';
+    }
+
+    if (data.tragedyOfMonth) {
+      document.getElementById('tragedyOfMonth').innerHTML =
+        `💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(data.tragedyOfMonth.name)}" target="_blank">
+          ${data.tragedyOfMonth.name}
+        </a> — ${data.tragedyOfMonth.deaths} mortes`;
+    } else {
+      document.getElementById('tragedyOfMonth').innerText = 'Sem dados.';
+    }
+
+  } catch (e) {
+    console.log('Erro highlights');
+  }
+}
+
+loadHighlights();
+</script>
 
 </body>
 </html>
