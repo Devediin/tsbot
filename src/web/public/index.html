@@ -6,71 +6,78 @@
 
 <style>
 body {
-  font-family: Tahoma, Arial;
+  background: radial-gradient(circle at center, #3e2a17 0%, #2b1b10 70%);
+  font-family: Tahoma;
   color: #fff;
   margin: 0;
-  background: url('https://www.tibiabr.com/wp-content/uploads/2018/06/old_2002_tibia_art__extended_to_hd_widescreen__by_donotworr-dbpp9ky.png') no-repeat center center fixed;
-  background-size: cover;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  backdrop-filter: blur(4px);
-  background: rgba(0,0,0,0.6);
-  z-index: -1;
 }
 
 .navbar {
-  background:#3e2a17;
-  padding:15px;
-  text-align:center;
-  border-bottom:2px solid #8b5a2b;
+  background: linear-gradient(#4e3420, #3e2a17);
+  padding: 15px;
+  text-align: center;
+  border-bottom: 3px solid gold;
 }
 
 .navbar a {
-  color:#ffd700;
-  text-decoration:none;
-  margin:0 20px;
-  font-weight:bold;
+  color: gold;
+  text-decoration: none;
+  margin: 0 20px;
+  font-weight: bold;
 }
 
 .container {
-  padding:40px;
+  width: 85%;
+  margin: auto;
+  padding: 40px;
 }
 
 .card {
-  background:#3e2a17;
-  border:2px solid #8b5a2b;
-  border-radius:10px;
-  padding:20px;
-  margin-bottom:30px;
+  background: #3e2a17;
+  border: 2px solid gold;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
 }
 
 h1 {
-  text-align:center;
-  color:#ffd700;
+  text-align: center;
+  color: gold;
+}
+
+.live-box img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.live-badge {
+  color: #00ff00;
+  font-weight: bold;
 }
 </style>
 </head>
+
 <body>
 
 <div class="navbar">
   <a href="/">🏠 Home</a>
   <a href="/description.html">📜 Gerador</a>
   <a href="/dashboard.html">📊 Dashboard</a>
-  <a href="/login.html">🔐 Admin</a>
 </div>
-
-<div class="container">
 
 <h1>⚔️ NiideHelper ⚔️</h1>
 
-<div class="card">
-  <h2>📅 Daily Info</h2>
-  <div id="daily"></div>
-</div>
+<div class="container">
+
+  <div class="card">
+    <h2>📅 Daily Info</h2>
+    <div id="daily"></div>
+  </div>
+
+  <div class="card live-box">
+    <h2 id="liveTitle">🔴 LIVE OFFLINE</h2>
+    <div id="liveContent"></div>
+  </div>
 
 </div>
 
@@ -78,31 +85,32 @@ h1 {
 async function loadDaily() {
   const res = await fetch('/api/public/daily');
   const data = await res.json();
-
-  if (data.description) {
-    document.getElementById('daily').innerHTML = data.description;
-  }
+  document.getElementById('daily').innerHTML = data.description;
 }
-  <div class="card">
-  <h2 id="liveTitle">🔴 LIVE OFFLINE</h2>
-</div>
 
 async function loadLive() {
   const res = await fetch('/api/public/live');
   const data = await res.json();
 
   const liveTitle = document.getElementById('liveTitle');
+  const liveContent = document.getElementById('liveContent');
 
-  if (data.live) {
+  if (data.live && data.data) {
     liveTitle.innerHTML = '🟢 LIVE ONLINE';
+    liveContent.innerHTML = `
+      <img src="${data.data.thumbnail}" />
+      <p><b>${data.data.user}</b></p>
+      <p>${data.data.title}</p>
+      <a href="https://twitch.tv/${data.data.user}" target="_blank">Assistir</a>
+    `;
   } else {
     liveTitle.innerHTML = '🔴 LIVE OFFLINE';
+    liveContent.innerHTML = '';
   }
 }
 
-loadLive();
-  
 loadDaily();
+loadLive();
 </script>
 
 </body>
