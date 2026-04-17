@@ -18,46 +18,51 @@ function getVocationGroup(vocation) {
 }
 
 router.get('/online', async (req, res) => {
-  const characters = await Characters.find({ type: 'friend' });
+  try {
+    const characters = await Characters.find({ type: 'friend' });
 
-  const grouped = {
-    'Elite Knight': [],
-    'Royal Paladin': [],
-    'Master Sorcerer': [],
-    'Elder Druid': [],
-    'Exalted Monk': [],
-  };
+    const grouped = {
+      'Elite Knight': [],
+      'Royal Paladin': [],
+      'Master Sorcerer': [],
+      'Elder Druid': [],
+      'Exalted Monk': [],
+    };
 
-  for (const char of characters) {
-    const tracker = await getOnlineTrackerByName(char.characterName);
+    for (const char of characters) {
+      const tracker = await getOnlineTrackerByName(char.characterName);
 
-    if (tracker?.isOnline) {
-      const info = await tibiaAPI.getCharacterInformation(char.characterName);
+      if (tracker?.isOnline) {
+        const info = await tibiaAPI.getCharacterInformation(char.characterName);
 
-      if (info?.info) {
-        const group = getVocationGroup(info.info.vocation);
-        if (!group) continue;
+        if (info?.info) {
+          const group = getVocationGroup(info.info.vocation);
+          if (!group) continue;
 
-        const diffMinutes = tracker.firstSeenOnline
-          ? moment().diff(moment(tracker.firstSeenOnline), 'minutes')
-          : 0;
+          const diffMinutes = tracker.firstSeenOnline
+            ? moment().diff(moment(tracker.firstSeenOnline), 'minutes')
+            : 0;
 
-        const hours = Math.floor(diffMinutes / 60);
-        const minutes = diffMinutes % 60;
+          const hours = Math.floor(diffMinutes / 60);
+          const minutes = diffMinutes % 60;
 
-        const formattedTime =
-          hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+          const formattedTime =
+            hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
-        grouped[group].push({
-          name: char.characterName,
-          level: info.info.level,
-          onlineTime: formattedTime
-        });
+          grouped[group].push({
+            name: char.characterName,
+            level: info.info.level,
+            onlineTime: formattedTime
+          });
+        }
       }
     }
-  }
 
-  res.json(grouped);
+    res.json(grouped);
+  } catch (error) {
+    console.error(error);
+    res.json({});
+  }
 });
 
 router.get('/deaths', async (req, res) => {
@@ -66,19 +71,25 @@ router.get('/deaths', async (req, res) => {
     const detailed = [];
 
     for (const d of deaths.slice(-10).reverse()) {
-      const deathInfo = await tibiaAPI.getCharacterDeaths(d.characterName);
+      try {
+        const deathInfo = await tibiaAPI.getCharacterDeaths(d.characterName);
 
-      if (deathInfo && deathInfo.kills && deathInfo.kills.length > 0) {
-        const matched = deathInfo.kills.find(k => k.time === d.time);
+        if (deathInfo?.kills && deathInfo.kills.length > 0) {
+          const kill = deathInfo.kills[0];
 
-        const kill = matched || deathInfo.kills[0];
-
-        detailed.push({
-          characterName: d.characterName,
-          level: kill.level || '???',
-          killer: kill.killers?.[0]?.name || 'Unknown'
-        });
-      } else {
+          detailed.push({
+            characterName: d.characterName,
+            level: kill.level || '???',
+            killer: kill.killers?.[0]?.name || 'Unknown'
+          });
+        } else {
+          detailed.push({
+            characterName: d.characterName,
+            level: '???',
+            killer: 'Unknown'
+          });
+        }
+      } catch {
         detailed.push({
           characterName: d.characterName,
           level: '???',
@@ -88,14 +99,6 @@ router.get('/deaths', async (req, res) => {
     }
 
     res.json({ deaths: detailed });
-
-  } catch (error) {
-    console.error(error);
-    res.json({ deaths: [] });
-  }
-});
-    res.json({ deaths: detailed });
-
   } catch (error) {
     console.error(error);
     res.json({ deaths: [] });
