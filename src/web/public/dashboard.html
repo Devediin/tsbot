@@ -177,15 +177,32 @@ async function loadDeaths() {
   list.innerHTML = '';
 
   data.deaths.forEach(d => {
+
+    const isPlayer =
+      d.killer &&
+      d.killer[0] === d.killer[0].toUpperCase(); // heuristic simples
+
+    const killerHTML = isPlayer
+      ? `<span style="cursor:pointer;color:gold;" onclick="copyName('${d.killer}')">${d.killer}</span>`
+      : `<a href="${tibiaLink(d.killer)}" target="_blank">${d.killer}</a>`;
+
     list.innerHTML += `
       <li>
         <a href="${tibiaLink(d.characterName)}" target="_blank">
           ${d.characterName}
         </a>
-        morreu no level ${d.level} para ${d.killer}
+        morreu no level ${d.level}
+        para ${killerHTML}
       </li>
     `;
   });
+}
+
+function copyName(name) {
+  const text = `exiva "${name}`;
+  navigator.clipboard.writeText(text);
+
+  alert(`${name} copiado para usar no exiva.`);
 }
 
 function updateTimer() {
