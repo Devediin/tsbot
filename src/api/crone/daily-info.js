@@ -101,24 +101,23 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const dreamBoss = getDreamCourtsBoss();
     const tibiadrome = getTibiadromeInfo();
 
-    const description = `
-<b>📅 Server Save</b><br>
-🟢 ${serverName} voltou às ${serverSaveTime}<br><br>
+const description = `
+[b]📅 Server Save[/b]
+🟢 ${serverName} voltou às ${serverSaveTime}
 
-<b>🧳 Rashid</b><br>
-📍 ${rashid}<br><br>
+[b]🧳 Rashid[/b]
+📍 ${rashid}
 
-<b>🧞 Yasir (Oriental Trader)</b><br>
-${yasirOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}<br><br>
+[b]🧞 Yasir (Oriental Trader)[/b]
+${yasirOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}
 
-<b>👑 Dream Courts Boss</b><br>
-${dreamBoss}<br><br>
+[b]👑 Dream Courts Boss[/b]
+${dreamBoss}
 
-<b>🎭 Tibiadrome</b><br>
-Rotação #${tibiadrome.number}<br>
+[b]🎭 Tibiadrome[/b]
+Rotação #${tibiadrome.number}
 ${tibiadrome.start} → ${tibiadrome.end}
 `;
-
     // ✅ salvar em memória para o dashboard
     global.dailyInfoCache = description;
 
