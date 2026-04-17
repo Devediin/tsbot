@@ -137,4 +137,48 @@ router.post('/loot', (req, res) => {
   }
 });
 
+/* RANKING */
+router.get('/ranking', async (req, res) => {
+  try {
+
+    const characters = await Characters.find({ type: 'friend' });
+
+    const ranking = [];
+
+    for (const char of characters) {
+
+      const tracker = await getOnlineTrackerByName(char.characterName);
+
+      const resp = await axios.get(
+        `https://api.tibiadata.com/v4/character/${encodeURIComponent(char.characterName)}`
+      );
+
+      const info = resp.data.character.character;
+
+      ranking.push({
+        name: char.characterName,
+        level: info.level,
+        vocation: info.vocation,
+        onlineTimeMinutes: tracker?.isOnline
+          ? moment().diff(moment(tracker.firstSeenOnline), 'minutes')
+          : 0
+      });
+    }
+
+    const sortedByLevel = [...ranking].sort((a,b) => b.level - a.level);
+    const sortedByOnline = [...ranking].sort((a,b) => b.onlineTimeMinutes - a.onlineTimeMinutes);
+
+    res.json({
+      topLevel: sortedByLevel[0] || null,
+      topOnlineToday: sortedByOnline[0] || null,
+      averageLevel: Math.round(
+        ranking.reduce((sum, p) => sum + p.level, 0) / (ranking.length || 1)
+      )
+    });
+
+  } catch (e) {
+    res.json({});
+  }
+});
+
 export default router;
