@@ -6,20 +6,10 @@
 
 <style>
 body {
-  font-family: Tahoma, Arial;
+  background: radial-gradient(circle at center, #3e2a17 0%, #2b1b10 70%);
+  font-family: Tahoma;
   color: #fff;
   margin: 0;
-  background: url('https://www.tibiabr.com/wp-content/uploads/2018/06/old_2002_tibia_art__extended_to_hd_widescreen__by_donotworr-dbpp9ky.png') no-repeat center center fixed;
-  background-size: cover;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  backdrop-filter: blur(4px);
-  background: rgba(0,0,0,0.6);
-  z-index: -1;
 }
 
 .navbar {
@@ -44,7 +34,7 @@ h1 {
 }
 
 .container {
-  width: 80%;
+  width: 85%;
   margin: auto;
 }
 
@@ -85,6 +75,27 @@ li {
   color: red;
 }
 
+.ticker {
+  background: #222;
+  padding: 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  border-top: 2px solid gold;
+  border-bottom: 2px solid gold;
+  margin-bottom: 20px;
+}
+
+.ticker span {
+  display: inline-block;
+  padding-left: 100%;
+  animation: ticker 15s linear infinite;
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
 .counter {
   text-align: center;
   margin-top: 20px;
@@ -92,15 +103,11 @@ li {
 }
 
 a {
-  color: gold;
+  color: #ffd700;
   text-decoration: none;
 }
 
 a:visited {
-  color: gold;
-}
-
-a:hover {
   color: #ffd700;
 }
 </style>
@@ -116,10 +123,14 @@ a:hover {
 
 <h1>⚔️ Online Members ⚔️</h1>
 
+<div class="ticker">
+  <span id="levelupsTicker">Carregando level ups...</span>
+</div>
+
 <div class="container" id="online"></div>
 
 <div class="container death-box">
-  <h2>💀 Últimas 10 Mortes...</h2>
+  <h2>💀 Últimas 10 Mortes</h2>
   <ul id="deaths"></ul>
 </div>
 
@@ -136,6 +147,15 @@ function tibiaLink(name) {
   return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
 }
 
+function vocationIcon(vocation) {
+  if (vocation === 'Elite Knight') return '🛡';
+  if (vocation === 'Royal Paladin') return '🏹';
+  if (vocation === 'Master Sorcerer') return '🔥';
+  if (vocation === 'Elder Druid') return '🌿';
+  if (vocation === 'Exalted Monk') return '🥋';
+  return '';
+}
+
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
@@ -147,7 +167,7 @@ async function loadOnline() {
     if (data[vocation] && data[vocation].length > 0) {
 
       let html = `<div class="vocation-box">
-        <h2>${vocation}</h2>
+        <h2>${vocationIcon(vocation)} ${vocation}</h2>
         <ul>`;
 
       data[vocation].forEach(p => {
@@ -179,38 +199,22 @@ async function loadDeaths() {
   data.deaths.forEach(d => {
     list.innerHTML += `
       <li>
-        <b>${d.characterName}</b>
-        morreu no level <b>${d.level}</b>
+        <a href="${tibiaLink(d.characterName)}" target="_blank">
+          ${d.characterName}
+        </a>
+        morreu no level ${d.level}
         para <b>${d.killers}</b>
       </li>
     `;
   });
 }
 
-function copyName(name) {
-  const text = `exiva "${name}`;
-  navigator.clipboard.writeText(text);
+async function loadLevelUps() {
+  const res = await fetch('/api/public/levelups');
+  const data = await res.json();
 
-  const alertBox = document.createElement('div');
-  alertBox.innerText = `${name} copiado.`;
-  alertBox.style.position = 'fixed';
-  alertBox.style.bottom = '20px';
-  alertBox.style.right = '20px';
-  alertBox.style.background = 'gold';
-  alertBox.style.color = 'black';
-  alertBox.style.padding = '10px';
-  alertBox.style.borderRadius = '5px';
-
-  document.body.appendChild(alertBox);
-
-  setTimeout(() => alertBox.remove(), 2000);
-}
-
-function copyName(name) {
-  const text = `exiva "${name}`;
-  navigator.clipboard.writeText(text);
-
-  alert(`${name} copiado para usar no exiva.`);
+  document.getElementById('levelupsTicker').innerText =
+    data.levelups.join(' ✨ ');
 }
 
 function updateTimer() {
@@ -221,11 +225,13 @@ function updateTimer() {
     timer = refreshInterval;
     loadOnline();
     loadDeaths();
+    loadLevelUps();
   }
 }
 
 loadOnline();
 loadDeaths();
+loadLevelUps();
 setInterval(updateTimer, 1000);
 
 </script>
