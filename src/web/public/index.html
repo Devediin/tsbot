@@ -6,10 +6,20 @@
 
 <style>
 body {
-  background: radial-gradient(circle at center, #3e2a17 0%, #2b1b10 70%);
-  font-family: Tahoma;
-  color: #fff;
   margin: 0;
+  font-family: Tahoma, Arial, sans-serif;
+  color: #fff;
+  background: url('https://www.tibiabr.com/wp-content/uploads/2018/06/old_2002_tibia_art__extended_to_hd_widescreen__by_donotworr-dbpp9ky.png') no-repeat center center fixed;
+  background-size: cover;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: -1;
 }
 
 .navbar {
@@ -45,19 +55,20 @@ h1 {
   color: gold;
 }
 
-.live-box img {
-  width: 100%;
-  border-radius: 8px;
+a {
+  color: gold;
+  text-decoration: none;
 }
 
-.live-badge {
-  color: #00ff00;
-  font-weight: bold;
+a:visited {
+  color: gold;
 }
 </style>
 </head>
 
 <body>
+
+<div class="overlay"></div>
 
 <div class="navbar">
   <a href="/">🏠 Home</a>
@@ -65,19 +76,19 @@ h1 {
   <a href="/dashboard.html">📊 Dashboard</a>
 </div>
 
-<h1>⚔️ NiideHelper ⚔️</h1>
-
 <div class="container">
 
-  <div class="card">
-    <h2>📅 Daily Info</h2>
-    <div id="daily"></div>
-  </div>
+<h1>⚔️ NiideHelper ⚔️</h1>
 
-  <div class="card live-box">
-    <h2 id="liveTitle">🔴 LIVE OFFLINE</h2>
-    <div id="liveContent"></div>
-  </div>
+<div class="card">
+  <h2>📅 Daily Info</h2>
+  <div id="daily"></div>
+</div>
+
+<div class="card">
+  <h2 id="liveTitle">🔴 LIVE OFFLINE</h2>
+  <div id="liveContent"></div>
+</div>
 
 </div>
 
@@ -94,7 +105,7 @@ async function loadDaily() {
   document.getElementById('daily').innerHTML = `
     <b>Server Save:</b> ${data.server} voltou às ${data.serverSaveTime}<br><br>
     <b>Rashid:</b> ${data.rashid}<br><br>
-    <b>Yasir:</b> ${data.yasirOnline ? 'ONLINE' : 'OFFLINE'}<br><br>
+    <b>Yasir:</b> ${data.yasirOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}<br><br>
     <b>Dream Courts:</b> ${data.dreamBoss}<br><br>
     <b>Tibiadrome:</b> Rotação #${data.tibiadrome.number}<br>
     ${data.tibiadrome.start} → ${data.tibiadrome.end}
@@ -111,7 +122,7 @@ async function loadLive() {
   if (data.live && data.data) {
     liveTitle.innerHTML = '🟢 LIVE ONLINE';
     liveContent.innerHTML = `
-      <img src="${data.data.thumbnail}" />
+      <img src="${data.data.thumbnail}" style="width:100%;border-radius:8px;" />
       <p><b>${data.data.user}</b></p>
       <p>${data.data.title}</p>
       <a href="https://twitch.tv/${data.data.user}" target="_blank">Assistir</a>
