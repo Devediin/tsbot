@@ -1,14 +1,13 @@
 import moment from 'moment';
+import momentTimezone from 'moment-timezone';
 import TibiaAPI from '../tibia';
-import Channels from '../models/channels';
-import { updateChannel } from '../../scripts/channels';
-global.dailyInfoCache = '';
 
 const { WORLD_NAME } = process.env;
 
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 
-let yasirOnline = false;
+global.dailyInfoCache = '';
+global.lastServerSaveTime = null;
 
 /* ===========================
    RASHID
@@ -74,42 +73,33 @@ const getTibiadromeInfo = () => {
 };
 
 /* ===========================
-   WORLD BOARD PARSER
-=========================== */
-
-export const parseWorldBoard = (text = '') => {
-  const normalized = text.toLowerCase();
-
-  if (normalized.includes('oriental ships sighted')) {
-    yasirOnline = true;
-  } else {
-    yasirOnline = false;
-  }
-};
-
-/* ===========================
-   UPDATE CHANNEL
+   UPDATE DAILY INFO
 =========================== */
 
 export const updateDailyInfoChannel = async (teamspeak) => {
   try {
     const worldOverview = await tibiaAPI.getWorldOverview();
     const serverName = worldOverview?.name || WORLD_NAME;
-    const serverSaveTime = global.lastServerSaveTime || moment().format('HH:mm');
+
+    const serverSaveTime = global.lastServerSaveTime
+      ? global.lastServerSaveTime
+      : momentTimezone().tz('America/Sao_Paulo').format('HH:mm');
 
     const rashid = getRashidLocation();
     const dreamBoss = getDreamCourtsBoss();
     const tibiadrome = getTibiadromeInfo();
 
-const description = `
+    const description = `
 [b]📅 Server Save[/b]
 🟢 ${serverName} voltou às ${serverSaveTime}
 
 [b]🧳 Rashid[/b]
+[img]https://www.tibiawiki.com.br/images/f/f5/Rashid.gif[/img]
 📍 ${rashid}
 
 [b]🧞 Yasir (Oriental Trader)[/b]
-${yasirOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}
+[img]https://www.tibiawiki.com.br/images/4/4a/Yasir.gif[/img]
+${global.isTwitchLive ? '🟢 ONLINE' : '🔴 OFFLINE'}
 
 [b]👑 Dream Courts Boss[/b]
 ${dreamBoss}
@@ -118,10 +108,9 @@ ${dreamBoss}
 Rotação #${tibiadrome.number}
 ${tibiadrome.start} → ${tibiadrome.end}
 `;
-    // ✅ salvar em memória para o dashboard
+
     global.dailyInfoCache = description;
 
-    // atualizar no TS
     const channelList = await teamspeak.channelList();
     const dailyChannel = channelList.find(c =>
       c.propcache.channel_name === '[cspacer]Daily Info'
@@ -129,13 +118,13 @@ ${tibiadrome.start} → ${tibiadrome.end}
 
     if (dailyChannel) {
       await dailyChannel.edit({
-        channel_description: description
+        channel_description: description.trim()
       });
     }
 
-    console.log('[DAILY INFO] Canal atualizado com sucesso.');
+    console.log('[DAILY INFO] Atualizado.');
 
   } catch (error) {
-    console.error('[DAILY INFO] Erro ao atualizar canal:', error);
+    console.error('[DAILY INFO ERROR]', error);
   }
 };
