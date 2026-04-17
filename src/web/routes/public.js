@@ -143,4 +143,30 @@ router.get('/deaths', async (req, res) => {
   }
 });
 
+/*
+==========================================
+ TWITCH LIVE STATUS
+==========================================
+*/
+
+import axios from 'axios';
+
+router.get('/live', async (req, res) => {
+  try {
+    const channel = process.env.TWITCH_CHANNELS;
+
+    if (!channel) {
+      return res.json({ live: false });
+    }
+
+    const response = await axios.get(
+      `https://api.tibiadata.com/v4/character/${channel}`
+    );
+
+    res.json({ live: false });
+  } catch {
+    res.json({ live: false });
+  }
+});
+
 export default router;
