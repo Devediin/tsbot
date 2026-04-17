@@ -15,40 +15,31 @@
 
 <h1>🏆 Ranking do Time</h1>
 
-<!-- RANKING GERAL -->
-<div class="card">
-  <h2>👑 Maior Level Atual</h2>
-  <p id="topLevel"></p>
-</div>
+<h2 style="margin-top:40px;">📅 Ranking Mensal</h2>
 
-<div class="card">
-  <h2>🔥 Mais Tempo Online Hoje</h2>
-  <p id="topOnline"></p>
-</div>
+<div class="ranking-grid">
 
-<div class="card">
-  <h2>📊 Média de Level do Time</h2>
-  <p id="avgLevel"></p>
-</div>
+  <div class="card">
+    <h3>📈 Quem Mais Upou</h3>
+    <ul id="levelUpList">
+      <li class="loading">⏳ Carregando...</li>
+    </ul>
+  </div>
 
-<!-- DIVISOR -->
-<hr style="margin:40px 0; opacity:0.3;">
+  <div class="card">
+    <h3>💀 Mais Mortes</h3>
+    <ul id="deathList">
+      <li class="loading">⏳ Carregando...</li>
+    </ul>
+  </div>
 
-<h1>📅 Ranking Mensal</h1>
+  <div class="card">
+    <h3>⏳ Mais Tempo Online</h3>
+    <ul id="onlineList">
+      <li class="loading">⏳ Carregando...</li>
+    </ul>
+  </div>
 
-<div class="card">
-  <h2>📈 Quem Mais Upou (30 dias)</h2>
-  <ul id="levelUpList"></ul>
-</div>
-
-<div class="card">
-  <h2>💀 Mais Mortes (30 dias)</h2>
-  <ul id="deathList"></ul>
-</div>
-
-<div class="card">
-  <h2>⏳ Mais Tempo Online</h2>
-  <ul id="onlineList"></ul>
 </div>
 
 </div>
@@ -56,51 +47,49 @@
 <script src="/assets/navbar.js"></script>
 
 <script>
-async function loadRanking() {
-  const res = await fetch('/api/public/ranking');
-  const data = await res.json();
-
-  if (!data.topLevel) return;
-
-  document.getElementById('topLevel').innerText =
-    `${data.topLevel.name} — Level ${data.topLevel.level}`;
-
-  document.getElementById('topOnline').innerText =
-    `${data.topOnlineToday.name}`;
-
-  document.getElementById('avgLevel').innerText =
-    data.averageLevel;
-}
-
 async function loadAdvanced() {
-  const res = await fetch('/api/public/ranking-advanced');
-  const data = await res.json();
-
-  if (!data.levelUpRanking) return;
 
   const levelList = document.getElementById('levelUpList');
   const deathList = document.getElementById('deathList');
   const onlineList = document.getElementById('onlineList');
 
-  levelList.innerHTML = '';
-  deathList.innerHTML = '';
-  onlineList.innerHTML = '';
+  try {
+    const res = await fetch('/api/public/ranking-advanced');
+    const data = await res.json();
 
-  data.levelUpRanking.slice(0,5).forEach(p => {
-    levelList.innerHTML += `<li>🏆 ${p.name} — +${p.levelGain} levels</li>`;
-  });
+    levelList.innerHTML = '';
+    deathList.innerHTML = '';
+    onlineList.innerHTML = '';
 
-  data.deathRanking.slice(0,5).forEach(p => {
-    deathList.innerHTML += `<li>💀 ${p.name} — ${p.deaths} mortes</li>`;
-  });
+    data.levelUpRanking.slice(0,5).forEach((p, index) => {
+      levelList.innerHTML += `
+        <li class="${index === 0 ? 'top-1' : ''}">
+          🏆 ${p.name} — +${p.levelGain} levels
+        </li>`;
+    });
 
-  data.onlineRanking.slice(0,5).forEach(p => {
-    const hours = Math.floor(p.minutes / 60);
-    onlineList.innerHTML += `<li>⏳ ${p.name} — ${hours}h online</li>`;
-  });
+    data.deathRanking.slice(0,5).forEach((p, index) => {
+      deathList.innerHTML += `
+        <li class="${index === 0 ? 'top-1' : ''}">
+          💀 ${p.name} — ${p.deaths} mortes
+        </li>`;
+    });
+
+    data.onlineRanking.slice(0,5).forEach((p, index) => {
+      const hours = Math.floor(p.minutes / 60);
+      onlineList.innerHTML += `
+        <li class="${index === 0 ? 'top-1' : ''}">
+          ⏳ ${p.name} — ${hours}h online
+        </li>`;
+    });
+
+  } catch (e) {
+    levelList.innerHTML = '<li>Erro ao carregar.</li>';
+    deathList.innerHTML = '<li>Erro ao carregar.</li>';
+    onlineList.innerHTML = '<li>Erro ao carregar.</li>';
+  }
 }
 
-loadRanking();
 loadAdvanced();
 </script>
 
