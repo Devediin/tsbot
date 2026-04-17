@@ -4,6 +4,7 @@ import Characters from '../../api/models/characters.js';
 import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
 import moment from 'moment';
+import { parseLootSession } from '../../utils/lootSplit.js';
 
 const router = express.Router();
 
@@ -53,6 +54,16 @@ router.get('/deaths', async (req, res) => {
         killers: lastKill?.killers ? lastKill.killers.map(k => k.name).join(' e ') : 'Unknown'
       });
     }
+
+router.post('/loot', (req, res) => {
+  try {
+    const { text } = req.body;
+    const result = parseLootSession(text);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
     res.json({ deaths: detailed });
   } catch (e) { res.json({ deaths: [] }); }
 });
