@@ -1,5 +1,5 @@
 function parseNumber(str) {
-  return parseInt(str.replace(/,/g, '').trim(), 10);
+  return parseInt(String(str).replace(/,/g, '').trim(), 10);
 }
 
 function parseDurationToHours(duration) {
@@ -14,10 +14,15 @@ function parseDurationToHours(duration) {
 
 function parseLootSession(text) {
 
-  // ===== PEGAR HEADER COMPLETO =====
-  const headerMatch = text.match(/Session data:.*?Balance:\s*[\d,]+/);
+  if (!text || typeof text !== 'string') {
+    throw new Error('Texto inválido.');
+  }
+
+  // ===== HEADER COMPLETO =====
+  const headerMatch = text.match(/Session data:[\s\S]*?Balance:\s*[\d,]+/);
+
   if (!headerMatch) {
-    throw new Error('Formato inválido.');
+    throw new Error('Header não encontrado.');
   }
 
   const header = headerMatch[0];
@@ -37,10 +42,10 @@ function parseLootSession(text) {
   const duration = durationMatch ? durationMatch[1] : '00:00h';
   const durationHours = parseDurationToHours(duration);
 
-  // ===== REMOVER HEADER DO TEXTO =====
+  // ===== REMOVER HEADER =====
   const bodyText = text.replace(header, '');
 
-  // ===== PEGAR APENAS PLAYERS =====
+  // ===== PEGAR PLAYERS =====
   const playerRegex = /([A-Za-zÀ-ÿ' ]+?)\s*(?:\(Leader\))?\s+Loot:\s*([\d,]+)\s+Supplies:\s*([\d,]+)\s+Balance:\s*(-?[\d,]+)/g;
 
   const players = [];
@@ -64,6 +69,7 @@ function parseLootSession(text) {
   const perPlayerProfit = Math.floor(totalProfit / players.length);
   const profitPerHour = Math.floor(perPlayerProfit / durationHours);
 
+  // ===== CALCULO CORRETO =====
   const balances = players.map(p => {
 
     const shouldHave = perPlayerProfit + p.supplies;
