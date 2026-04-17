@@ -71,25 +71,17 @@ router.get('/deaths', async (req, res) => {
     const detailed = [];
 
     for (const d of deaths.slice(-10).reverse()) {
-      try {
-        const deathInfo = await tibiaAPI.getCharacterDeaths(d.characterName);
+      const info = await tibiaAPI.getCharacterInformation(d.characterName);
 
-        if (deathInfo?.kills && deathInfo.kills.length > 0) {
-          const kill = deathInfo.kills[0];
+      if (info?.kills && info.kills.length > 0) {
+        const kill = info.kills.find(k => k.time === d.time) || info.kills[0];
 
-          detailed.push({
-            characterName: d.characterName,
-            level: kill.level || '???',
-            killer: kill.killers?.[0]?.name || 'Unknown'
-          });
-        } else {
-          detailed.push({
-            characterName: d.characterName,
-            level: '???',
-            killer: 'Unknown'
-          });
-        }
-      } catch {
+        detailed.push({
+          characterName: d.characterName,
+          level: kill.level || '???',
+          killer: kill.killers?.[0]?.name || 'Unknown'
+        });
+      } else {
         detailed.push({
           characterName: d.characterName,
           level: '???',
