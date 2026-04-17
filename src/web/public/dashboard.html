@@ -7,8 +7,8 @@
 <style>
 body {
   margin: 0;
-  font-family: Tahoma, Arial, sans-serif;
-  color: #fff;
+  font-family: 'Trebuchet MS', Tahoma, sans-serif;
+  color: #f5e6c8;
   background: url('https://www.tibiabr.com/wp-content/uploads/2018/06/old_2002_tibia_art__extended_to_hd_widescreen__by_donotworr-dbpp9ky.png') no-repeat center center fixed;
   background-size: cover;
 }
@@ -16,52 +16,56 @@ body {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
   z-index: -1;
 }
 
 .navbar {
-  background: linear-gradient(#4e3420, #3e2a17);
-  padding: 15px;
+  background: linear-gradient(#5a3b1f, #3e2a17);
+  padding: 18px;
   text-align: center;
-  border-bottom: 3px solid gold;
+  border-bottom: 2px solid gold;
 }
 
 .navbar a {
   color: gold;
   text-decoration: none;
-  margin: 0 20px;
+  margin: 0 25px;
   font-weight: bold;
 }
 
 h1 {
   text-align: center;
   color: gold;
-  margin: 30px 0;
-  text-shadow: 2px 2px black;
+  margin: 40px 0;
+  font-size: 30px;
 }
 
 .container {
-  width: 85%;
+  max-width: 1100px;
   margin: auto;
-  padding-bottom: 40px;
+  padding: 0 20px 60px;
 }
 
 .card {
-  background: #3e2a17;
-  border: 2px solid gold;
-  border-radius: 8px;
-  padding: 20px;
-  margin-top: 30px;
+  background: rgba(62, 42, 23, 0.95);
+  border: 1px solid gold;
+  border-radius: 10px;
+  padding: 30px;
+  margin-bottom: 40px;
+  box-shadow: 0 0 25px rgba(0,0,0,0.7);
 }
 
 .card h2 {
   color: gold;
-  margin-bottom: 15px;
-  border-bottom: 1px solid gold;
-  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(255,215,0,0.4);
+  padding-bottom: 8px;
+}
+
+h3 {
+  margin-top: 20px;
+  color: gold;
 }
 
 ul {
@@ -70,23 +74,13 @@ ul {
 }
 
 li {
-  padding: 6px 0;
-  border-bottom: 1px solid #5e3f24;
-}
-
-a {
-  color: gold;
-  text-decoration: none;
-}
-
-a:visited {
-  color: gold;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
 .counter {
   text-align: center;
-  margin-top: 20px;
-  color: #aaa;
+  opacity: 0.6;
 }
 </style>
 </head>
@@ -122,7 +116,6 @@ a:visited {
 </div>
 
 <script>
-
 let refreshInterval = 15;
 let timer = refreshInterval;
 
@@ -133,15 +126,12 @@ function tibiaLink(name) {
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
-
   const container = document.getElementById('online');
   container.innerHTML = '';
 
   for (const vocation in data) {
     if (data[vocation] && data[vocation].length > 0) {
-
       let html = `<h3>${vocation}</h3><ul>`;
-
       data[vocation].forEach(p => {
         html += `
           <li>
@@ -150,10 +140,8 @@ async function loadOnline() {
             </a>
             — Level ${p.level}
             — ${p.onlineTime}
-          </li>
-        `;
+          </li>`;
       });
-
       html += `</ul>`;
       container.innerHTML += html;
     }
@@ -163,7 +151,6 @@ async function loadOnline() {
 async function loadDeaths() {
   const res = await fetch('/api/public/deaths');
   const data = await res.json();
-
   const list = document.getElementById('deaths');
   list.innerHTML = '';
 
@@ -175,8 +162,7 @@ async function loadDeaths() {
         </a>
         morreu no level ${d.level}
         para <b>${d.killers}</b>
-      </li>
-    `;
+      </li>`;
   });
 }
 
@@ -194,7 +180,6 @@ function updateTimer() {
 loadOnline();
 loadDeaths();
 setInterval(updateTimer, 1000);
-
 </script>
 
 </body>
