@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Loot Split</title>
+<title>Tibia Loot Split</title>
 <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
@@ -28,6 +28,10 @@
 
   <div class="card">
     <pre id="result"></pre>
+    <div style="margin-top:15px;">
+      <button onclick="copyResult()">Copiar Resultado Completo</button>
+      <button onclick="copyBank()">Copiar Apenas Bank Transfers</button>
+    </div>
   </div>
 
 </div>
@@ -35,7 +39,12 @@
 <script src="/assets/theme.js"></script>
 
 <script>
+
+let lastResultText = '';
+let lastBankText = '';
+
 async function calculate() {
+
   const text = document.getElementById('lootText').value;
 
   const res = await fetch('/api/public/loot', {
@@ -52,16 +61,43 @@ async function calculate() {
   }
 
   let output = '';
+  let bankOnly = '';
 
   data.transfers.forEach(t => {
-    output += `${t.from} to pay ${Math.round(t.amount/1000)}k to ${t.to} (Bank: transfer ${t.amount} to ${t.to})\n\n`;
+
+    const roundedK = Math.round(t.amount / 1000);
+    const bankValue = t.amount - 1; // igual TibiaPal
+
+    output += `${t.from} to pay ${roundedK}k to ${t.to} (Bank: transfer ${bankValue} to ${t.to})\n\n`;
+
+    bankOnly += `transfer ${bankValue} to ${t.to}\n`;
   });
 
-  output += `Total profit: ${(data.totalProfit/1000000).toFixed(2)}kk which is: ${Math.round(data.perPlayer/1000)}k for each player.\n\n`;
-  output += `Session duration: ${data.duration}, which is: ${Math.round(data.profitPerHour/1000)}k per hour per player.`;
+  const totalKK = (data.totalProfit / 1000000).toFixed(2);
+  const perPlayerK = Math.round(data.perPlayer / 1000);
+  const perHourK = Math.round(data.profitPerHour / 1000);
+
+  output += `Total profit: ${totalKK}kk~ which is: ${perPlayerK}k~ for each player.\n\n`;
+  output += `Session duration: ${data.duration}, which is: ${perHourK}k~ for each player per hour.`;
 
   document.getElementById('result').innerText = output;
+
+  lastResultText = output;
+  lastBankText = bankOnly;
 }
+
+function copyResult() {
+  if (!lastResultText) return;
+  navigator.clipboard.writeText(lastResultText);
+  alert('Resultado completo copiado!');
+}
+
+function copyBank() {
+  if (!lastBankText) return;
+  navigator.clipboard.writeText(lastBankText);
+  alert('Bank transfers copiado!');
+}
+
 </script>
 
 </body>
