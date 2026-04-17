@@ -106,6 +106,83 @@ small {
   margin-top: 15px;
   box-shadow: 0 0 15px rgba(0,0,0,0.7);
 }
+.live-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  margin-top: 15px;
+}
+
+.live-wrapper img {
+  width: 100%;
+  border-radius: 10px;
+  transition: transform 0.4s ease, opacity 0.3s ease;
+}
+
+.live-wrapper:hover img {
+  transform: scale(1.05);
+}
+
+.live-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.2));
+  display: flex;
+  align-items: flex-end;
+  padding: 15px;
+}
+
+.live-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 6px 12px;
+  font-weight: bold;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.live-online {
+  background: #e91916;
+  color: white;
+  box-shadow: 0 0 10px #e91916;
+}
+
+.live-offline {
+  background: #555;
+  color: white;
+}
+
+.live-info {
+  width: 100%;
+}
+
+.live-info h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.live-info p {
+  margin: 5px 0 0 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.live-button {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: gold;
+  color: #3e2a17;
+  font-weight: bold;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: 0.3s ease;
+}
+
+.live-button:hover {
+  background: #fff;
+}
 </style>
 </head>
 
@@ -198,30 +275,38 @@ async function loadLive() {
 
   const channel = data.data?.user || "EdiinTv";
 
-  if (data.live && data.data) {
-    liveTitle.innerHTML = '🟢 LIVE ONLINE';
-    liveContent.innerHTML = `
-      <img src="${data.data.thumbnail}" style="width:100%;border-radius:8px;" />
-      <p><b>${data.data.user}</b></p>
-      <p>${data.data.title}</p>
-      <a href="https://twitch.tv/${data.data.user}" target="_blank">
-        Assistir na Twitch
-      </a>
-    `;
-  } else {
-    liveTitle.innerHTML = '🔴 LIVE OFFLINE';
+  const thumbnail = data.live && data.data
+    ? data.data.thumbnail
+    : `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg`;
 
-    liveContent.innerHTML = `
-      <img 
-        src="https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg" 
-        style="width:100%;border-radius:8px;opacity:0.8;" 
-      />
-      <p><b>${channel}</b></p>
-      <a href="https://twitch.tv/${channel}" target="_blank">
-        Visitar Canal
-      </a>
-    `;
-  }
+  const badgeClass = data.live ? 'live-online' : 'live-offline';
+  const badgeText = data.live ? 'LIVE AGORA' : 'OFFLINE';
+
+  const title = data.live && data.data
+    ? data.data.title
+    : 'Canal offline no momento';
+
+  liveTitle.innerHTML = data.live
+    ? '🟢 LIVE ONLINE'
+    : '🔴 LIVE OFFLINE';
+
+  liveContent.innerHTML = `
+    <div class="live-wrapper">
+      <img src="${thumbnail}" />
+      <div class="live-badge ${badgeClass}">
+        ${badgeText}
+      </div>
+      <div class="live-overlay">
+        <div class="live-info">
+          <h3>${channel}</h3>
+          <p>${title}</p>
+          <a href="https://twitch.tv/${channel}" target="_blank" class="live-button">
+            ${data.live ? 'Assistir Agora' : 'Visitar Canal'}
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 loadDaily();
