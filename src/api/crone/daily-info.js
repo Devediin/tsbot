@@ -73,16 +73,27 @@ export const parseWorldBoard = (text) => {
   if (!text || typeof text !== 'string') return;
 
   try {
+    const lower = text.toLowerCase();
+
+    // Detecta horário (Server Save manual)
     const timeMatch = text.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
     if (timeMatch) {
       global.lastServerSaveTime = timeMatch[0];
     }
 
-    if (/oriental trader/i.test(text) || /yasir/i.test(text)) {
+    // ✅ DETECÇÃO CORRETA DO YASIR
+    if (
+      lower.includes('oriental ships sighted') ||
+      lower.includes('oriental trader') ||
+      lower.includes('yasir')
+    ) {
       global.isYasirActive = true;
+    } else {
+      global.isYasirActive = false;
     }
 
-    console.log('[WORLD BOARD] Parseado com sucesso.');
+    console.log('[WORLD BOARD] Yasir detectado:', global.isYasirActive);
+
   } catch (err) {
     console.error('[WORLD BOARD PARSE ERROR]', err);
   }
