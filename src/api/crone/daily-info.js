@@ -43,7 +43,34 @@ const getTibiadromeInfo = () => {
   const currentRotation = TIBIADROME_BASE_NUMBER + rotationOffset;
   const rotationStart = TIBIADROME_BASE_DATE.clone().add(rotationOffset * 15, 'days');
   const rotationEnd = rotationStart.clone().add(15, 'days');
-  return { number: currentRotation, start: rotationStart.format('DD/MM/YYYY'), end: rotationEnd.format('DD/MM/YYYY') };
+  return {
+    number: currentRotation,
+    start: rotationStart.format('DD/MM/YYYY'),
+    end: rotationEnd.format('DD/MM/YYYY'),
+  };
+};
+
+export const parseWorldBoard = (text) => {
+  if (!text || typeof text !== 'string') return;
+
+  try {
+    const timeMatch = text.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
+    if (timeMatch) {
+      global.lastServerSaveTime = timeMatch[0];
+    }
+
+    if (/online/i.test(text)) {
+      global.isTwitchLive = true;
+    }
+
+    if (/offline/i.test(text)) {
+      global.isTwitchLive = false;
+    }
+
+    console.log('[WORLD BOARD] Parseado com sucesso.');
+  } catch (err) {
+    console.error('[WORLD BOARD PARSE ERROR]', err);
+  }
 };
 
 export const updateDailyInfoChannel = async (teamspeak) => {
@@ -76,11 +103,23 @@ ${tibiadrome.start} → ${tibiadrome.end}
 `;
 
     global.dailyInfoCacheTS = descriptionTS.trim();
-    global.dailyInfoCachePortal = { server: serverName, serverSaveTime, rashid, yasirOnline: global.isTwitchLive || false, dreamBoss, tibiadrome };
+    global.dailyInfoCachePortal = {
+      server: serverName,
+      serverSaveTime,
+      rashid,
+      yasirOnline: global.isTwitchLive || false,
+      dreamBoss,
+      tibiadrome,
+    };
 
     const channelList = await teamspeak.channelList();
-    const dailyChannel = channelList.find(c => c.propcache.channel_name === '[cspacer]Daily Info');
-    if (dailyChannel) await dailyChannel.edit({ channel_description: descriptionTS.trim() });
+    const dailyChannel = channelList.find(
+      c => c.propcache.channel_name === '[cspacer]Daily Info'
+    );
+
+    if (dailyChannel) {
+      await dailyChannel.edit({ channel_description: descriptionTS.trim() });
+    }
 
     console.log('[DAILY INFO] Atualizado. Rashid:', rashid, 'Dream Boss:', dreamBoss);
   } catch (error) {
