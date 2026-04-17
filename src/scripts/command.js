@@ -49,13 +49,13 @@ export const proceesCommand = async (event = {}, teamspeak) => {
       return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
     }
 
-   if (command === '!loot') {
+if (command === '!loot') {
 
   msgAsList.shift();
   const text = msgAsList.join(' ').trim();
 
   if (!text || text.length < 20) {
-    return teamspeak.sendTextMessage("channel", cid, 'Log invalido ou incompleto.');
+    return invoker.message('Log invalido ou incompleto.');
   }
 
   try {
@@ -82,10 +82,10 @@ export const proceesCommand = async (event = {}, teamspeak) => {
     response += `Cada jogador: ${perPlayerK}k\n`;
     response += `Por hora: ${perHourK}k\n`;
 
-    return teamspeak.sendTextMessage("channel", cid, response);
+    return invoker.message(response);
 
   } catch (err) {
-    return teamspeak.sendTextMessage("channel", cid, 'Erro ao processar loot.');
+    return invoker.message('Erro ao processar loot.');
   }
 }
 
