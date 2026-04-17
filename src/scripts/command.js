@@ -44,10 +44,10 @@ export const proceesCommand = async (event = {}, teamspeak) => {
       return invoker.message(formatHelpMessage(dbUserGroups));
     }
 
-    if (command === '!desc') {
-      const link = `http://${process.env.WEB_PUBLIC_URL}:3000`;
-      return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
-    }
+if (command === '!desc') {
+  const link = `https://spkteam.duckdns.org`;
+  return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
+}
 
 if (command === '!loot') {
 
