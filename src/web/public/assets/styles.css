@@ -456,3 +456,19 @@ button {
     grid-template-columns: 1fr;
   }
 }
+.ranking-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.loading {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.top-1 {
+  font-weight: bold;
+  color: gold;
+}
