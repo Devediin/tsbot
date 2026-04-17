@@ -7,6 +7,12 @@ import moment from 'moment';
 
 const router = express.Router();
 
+/*
+==========================================
+ ONLINE ROUTE
+==========================================
+*/
+
 function getVocationGroup(vocation) {
   if (vocation.includes('Elite Knight') || vocation === 'Knight') return 'Elite Knight';
   if (vocation.includes('Royal Paladin') || vocation === 'Paladin') return 'Royal Paladin';
@@ -73,6 +79,12 @@ router.get('/online', async (req, res) => {
   }
 });
 
+/*
+==========================================
+ DEATHS ROUTE
+==========================================
+*/
+
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
@@ -88,29 +100,38 @@ router.get('/deaths', async (req, res) => {
         const kills = response?.data?.character?.deaths;
 
         if (kills && kills.length > 0) {
-          const kill = kills[0];
+
+          const matched = kills.find(k => k.time === d.time);
+          const kill = matched || kills[0];
+
+          const killers = kill.killers
+            ? kill.killers.map(k => k.name).join(' e ')
+            : 'Unknown';
 
           detailed.push({
             characterName: d.characterName,
             level: kill.level || '???',
-            killer: kill.killers && kill.killers.length > 0
-              ? kill.killers[0].name
-              : 'Unknown'
+            killers: killers
           });
+
         } else {
+
           detailed.push({
             characterName: d.characterName,
             level: '???',
-            killer: 'Unknown'
+            killers: 'Unknown'
           });
+
         }
 
       } catch (err) {
+
         detailed.push({
           characterName: d.characterName,
           level: '???',
-          killer: 'Unknown'
+          killers: 'Unknown'
         });
+
       }
     }
 
