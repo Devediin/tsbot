@@ -24,7 +24,23 @@ import publicRoutes from './routes/public';
 app.use('/api/auth', authRoutes);
 app.use('/api/description', descriptionRoutes);
 app.use('/api/public', publicRoutes);
+// Rotas amigáveis (sem .html)
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/web/public/index.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/web/public/dashboard.html'));
+});
+
+app.get('/tools', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/web/public/tools.html'));
+});
+
+app.get('/description', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'src/web/public/description.html'));
+});
 // Pasta pública
 app.use(express.static(path.join(process.cwd(), 'src/web/public')));
 
