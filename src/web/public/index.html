@@ -83,27 +83,27 @@ a:visited {
 <div class="card daily-card">
   <h2>⚔️ Daily Info</h2>
 
-  <div class="section">
+  <div>
     <h3>🌍 Servidor</h3>
     <p id="serverName"></p>
   </div>
 
-  <div class="section">
+  <div>
     <h3>🧳 Rashid</h3>
     <p id="rashidCity"></p>
   </div>
 
-  <div class="section">
+  <div>
     <h3>🧞 Yasir</h3>
     <p id="yasirStatus"></p>
   </div>
 
-  <div class="section">
+  <div>
     <h3>👑 Dream Courts</h3>
     <p id="dreamBoss"></p>
   </div>
 
-  <div class="section">
+  <div>
     <h3>🎭 Tibiadrome</h3>
     <p id="tibiadromeInfo"></p>
   </div>
@@ -123,19 +123,27 @@ async function loadDaily() {
   const res = await fetch('/api/public/daily');
   const data = await res.json();
 
-  if (!data.server) {
-    document.getElementById('daily').innerHTML = 'Daily Info ainda não disponível.';
-    return;
-  }
+  if (!data.server) return;
 
-  document.getElementById('daily').innerHTML = `
-    <b>Server Save:</b> ${data.server} voltou às ${data.serverSaveTime}<br><br>
-    <b>Rashid:</b> ${data.rashid}<br><br>
-    <b>Yasir:</b> ${data.yasirOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}<br><br>
-    <b>Dream Courts:</b> ${data.dreamBoss}<br><br>
-    <b>Tibiadrome:</b> Rotação #${data.tibiadrome.number}<br>
-    ${data.tibiadrome.start} → ${data.tibiadrome.end}
-  `;
+  document.getElementById('serverName').innerText =
+    data.server.name;
+
+  document.getElementById('rashidCity').innerText =
+    data.rashid.city;
+
+  document.getElementById('yasirStatus').innerText =
+    data.yasir.active
+      ? '🟢 ' + data.yasir.label
+      : '🔴 ' + data.yasir.label;
+
+  document.getElementById('dreamBoss').innerText =
+    data.dreamCourts.boss;
+
+  document.getElementById('tibiadromeInfo').innerText =
+    `Rotação #${data.tibiadrome.rotation} (${data.tibiadrome.start} → ${data.tibiadrome.end})`;
+
+  document.getElementById('updatedAt').innerText =
+    `Atualizado em ${data.updatedAt}`;
 }
 
 async function loadLive() {
