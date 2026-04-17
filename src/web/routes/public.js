@@ -8,13 +8,37 @@ import { parseLootSession } from '../../utils/lootSplit.js';
 
 const router = express.Router();
 
-router.get('/daily', (req, res) => res.json(global.dailyInfoCachePortal || {}));
-router.get('/live', (req, res) => res.json({ live: global.isTwitchLive || false, data: global.twitchLiveData || null }));
+/* =========================
+   DAILY
+========================= */
+
+router.get('/daily', (req, res) =>
+  res.json(global.dailyInfoCachePortal || {})
+);
+
+router.get('/live', (req, res) =>
+  res.json({
+    live: global.isTwitchLive || false,
+    data: global.twitchLiveData || null
+  })
+);
+
+/* =========================
+   ONLINE
+========================= */
 
 router.get('/online', async (req, res) => {
   try {
     const characters = await Characters.find({ type: 'friend' });
-    const grouped = { 'Elite Knight': [], 'Royal Paladin': [], 'Master Sorcerer': [], 'Elder Druid': [], 'Exalted Monk': [] };
+
+    const grouped = {
+      'Elite Knight': [],
+      'Royal Paladin': [],
+      'Master Sorcerer': [],
+      'Elder Druid': [],
+      'Exalted Monk': []
+    };
+
     const getGroup = (voc) => {
       if (voc.includes('Elite Knight')) return 'Elite Knight';
       if (voc.includes('Royal Paladin')) return 'Royal Paladin';
@@ -26,46 +50,91 @@ router.get('/online', async (req, res) => {
 
     for (const char of characters) {
       const tracker = await getOnlineTrackerByName(char.characterName);
+
       if (tracker?.isOnline) {
-        const resp = await axios.get(`https://api.tibiadata.com/v4/character/${encodeURIComponent(char.characterName)}`);
+        const resp = await axios.get(
+          `https://api.tibiadata.com/v4/character/${encodeURIComponent(char.characterName)}`
+        );
+
         const info = resp.data.character.character;
         const group = getGroup(info.vocation);
+
         if (group) {
-          const diff = moment().diff(moment(tracker.firstSeenOnline), 'minutes');
-          const time = Math.floor(diff / 60) > 0 ? `${Math.floor(diff / 60)}h ${diff % 60}m` : `${diff % 60}m`;
-          grouped[group].push({ name: char.characterName, level: info.level, onlineTime: time });
+          const diff = moment().diff(
+            moment(tracker.firstSeenOnline),
+            'minutes'
+          );
+
+          const time =
+            Math.floor(diff / 60) > 0
+              ? `${Math.floor(diff / 60)}h ${diff % 60}m`
+              : `${diff % 60}m`;
+
+          grouped[group].push({
+            name: char.characterName,
+            level: info.level,
+            onlineTime: time
+          });
         }
       }
     }
+
     res.json(grouped);
-  } catch (e) { res.json({}); }
+  } catch (e) {
+    res.json({});
+  }
 });
+
+/* =========================
+   DEATHS
+========================= */
 
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
     const detailed = [];
+
     for (const d of deaths.slice(-10).reverse()) {
-      const resp = await axios.get(`https://api.tibiadata.com/v4/character/${encodeURIComponent(d.characterName)}`);
-      const lastKill = resp.data.character.deaths?.find(k => k.time === d.time) || resp.data.character.deaths?.[0];
+      const resp = await axios.get(
+        `https://api.tibiadata.com/v4/character/${encodeURIComponent(d.characterName)}`
+      );
+
+      const lastKill =
+        resp.data.character.deaths?.find(k => k.time === d.time) ||
+        resp.data.character.deaths?.[0];
+
       detailed.push({
         characterName: d.characterName,
         level: lastKill?.level || '???',
-        killers: lastKill?.killers ? lastKill.killers.map(k => k.name).join(' e ') : 'Unknown'
+        killers: lastKill?.killers
+          ? lastKill.killers.map(k => k.name).join(' e ')
+          : 'Unknown'
       });
     }
+
+    res.json({ deaths: detailed });
+  } catch (e) {
+    res.json({ deaths: [] });
+  }
+});
+
+/* =========================
+   LOOT SPLIT
+========================= */
 
 router.post('/loot', (req, res) => {
   try {
     const { text } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ error: 'Texto não enviado.' });
+    }
+
     const result = parseLootSession(text);
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
-});
-    res.json({ deaths: detailed });
-  } catch (e) { res.json({ deaths: [] }); }
 });
 
 export default router;
