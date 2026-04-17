@@ -123,17 +123,6 @@ a:visited {
 
 <h1>⚔️ Online Members ⚔️</h1>
 
-<div class="ticker">
-  <span id="levelupsTicker">Carregando level ups...</span>
-</div>
-
-<div class="container" id="online"></div>
-
-<div class="container death-box">
-  <h2>💀 Últimas 10 Mortes</h2>
-  <ul id="deaths"></ul>
-</div>
-
 <div class="counter">
   Atualiza em <span id="timer">15</span>s
 </div>
@@ -163,11 +152,15 @@ async function loadOnline() {
   const container = document.getElementById('online');
   container.innerHTML = '';
 
+  let total = 0;
+
   for (const vocation in data) {
     if (data[vocation] && data[vocation].length > 0) {
 
+      total += data[vocation].length;
+
       let html = `<div class="vocation-box">
-        <h2>${vocationIcon(vocation)} ${vocation}</h2>
+        <h2>${vocation} (${data[vocation].length})</h2>
         <ul>`;
 
       data[vocation].forEach(p => {
@@ -187,6 +180,8 @@ async function loadOnline() {
       container.innerHTML += html;
     }
   }
+
+  container.innerHTML = `<h3>Total Online: ${total}</h3>` + container.innerHTML;
 }
 
 async function loadDeaths() {
@@ -209,14 +204,6 @@ async function loadDeaths() {
   });
 }
 
-async function loadLevelUps() {
-  const res = await fetch('/api/public/levelups');
-  const data = await res.json();
-
-  document.getElementById('levelupsTicker').innerText =
-    data.levelups.join(' ✨ ');
-}
-
 function updateTimer() {
   timer--;
   document.getElementById('timer').innerText = timer;
@@ -231,7 +218,6 @@ function updateTimer() {
 
 loadOnline();
 loadDeaths();
-loadLevelUps();
 setInterval(updateTimer, 1000);
 
 </script>
