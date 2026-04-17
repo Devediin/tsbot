@@ -9,9 +9,7 @@ const router = express.Router();
 
 /* DAILY */
 router.get('/daily', async (req, res) => {
-  res.json({
-    description: global.dailyInfoCache || 'Daily Info ainda não disponível.'
-  });
+  res.json(global.dailyInfoCachePortal || {});
 });
 
 /* LIVE */
