@@ -2,6 +2,7 @@ import moment from 'moment';
 import TibiaAPI from '../tibia';
 import Channels from '../models/channels';
 import { updateChannel } from '../../scripts/channels';
+global.dailyInfoCache = '';
 
 const { WORLD_NAME } = process.env;
 
@@ -94,56 +95,47 @@ export const updateDailyInfoChannel = async (teamspeak) => {
   try {
     const worldOverview = await tibiaAPI.getWorldOverview();
     const serverName = worldOverview?.name || WORLD_NAME;
-    const serverSaveTime = global.lastServerSaveTime || '05:00';
+    const serverSaveTime = global.lastServerSaveTime || moment().format('HH:mm');
 
     const rashid = getRashidLocation();
     const dreamBoss = getDreamCourtsBoss();
     const tibiadrome = getTibiadromeInfo();
 
-const description = `
-[b][color=#00AAFF]📅 Server Save[/color][/b]
-🟢 [b]${serverName}[/b] voltou às ${serverSaveTime}
+    const description = `
+<b>📅 Server Save</b><br>
+🟢 ${serverName} voltou às ${serverSaveTime}<br><br>
 
-━━━━━━━━━━━━━━━━━━
+<b>🧳 Rashid</b><br>
+📍 ${rashid}<br><br>
 
-[b][color=#00AAFF]🧳 Rashid[/color][/b]
-[img]https://www.tibiawiki.com.br/images/f/f5/Rashid.gif[/img]
-📍 [b]${rashid}[/b]
+<b>🧞 Yasir (Oriental Trader)</b><br>
+${yasirOnline ? '🟢 ONLINE' : '🔴 OFFLINE'}<br><br>
 
-━━━━━━━━━━━━━━━━━━
+<b>👑 Dream Courts Boss</b><br>
+${dreamBoss}<br><br>
 
-[b][color=#00AAFF]🧞 Yasir (Oriental Trader)[/color][/b]
-[img]https://www.tibiawiki.com.br/images/4/4a/Yasir.gif[/img]
-${yasirOnline ? '🟢 [b]ONLINE[/b]' : '🔴 [b]OFFLINE[/b]'}
-
-━━━━━━━━━━━━━━━━━━
-
-[b][color=#00AAFF]👑 Dream Courts[/color][/b]
-[b]${dreamBoss}[/b]
-
-━━━━━━━━━━━━━━━━━━
-
-[b][color=#00AAFF]🎭 Tibiadrome[/color][/b]
-Rotação [b]#${tibiadrome.number}[/b]
-📅 ${tibiadrome.start} → ${tibiadrome.end}
+<b>🎭 Tibiadrome</b><br>
+Rotação #${tibiadrome.number}<br>
+${tibiadrome.start} → ${tibiadrome.end}
 `;
 
-    const channelList = await teamspeak.channelList();
+    // ✅ salvar em memória para o dashboard
+    global.dailyInfoCache = description;
 
+    // atualizar no TS
+    const channelList = await teamspeak.channelList();
     const dailyChannel = channelList.find(c =>
       c.propcache.channel_name === '[cspacer]Daily Info'
     );
 
-    if (!dailyChannel) {
-      console.log('[DAILY INFO] Canal não encontrado no TS.');
-      return;
+    if (dailyChannel) {
+      await dailyChannel.edit({
+        channel_description: description
+      });
     }
 
-    await dailyChannel.edit({
-      channel_description: description.trim(),
-    });
-
     console.log('[DAILY INFO] Canal atualizado com sucesso.');
+
   } catch (error) {
     console.error('[DAILY INFO] Erro ao atualizar canal:', error);
   }
