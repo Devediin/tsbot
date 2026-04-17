@@ -36,19 +36,20 @@ h1 {
 .container {
   width: 85%;
   margin: auto;
+  padding-bottom: 40px;
 }
 
-.vocation-box {
+.card {
+  background: #3e2a17;
   border: 2px solid gold;
   border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 25px;
-  background: #3e2a17;
+  padding: 20px;
+  margin-top: 30px;
 }
 
-.vocation-box h2 {
-  margin-top: 0;
+.card h2 {
   color: gold;
+  margin-bottom: 15px;
   border-bottom: 1px solid gold;
   padding-bottom: 5px;
 }
@@ -63,52 +64,19 @@ li {
   border-bottom: 1px solid #5e3f24;
 }
 
-.death-box {
-  border: 2px solid red;
-  border-radius: 8px;
-  padding: 15px;
-  background: #3e2a17;
-  margin-top: 30px;
+a {
+  color: gold;
+  text-decoration: none;
 }
 
-.death-box h2 {
-  color: red;
-}
-
-.ticker {
-  background: #222;
-  padding: 10px;
-  overflow: hidden;
-  white-space: nowrap;
-  border-top: 2px solid gold;
-  border-bottom: 2px solid gold;
-  margin-bottom: 20px;
-}
-
-.ticker span {
-  display: inline-block;
-  padding-left: 100%;
-  animation: ticker 15s linear infinite;
-}
-
-@keyframes ticker {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
+a:visited {
+  color: gold;
 }
 
 .counter {
   text-align: center;
   margin-top: 20px;
   color: #aaa;
-}
-
-a {
-  color: #ffd700;
-  text-decoration: none;
-}
-
-a:visited {
-  color: #ffd700;
 }
 </style>
 </head>
@@ -121,10 +89,24 @@ a:visited {
   <a href="/dashboard.html">📊 Dashboard</a>
 </div>
 
-<h1>⚔️ Online Members ⚔️</h1>
+<h1>⚔️ NiideHelper Dashboard ⚔️</h1>
 
-<div class="counter">
-  Atualiza em <span id="timer">15</span>s
+<div class="container">
+
+  <div class="card">
+    <h2>🟢 Online Members</h2>
+    <div id="online"></div>
+  </div>
+
+  <div class="card">
+    <h2>💀 Últimas 10 Mortes</h2>
+    <ul id="deaths"></ul>
+  </div>
+
+  <div class="counter">
+    Atualiza em <span id="timer">15</span>s
+  </div>
+
 </div>
 
 <script>
@@ -136,15 +118,6 @@ function tibiaLink(name) {
   return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
 }
 
-function vocationIcon(vocation) {
-  if (vocation === 'Elite Knight') return '🛡';
-  if (vocation === 'Royal Paladin') return '🏹';
-  if (vocation === 'Master Sorcerer') return '🔥';
-  if (vocation === 'Elder Druid') return '🌿';
-  if (vocation === 'Exalted Monk') return '🥋';
-  return '';
-}
-
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
@@ -152,16 +125,10 @@ async function loadOnline() {
   const container = document.getElementById('online');
   container.innerHTML = '';
 
-  let total = 0;
-
   for (const vocation in data) {
     if (data[vocation] && data[vocation].length > 0) {
 
-      total += data[vocation].length;
-
-      let html = `<div class="vocation-box">
-        <h2>${vocation} (${data[vocation].length})</h2>
-        <ul>`;
+      let html = `<h3>${vocation}</h3><ul>`;
 
       data[vocation].forEach(p => {
         html += `
@@ -175,13 +142,10 @@ async function loadOnline() {
         `;
       });
 
-      html += `</ul></div>`;
-
+      html += `</ul>`;
       container.innerHTML += html;
     }
   }
-
-  container.innerHTML = `<h3>Total Online: ${total}</h3>` + container.innerHTML;
 }
 
 async function loadDeaths() {
@@ -212,7 +176,6 @@ function updateTimer() {
     timer = refreshInterval;
     loadOnline();
     loadDeaths();
-    loadLevelUps();
   }
 }
 
