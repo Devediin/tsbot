@@ -51,34 +51,6 @@ h1 {
   padding: 0 20px 60px;
 }
 
-.stats {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-bottom: 40px;
-  flex-wrap: wrap;
-}
-
-.stat-box {
-  background: rgba(62,42,23,0.95);
-  border: 1px solid gold;
-  padding: 15px 25px;
-  border-radius: 8px;
-  text-align: center;
-  min-width: 120px;
-  box-shadow: 0 0 15px rgba(0,0,0,0.7);
-}
-
-.stat-box h3 {
-  margin: 0;
-  color: gold;
-}
-
-.stat-box span {
-  font-size: 22px;
-  font-weight: bold;
-}
-
 .card {
   background: rgba(62, 42, 23, 0.95);
   border: 1px solid gold;
@@ -86,7 +58,6 @@ h1 {
   padding: 30px;
   margin-bottom: 40px;
   box-shadow: 0 0 25px rgba(0,0,0,0.7);
-  animation: fadeIn 0.4s ease-in-out;
 }
 
 .card h2 {
@@ -103,7 +74,7 @@ h1 {
 }
 
 .vocation-card {
-  background: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.25);
   padding: 15px;
   border-radius: 8px;
   border: 1px solid rgba(255,215,0,0.3);
@@ -124,31 +95,31 @@ li {
   padding: 8px 0;
   border-bottom: 1px solid rgba(255,255,255,0.08);
   font-size: 14px;
-
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
 }
 
-.player-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+li:last-child {
+  border-bottom: none;
 }
 
 .player-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 140px;
+  font-weight: bold;
+  color: gold;
+}
+
+.top-player {
+  background: rgba(255,215,0,0.08);
+  border-left: 3px solid gold;
+  padding-left: 8px;
+}
+
+.player-meta {
+  opacity: 0.85;
+  font-size: 13px;
 }
 
 a {
   color: gold;
   text-decoration: none;
-  font-weight: bold;
 }
 
 a:visited {
@@ -160,37 +131,48 @@ a:hover {
   text-shadow: 0 0 6px gold;
 }
 
-.badge-top {
-  background: gold;
-  color: #3e2a17;
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: bold;
+/* Death table improvement */
+.death-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 1.5fr;
+  gap: 15px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 14px;
 }
 
-.badge-time {
-  background: #ff5722;
-  color: #fff;
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: bold;
+.death-row:last-child {
+  border-bottom: none;
+}
+
+.death-level {
+  text-align: center;
+  color: #ffcc66;
+}
+
+.death-killer {
+  opacity: 0.85;
 }
 
 .counter {
   text-align: center;
   opacity: 0.6;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
+  margin-top: 15px;
 }
 
 @media (max-width: 768px) {
+
   .vocation-grid {
     grid-template-columns: 1fr;
+  }
+
+  .death-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .death-level {
+    text-align: left;
   }
 }
 </style>
@@ -210,8 +192,6 @@ a:hover {
 
 <div class="container">
 
-  <div class="stats" id="stats"></div>
-
   <div class="card">
     <h2>🟢 Online Members</h2>
     <div class="vocation-grid" id="online"></div>
@@ -219,7 +199,7 @@ a:hover {
 
   <div class="card">
     <h2>💀 Últimas 10 Mortes</h2>
-    <ul id="deaths"></ul>
+    <div id="deaths"></div>
   </div>
 
   <div class="counter">
@@ -237,39 +217,22 @@ function tibiaLink(name) {
   return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
 }
 
-function parseTimeToMinutes(str) {
-  let minutes = 0;
-  const hMatch = str.match(/(\d+)h/);
-  const mMatch = str.match(/(\d+)m/);
-  if (hMatch) minutes += parseInt(hMatch[1]) * 60;
-  if (mMatch) minutes += parseInt(mMatch[1]);
-  return minutes;
-}
-
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
 
   const grid = document.getElementById('online');
-  const stats = document.getElementById('stats');
-
   grid.innerHTML = '';
-  stats.innerHTML = '';
-
-  let totalOnline = 0;
 
   for (const vocation in data) {
     if (!data[vocation] || data[vocation].length === 0) continue;
 
     const players = data[vocation];
 
-    // Ordena por level DESC
+    // Ordenar por level DESC
     players.sort((a, b) => b.level - a.level);
 
     const topLevel = players[0].level;
-    const maxOnlineTime = Math.max(...players.map(p => parseTimeToMinutes(p.onlineTime)));
-
-    totalOnline += players.length;
 
     let html = `
       <div class="vocation-card">
@@ -279,20 +242,17 @@ async function loadOnline() {
 
     players.forEach(p => {
 
-      const isTop = p.level === topLevel;
-      const isMaxTime = parseTimeToMinutes(p.onlineTime) === maxOnlineTime;
+      const topClass = p.level === topLevel ? 'top-player' : '';
 
       html += `
-        <li>
-          <div class="player-left">
-            <a class="player-name" href="${tibiaLink(p.name)}" target="_blank">
+        <li class="${topClass}">
+          <div class="player-name">
+            <a href="${tibiaLink(p.name)}" target="_blank">
               ${p.name}
             </a>
-            ${isTop ? '<span class="badge-top">TOP</span>' : ''}
-            ${isMaxTime ? '<span class="badge-time">LONGEST</span>' : ''}
           </div>
-          <div>
-            Lv ${p.level} — ${p.onlineTime}
+          <div class="player-meta">
+            Level ${p.level} — ${p.onlineTime}
           </div>
         </li>
       `;
@@ -300,37 +260,30 @@ async function loadOnline() {
 
     html += `</ul></div>`;
     grid.innerHTML += html;
-
-    stats.innerHTML += `
-      <div class="stat-box">
-        <h3>${vocation}</h3>
-        <span>${players.length}</span>
-      </div>
-    `;
   }
-
-  stats.innerHTML =
-    `<div class="stat-box">
-      <h3>Total Online</h3>
-      <span>${totalOnline}</span>
-    </div>` + stats.innerHTML;
 }
 
 async function loadDeaths() {
   const res = await fetch('/api/public/deaths');
   const data = await res.json();
-  const list = document.getElementById('deaths');
-  list.innerHTML = '';
+  const container = document.getElementById('deaths');
+  container.innerHTML = '';
 
   data.deaths.forEach(d => {
-    list.innerHTML += `
-      <li>
-        <a href="${tibiaLink(d.characterName)}" target="_blank">
-          ${d.characterName}
-        </a>
-        morreu no level ${d.level}
-        para <b>${d.killers}</b>
-      </li>
+    container.innerHTML += `
+      <div class="death-row">
+        <div>
+          <a href="${tibiaLink(d.characterName)}" target="_blank">
+            ${d.characterName}
+          </a>
+        </div>
+        <div class="death-level">
+          Lv ${d.level}
+        </div>
+        <div class="death-killer">
+          ${d.killers}
+        </div>
+      </div>
     `;
   });
 }
