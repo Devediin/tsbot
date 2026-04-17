@@ -10,13 +10,6 @@
 
 <body>
 
-<script>
-fetch('/partials/navbar.html')
-  .then(res => res.text())
-  .then(data => {
-    document.getElementById('navbar').innerHTML = data;
-  });
-</script>
 
 <div class="container">
   <div class="card">
@@ -67,6 +60,12 @@ function copy() {
   alert("Copiado!");
 }
 </script>
-
+<script>
+fetch('/partials/navbar.html')
+  .then(res => res.text())
+  .then(data => {
+    document.getElementById('navbar').innerHTML = data;
+  });
+</script>
 </body>
 </html>
