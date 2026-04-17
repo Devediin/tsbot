@@ -177,27 +177,11 @@ async function loadDeaths() {
   list.innerHTML = '';
 
   data.deaths.forEach(d => {
-
-    let killerHTML = '';
-
-    if (d.killerIsPlayer) {
-      killerHTML = `<span style="cursor:pointer;color:gold;" onclick="copyName('${d.killer}')">${d.killer}</span>`;
-    } else {
-      killerHTML = `<a href="${tibiaLink(d.killer)}" target="_blank">${d.killer}</a>`;
-    }
-
-    // suicídio
-    if (d.killer === d.characterName) {
-      killerHTML = `<span style="color:orange;">Suicídio</span>`;
-    }
-
     list.innerHTML += `
       <li>
-        <a href="${tibiaLink(d.characterName)}" target="_blank">
-          ${d.characterName}
-        </a>
-        morreu no level ${d.level}
-        para ${killerHTML}
+        <b>${d.characterName}</b>
+        morreu no level <b>${d.level}</b>
+        para <b>${d.killers}</b>
       </li>
     `;
   });
