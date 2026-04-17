@@ -5,6 +5,7 @@ import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
 import moment from 'moment';
 import { parseLootSession } from '../../utils/lootSplit.js';
+import PlayerHistory from '../api/models/player-history.js';
 
 const router = express.Router();
 
@@ -174,6 +175,64 @@ router.get('/ranking', async (req, res) => {
       averageLevel: Math.round(
         ranking.reduce((sum, p) => sum + p.level, 0) / (ranking.length || 1)
       )
+    });
+
+  } catch (e) {
+    res.json({});
+  }
+});
+
+router.get('/ranking-advanced', async (req, res) => {
+  try {
+
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const histories = await PlayerHistory.find({
+      date: { $gte: oneWeekAgo }
+    });
+
+    const grouped = {};
+
+    histories.forEach(entry => {
+      if (!grouped[entry.name]) {
+        grouped[entry.name] = [];
+      }
+      grouped[entry.name].push(entry);
+    });
+
+    const levelUps = [];
+
+    Object.keys(grouped).forEach(name => {
+      const records = grouped[name].sort((a,b) => a.date - b.date);
+      const diff = records[records.length - 1].level - records[0].level;
+
+      levelUps.push({ name, diff });
+    });
+
+    levelUps.sort((a,b) => b.diff - a.diff);
+
+    const deaths = await getDeathsCache();
+    const deathsLastWeek = deaths.filter(d =>
+      new Date(d.time) >= oneWeekAgo
+    );
+
+    const deathCount = {};
+    deathsLastWeek.forEach(d => {
+      deathCount[d.characterName] =
+        (deathCount[d.characterName] || 0) + 1;
+    });
+
+    const deathRanking = Object.keys(deathCount)
+      .map(name => ({
+        name,
+        deaths: deathCount[name]
+      }))
+      .sort((a,b) => b.deaths - a.deaths);
+
+    res.json({
+      levelUpRanking: levelUps,
+      deathRanking
     });
 
   } catch (e) {
