@@ -2,9 +2,9 @@
 <html>
 <head>
 <meta charset="UTF-8">
-  <link rel="icon" type="image/png" href="/assets/favicon.png">
-<title>Ranking do Time</title>
+<title>🏆 Ranking do Time</title>
 <link rel="stylesheet" href="/assets/styles.css">
+<link rel="icon" href="/assets/favicon.png">
 </head>
 <body>
 
@@ -15,8 +15,9 @@
 
 <h1>🏆 Ranking do Time</h1>
 
+<!-- RANKING GERAL -->
 <div class="card">
-  <h2>👑 Maior Level</h2>
+  <h2>👑 Maior Level Atual</h2>
   <p id="topLevel"></p>
 </div>
 
@@ -30,11 +31,31 @@
   <p id="avgLevel"></p>
 </div>
 
+<!-- DIVISOR -->
+<hr style="margin:40px 0; opacity:0.3;">
+
+<h1>📅 Ranking Mensal</h1>
+
+<div class="card">
+  <h2>📈 Quem Mais Upou (30 dias)</h2>
+  <ul id="levelUpList"></ul>
+</div>
+
+<div class="card">
+  <h2>💀 Mais Mortes (30 dias)</h2>
+  <ul id="deathList"></ul>
+</div>
+
+<div class="card">
+  <h2>⏳ Mais Tempo Online</h2>
+  <ul id="onlineList"></ul>
+</div>
+
 </div>
 
 <script src="/assets/navbar.js"></script>
-<script>
 
+<script>
 async function loadRanking() {
   const res = await fetch('/api/public/ranking');
   const data = await res.json();
@@ -51,8 +72,36 @@ async function loadRanking() {
     data.averageLevel;
 }
 
-loadRanking();
+async function loadAdvanced() {
+  const res = await fetch('/api/public/ranking-advanced');
+  const data = await res.json();
 
+  if (!data.levelUpRanking) return;
+
+  const levelList = document.getElementById('levelUpList');
+  const deathList = document.getElementById('deathList');
+  const onlineList = document.getElementById('onlineList');
+
+  levelList.innerHTML = '';
+  deathList.innerHTML = '';
+  onlineList.innerHTML = '';
+
+  data.levelUpRanking.slice(0,5).forEach(p => {
+    levelList.innerHTML += `<li>🏆 ${p.name} — +${p.levelGain} levels</li>`;
+  });
+
+  data.deathRanking.slice(0,5).forEach(p => {
+    deathList.innerHTML += `<li>💀 ${p.name} — ${p.deaths} mortes</li>`;
+  });
+
+  data.onlineRanking.slice(0,5).forEach(p => {
+    const hours = Math.floor(p.minutes / 60);
+    onlineList.innerHTML += `<li>⏳ ${p.name} — ${hours}h online</li>`;
+  });
+}
+
+loadRanking();
+loadAdvanced();
 </script>
 
 </body>
