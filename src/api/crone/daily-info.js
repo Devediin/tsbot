@@ -8,20 +8,14 @@ const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 
 global.dailyInfoCacheTS = '';
 global.dailyInfoCachePortal = {};
-global.lastServerSaveTime = null;
-global.lastServerSaveDate = null;
 
 /* ===========================
-   RASHID (baseado no dia do Server Save)
+   RASHID (baseado no horario BRT atual)
 =========================== */
 
 const getRashidLocation = () => {
-  // Usa a data do ultimo Server Save em BRT
-  const saveDate = global.lastServerSaveDate
-    ? momentTimezone(global.lastServerSaveDate).tz('America/Sao_Paulo')
-    : momentTimezone().tz('America/Sao_Paulo');
-
-  const day = saveDate.format('dddd');
+  const nowBRT = momentTimezone.tz('America/Sao_Paulo');
+  const day = nowBRT.format('dddd');
 
   const map = {
     Monday: 'Svargrond',
@@ -48,10 +42,10 @@ const dreamCourtsRotation = [
   'Izcandar',
 ];
 
-const DREAM_COURTS_BASE_DATE = moment('2026-04-12');
+const DREAM_COURTS_BASE_DATE = momentTimezone.tz('2026-04-12', 'America/Sao_Paulo');
 
 const getDreamCourtsBoss = () => {
-  const nowBRT = momentTimezone().tz('America/Sao_Paulo');
+  const nowBRT = momentTimezone.tz('America/Sao_Paulo');
   const diffDays = nowBRT.diff(DREAM_COURTS_BASE_DATE, 'days');
   const index = ((diffDays % 5) + 5) % 5;
   return dreamCourtsRotation[index];
@@ -62,11 +56,11 @@ const getDreamCourtsBoss = () => {
 =========================== */
 
 const TIBIADROME_BASE_NUMBER = 125;
-const TIBIADROME_BASE_DATE = moment('2026-04-15T05:00:00');
+const TIBIADROME_BASE_DATE = momentTimezone.tz('2026-04-15T05:00:00', 'America/Sao_Paulo');
 
 const getTibiadromeInfo = () => {
-  const now = momentTimezone().tz('America/Sao_Paulo');
-  const diffDays = now.diff(TIBIADROME_BASE_DATE, 'days');
+  const nowBRT = momentTimezone.tz('America/Sao_Paulo');
+  const diffDays = nowBRT.diff(TIBIADROME_BASE_DATE, 'days');
   const rotationOffset = Math.floor(diffDays / 15);
 
   const currentRotation = TIBIADROME_BASE_NUMBER + rotationOffset;
@@ -89,7 +83,7 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const worldOverview = await tibiaAPI.getWorldOverview();
     const serverName = worldOverview?.name || WORLD_NAME;
 
-    /* Horario salvo no momento do Server Save */
+    /* Usa o horario que o lists.js ja salvou */
     const serverSaveTime = global.lastServerSaveTime || '05:00';
 
     const rashid = getRashidLocation();
