@@ -14,8 +14,8 @@ function parseDurationToHours(duration) {
 
 function parseLootSession(text) {
 
-  // ===== HEADER =====
-  const headerMatch = text.match(/Session data:[^\n]+/);
+  // ===== PEGAR HEADER COMPLETO =====
+  const headerMatch = text.match(/Session data:.*?Balance:\s*[\d,]+/);
   if (!headerMatch) {
     throw new Error('Formato inválido.');
   }
@@ -37,16 +37,18 @@ function parseLootSession(text) {
   const duration = durationMatch ? durationMatch[1] : '00:00h';
   const durationHours = parseDurationToHours(duration);
 
-  // ===== PLAYERS =====
-  const playerRegex = /([A-Za-zÀ-ÿ' ]+?)(?:\s*\(Leader\))?\s+Loot:\s*([\d,]+)\s+Supplies:\s*([\d,]+)\s+Balance:\s*(-?[\d,]+)/g;
+  // ===== REMOVER HEADER DO TEXTO =====
+  const bodyText = text.replace(header, '');
+
+  // ===== PEGAR APENAS PLAYERS =====
+  const playerRegex = /([A-Za-zÀ-ÿ' ]+?)\s*(?:\(Leader\))?\s+Loot:\s*([\d,]+)\s+Supplies:\s*([\d,]+)\s+Balance:\s*(-?[\d,]+)/g;
 
   const players = [];
   let match;
 
-  while ((match = playerRegex.exec(text)) !== null) {
+  while ((match = playerRegex.exec(bodyText)) !== null) {
 
-    let name = match[1].trim();
-    name = name.replace(/\(Leader\)/gi, '').trim();
+    const name = match[1].trim();
 
     players.push({
       name,
@@ -62,14 +64,9 @@ function parseLootSession(text) {
   const perPlayerProfit = Math.floor(totalProfit / players.length);
   const profitPerHour = Math.floor(perPlayerProfit / durationHours);
 
-  const transfers = [];
-
   const balances = players.map(p => {
 
-    // Quanto ele deveria terminar com
     const shouldHave = perPlayerProfit + p.supplies;
-
-    // Diferença entre o que deveria ter e o que realmente lootou
     const diff = shouldHave - p.loot;
 
     return {
@@ -78,11 +75,15 @@ function parseLootSession(text) {
     };
   });
 
-  const payers = balances.filter(b => b.diff < 0)
-    .map(b => ({ ...b, amount: Math.abs(b.diff) }));
+  const payers = balances
+    .filter(b => b.diff < 0)
+    .map(b => ({ name: b.name, amount: Math.abs(b.diff) }));
 
-  const receivers = balances.filter(b => b.diff > 0)
-    .map(b => ({ ...b, amount: b.diff }));
+  const receivers = balances
+    .filter(b => b.diff > 0)
+    .map(b => ({ name: b.name, amount: b.diff }));
+
+  const transfers = [];
 
   payers.forEach(payer => {
     receivers.forEach(receiver => {
@@ -107,8 +108,7 @@ function parseLootSession(text) {
     perPlayer: perPlayerProfit,
     duration,
     profitPerHour,
-    transfers,
-    playersCount: players.length
+    transfers
   };
 }
 
