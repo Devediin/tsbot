@@ -1,0 +1,60 @@
+:root {
+  --bg-overlay: rgba(0,0,0,0.75);
+  --card-bg: rgba(62, 42, 23, 0.95);
+  --border-color: gold;
+  --text-color: #f5e6c8;
+  --accent: gold;
+}
+
+body.light-theme {
+  --bg-overlay: rgba(255,255,255,0.8);
+  --card-bg: rgba(255,255,255,0.95);
+  --border-color: #333;
+  --text-color: #222;
+  --accent: #b8860b;
+}
+
+body {
+  margin: 0;
+  font-family: 'Trebuchet MS', Tahoma, sans-serif;
+  color: var(--text-color);
+  background: url('https://www.tibiabr.com/wp-content/uploads/2018/06/old_2002_tibia_art__extended_to_hd_widescreen__by_donotworr-dbpp9ky.png') no-repeat center center fixed;
+  background-size: cover;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(6px);
+  z-index: -1;
+}
+
+.navbar {
+  background: linear-gradient(#5a3b1f, #3e2a17);
+  padding: 18px;
+  text-align: center;
+  border-bottom: 2px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar a {
+  color: var(--accent);
+  text-decoration: none;
+  margin: 0 25px;
+  font-weight: bold;
+}
+
+.navbar a:hover {
+  color: #fff;
+}
+
+.theme-toggle {
+  position: absolute;
+  right: 20px;
+  top: 15px;
+  cursor: pointer;
+  font-size: 18px;
+}
