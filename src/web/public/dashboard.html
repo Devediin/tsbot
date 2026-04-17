@@ -97,7 +97,7 @@ h1 {
 
 .vocation-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 25px;
   margin-top: 20px;
 }
@@ -121,9 +121,28 @@ ul {
 }
 
 li {
-  padding: 6px 0;
+  padding: 8px 0;
   border-bottom: 1px solid rgba(255,255,255,0.08);
   font-size: 14px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.player-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.player-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
 }
 
 a {
@@ -138,7 +157,25 @@ a:visited {
 
 a:hover {
   color: #fff;
-  text-shadow: 0 0 5px gold;
+  text-shadow: 0 0 6px gold;
+}
+
+.badge-top {
+  background: gold;
+  color: #3e2a17;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.badge-time {
+  background: #ff5722;
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
 }
 
 .counter {
@@ -151,13 +188,7 @@ a:hover {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Mobile */
 @media (max-width: 768px) {
-  .stats {
-    flex-direction: column;
-    align-items: center;
-  }
-
   .vocation-grid {
     grid-template-columns: 1fr;
   }
@@ -206,6 +237,15 @@ function tibiaLink(name) {
   return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
 }
 
+function parseTimeToMinutes(str) {
+  let minutes = 0;
+  const hMatch = str.match(/(\d+)h/);
+  const mMatch = str.match(/(\d+)m/);
+  if (hMatch) minutes += parseInt(hMatch[1]) * 60;
+  if (mMatch) minutes += parseInt(mMatch[1]);
+  return minutes;
+}
+
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
@@ -219,47 +259,61 @@ async function loadOnline() {
   let totalOnline = 0;
 
   for (const vocation in data) {
-    if (data[vocation] && data[vocation].length > 0) {
+    if (!data[vocation] || data[vocation].length === 0) continue;
 
-      const count = data[vocation].length;
-      totalOnline += count;
+    const players = data[vocation];
 
-      let html = `
-        <div class="vocation-card">
-          <h3>${vocation} (${count})</h3>
-          <ul>
-      `;
+    // Ordena por level DESC
+    players.sort((a, b) => b.level - a.level);
 
-      data[vocation].forEach(p => {
-        html += `
-          <li>
-            <a href="${tibiaLink(p.name)}" target="_blank">
+    const topLevel = players[0].level;
+    const maxOnlineTime = Math.max(...players.map(p => parseTimeToMinutes(p.onlineTime)));
+
+    totalOnline += players.length;
+
+    let html = `
+      <div class="vocation-card">
+        <h3>${vocation} (${players.length})</h3>
+        <ul>
+    `;
+
+    players.forEach(p => {
+
+      const isTop = p.level === topLevel;
+      const isMaxTime = parseTimeToMinutes(p.onlineTime) === maxOnlineTime;
+
+      html += `
+        <li>
+          <div class="player-left">
+            <a class="player-name" href="${tibiaLink(p.name)}" target="_blank">
               ${p.name}
             </a>
-            — Lv ${p.level}
-            — ${p.onlineTime}
-          </li>
-        `;
-      });
-
-      html += `</ul></div>`;
-      grid.innerHTML += html;
-
-      stats.innerHTML += `
-        <div class="stat-box">
-          <h3>${vocation}</h3>
-          <span>${count}</span>
-        </div>
+            ${isTop ? '<span class="badge-top">TOP</span>' : ''}
+            ${isMaxTime ? '<span class="badge-time">LONGEST</span>' : ''}
+          </div>
+          <div>
+            Lv ${p.level} — ${p.onlineTime}
+          </div>
+        </li>
       `;
-    }
+    });
+
+    html += `</ul></div>`;
+    grid.innerHTML += html;
+
+    stats.innerHTML += `
+      <div class="stat-box">
+        <h3>${vocation}</h3>
+        <span>${players.length}</span>
+      </div>
+    `;
   }
 
-  stats.innerHTML = `
-    <div class="stat-box">
+  stats.innerHTML =
+    `<div class="stat-box">
       <h3>Total Online</h3>
       <span>${totalOnline}</span>
-    </div>
-  ` + stats.innerHTML;
+    </div>` + stats.innerHTML;
 }
 
 async function loadDeaths() {
