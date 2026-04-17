@@ -185,40 +185,45 @@ router.get('/ranking', async (req, res) => {
 router.get('/ranking-advanced', async (req, res) => {
   try {
 
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const oneMonthAgo = moment().subtract(30, 'days').toDate();
 
+    const characters = await Characters.find({ type: 'friend' });
+
+    // ===== LEVEL UP NO MÊS =====
     const histories = await PlayerHistory.find({
-      date: { $gte: oneWeekAgo }
+      date: { $gte: oneMonthAgo }
     });
 
-    const grouped = {};
+    const groupedLevels = {};
 
     histories.forEach(entry => {
-      if (!grouped[entry.name]) {
-        grouped[entry.name] = [];
+      if (!groupedLevels[entry.name]) {
+        groupedLevels[entry.name] = [];
       }
-      grouped[entry.name].push(entry);
+      groupedLevels[entry.name].push(entry);
     });
 
-    const levelUps = [];
+    const levelUpRanking = [];
 
-    Object.keys(grouped).forEach(name => {
-      const records = grouped[name].sort((a,b) => a.date - b.date);
+    Object.keys(groupedLevels).forEach(name => {
+      const records = groupedLevels[name].sort((a,b) => a.date - b.date);
       const diff = records[records.length - 1].level - records[0].level;
 
-      levelUps.push({ name, diff });
+      levelUpRanking.push({ name, levelGain: diff });
     });
 
-    levelUps.sort((a,b) => b.diff - a.diff);
+    levelUpRanking.sort((a,b) => b.levelGain - a.levelGain);
 
+    // ===== MAIS MORTES NO MÊS =====
     const deaths = await getDeathsCache();
-    const deathsLastWeek = deaths.filter(d =>
-      new Date(d.time) >= oneWeekAgo
+
+    const deathsLastMonth = deaths.filter(d =>
+      new Date(d.time) >= oneMonthAgo
     );
 
     const deathCount = {};
-    deathsLastWeek.forEach(d => {
+
+    deathsLastMonth.forEach(d => {
       deathCount[d.characterName] =
         (deathCount[d.characterName] || 0) + 1;
     });
@@ -230,12 +235,36 @@ router.get('/ranking-advanced', async (req, res) => {
       }))
       .sort((a,b) => b.deaths - a.deaths);
 
+    // ===== MAIS TEMPO ONLINE =====
+    const onlineRanking = [];
+
+    for (const char of characters) {
+
+      const tracker = await getOnlineTrackerByName(char.characterName);
+
+      if (tracker?.firstSeenOnline) {
+        const totalMinutes = moment().diff(
+          moment(tracker.firstSeenOnline),
+          'minutes'
+        );
+
+        onlineRanking.push({
+          name: char.characterName,
+          minutes: totalMinutes
+        });
+      }
+    }
+
+    onlineRanking.sort((a,b) => b.minutes - a.minutes);
+
     res.json({
-      levelUpRanking: levelUps,
-      deathRanking
+      levelUpRanking,
+      deathRanking,
+      onlineRanking
     });
 
   } catch (e) {
+    console.error(e);
     res.json({});
   }
 });
