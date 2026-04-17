@@ -6,9 +6,9 @@
 
 <style>
 body {
-  font-family: Tahoma, Arial;
-  color: #fff;
   margin: 0;
+  font-family: 'Trebuchet MS', Tahoma, sans-serif;
+  color: #f5e6c8;
   background: url('https://www.tibiabr.com/wp-content/uploads/2018/06/old_2002_tibia_art__extended_to_hd_widescreen__by_donotworr-dbpp9ky.png') no-repeat center center fixed;
   background-size: cover;
 }
@@ -17,77 +17,109 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  backdrop-filter: blur(4px);
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
   z-index: -1;
 }
 
 .navbar {
-  background:#3e2a17;
-  padding:15px;
-  text-align:center;
-  border-bottom:2px solid #8b5a2b;
+  background: linear-gradient(#5a3b1f, #3e2a17);
+  padding: 18px;
+  text-align: center;
+  border-bottom: 2px solid gold;
 }
 
 .navbar a {
-  color:#ffd700;
-  text-decoration:none;
-  margin:0 20px;
-  font-weight:bold;
+  color: gold;
+  text-decoration: none;
+  margin: 0 25px;
+  font-weight: bold;
 }
 
 .container {
-  padding:40px;
-  text-align:center;
+  max-width: 800px;
+  margin: auto;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.card {
+  background: rgba(62, 42, 23, 0.95);
+  border: 1px solid gold;
+  border-radius: 10px;
+  padding: 40px;
+  box-shadow: 0 0 25px rgba(0,0,0,0.7);
+}
+
+h1 {
+  color: gold;
+  margin-bottom: 30px;
 }
 
 input {
-  padding:10px;
-  width:300px;
-  margin-top:20px;
+  padding: 12px;
+  width: 320px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
 }
 
 button {
-  padding:10px 20px;
-  background:#00AAFF;
-  border:none;
-  color:white;
-  margin-top:20px;
+  padding: 10px 25px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 6px;
+  background: gold;
+  color: #3e2a17;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.85;
 }
 
 textarea {
-  width:600px;
-  height:80px;
-  margin-top:20px;
-  resize:none;
-  background:#222;
-  color:white;
-  border:none;
-  padding:10px;
+  width: 100%;
+  height: 100px;
+  margin-top: 25px;
+  resize: none;
+  background: #1a1a1a;
+  color: #fff;
+  border: 1px solid gold;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+#info {
+  margin-top: 25px;
+  line-height: 1.6;
 }
 </style>
 </head>
+
 <body>
 
 <div class="navbar">
   <a href="/">🏠 Home</a>
   <a href="/description.html">📜 Gerador</a>
   <a href="/dashboard.html">📊 Dashboard</a>
-  <a href="/login.html">🔐 Admin</a>
 </div>
 
 <div class="container">
+  <div class="card">
 
-<h1>📜 Gerador de Descrição</h1>
+    <h1>📜 Gerador de Descrição</h1>
 
-<input id="charName" placeholder="Nome do personagem"><br>
-<button onclick="generate()">Validar e Gerar</button>
+    <input id="charName" placeholder="Nome do personagem"><br>
+    <button onclick="generate()">Validar e Gerar</button>
 
-<div id="info" style="margin-top:30px;"></div>
+    <div id="info"></div>
 
-<textarea id="result" readonly></textarea><br>
-<button onclick="copy()">Copiar</button>
+    <textarea id="result" readonly></textarea><br>
+    <button onclick="copy()">Copiar</button>
 
+  </div>
 </div>
 
 <script>
