@@ -49,45 +49,45 @@ export const proceesCommand = async (event = {}, teamspeak) => {
       return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
     }
 
-    if (command === '!loot') {
+   if (command === '!loot') {
 
-      msgAsList.shift();
-      const text = msgAsList.join(' ').trim();
+  msgAsList.shift();
+  const text = msgAsList.join(' ').trim();
 
-      if (!text || text.length < 20) {
-        return teamspeak.sendTextMessage(1, cid, '❌ Log inválido ou incompleto.');
-      }
+  if (!text || text.length < 20) {
+    return teamspeak.messageChannel(cid, 'Log inválido ou incompleto.');
+  }
 
-      try {
-        const result = parseLootSession(text);
+  try {
+    const result = parseLootSession(text);
 
-        let response = '';
-        response += '💰 [b]RESULTADO DO LOOT SPLIT[/b]\n';
-        response += '━━━━━━━━━━━━━━━━━━━━━━\n';
+    let response = '';
+    response += 'RESULTADO DO LOOT SPLIT\n';
+    response += '------------------------\n';
 
-        result.transfers.forEach(t => {
-          const roundedK = Math.round(t.amount / 1000);
-          const bankValue = t.amount - 1;
+    result.transfers.forEach(t => {
+      const roundedK = Math.round(t.amount / 1000);
+      const bankValue = t.amount - 1;
 
-          response += `💸 ${t.from} paga ${roundedK}k → ${t.to}\n`;
-          response += `   ➜ transfer ${bankValue} to ${t.to}\n\n`;
-        });
+      response += `${t.from} paga ${roundedK}k para ${t.to}\n`;
+      response += `transfer ${bankValue} to ${t.to}\n\n`;
+    });
 
-        const totalKK = (result.totalProfit / 1000000).toFixed(2);
-        const perPlayerK = Math.round(result.perPlayer / 1000);
-        const perHourK = Math.round(result.profitPerHour / 1000);
+    const totalKK = (result.totalProfit / 1000000).toFixed(2);
+    const perPlayerK = Math.round(result.perPlayer / 1000);
+    const perHourK = Math.round(result.profitPerHour / 1000);
 
-        response += '━━━━━━━━━━━━━━━━━━━━━━\n';
-        response += `💰 Total: ${totalKK}kk\n`;
-        response += `👥 Cada jogador: ${perPlayerK}k\n`;
-        response += `⏱️ Por hora: ${perHourK}k\n`;
+    response += '------------------------\n';
+    response += `Total: ${totalKK}kk\n`;
+    response += `Cada jogador: ${perPlayerK}k\n`;
+    response += `Por hora: ${perHourK}k\n`;
 
-        return teamspeak.sendTextMessage(1, cid, response);
+    return teamspeak.messageChannel(cid, response);
 
-      } catch (err) {
-        return teamspeak.sendTextMessage(1, cid, '❌ Erro ao processar loot.');
-      }
-    }
+  } catch (err) {
+    return teamspeak.messageChannel(cid, 'Erro ao processar loot.');
+  }
+}
 
     const { ok, message } = await canDo(command, dbUserGroups);
     const isServerAdmin = await isUserServerAdmin(teamspeak, parsedServerGroups);
