@@ -55,7 +55,7 @@ if (command === '!loot') {
   const text = msgAsList.join(' ').trim();
 
   if (!text || text.length < 20) {
-    return invoker.message('Log invalido ou incompleto.');
+    return teamspeak.sendTextMessage(2, cid, 'Log invalido ou incompleto.');
   }
 
   try {
@@ -82,10 +82,10 @@ if (command === '!loot') {
     response += `Cada jogador: ${perPlayerK}k\n`;
     response += `Por hora: ${perHourK}k\n`;
 
-    return invoker.message(response);
+    return teamspeak.sendTextMessage(2, cid, response);
 
   } catch (err) {
-    return invoker.message('Erro ao processar loot.');
+    return teamspeak.sendTextMessage(2, cid, 'Erro ao processar loot.');
   }
 }
 
