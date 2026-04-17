@@ -54,12 +54,10 @@ if (command === '!loot') {
   msgAsList.shift();
   const text = msgAsList.join(' ').trim();
 
+  const channelId = propcache.cid;
+
   if (!text || text.length < 20) {
-    return teamspeak.sendTextMessage({
-      targetmode: 2,
-      target: cid,
-      msg: 'Log invalido ou incompleto.'
-    });
+    return teamspeak.sendTextMessage(2, channelId, 'Log invalido ou incompleto.');
   }
 
   try {
@@ -86,18 +84,10 @@ if (command === '!loot') {
     response += `Cada jogador: ${perPlayerK}k\n`;
     response += `Por hora: ${perHourK}k`;
 
-    return teamspeak.sendTextMessage({
-      targetmode: 2,
-      target: cid,
-      msg: response
-    });
+    return teamspeak.sendTextMessage(2, channelId, response);
 
   } catch (err) {
-    return teamspeak.sendTextMessage({
-      targetmode: 2,
-      target: cid,
-      msg: 'Erro ao processar loot.'
-    });
+    return teamspeak.sendTextMessage(2, channelId, 'Erro ao processar loot.');
   }
 }
 
