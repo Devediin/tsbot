@@ -92,11 +92,21 @@ const formatDeathAgeShort = (time) => {
   return `${diffDays}d`;
 };
 
-const formatDeathMessage = ({ type, characterName, level, mainKiller, time }) => {
+const formatDeathMessage = ({ type, characterName, level, lastKill, time }) => {
   const typeLabel = getTypeLabel(type);
   const typeColorTag = getTypeColorTag(type);
   const deathAge = formatDeathAgeShort(time);
-  return `⏰ [${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para [B]${mainKiller}[/B]`;
+
+  const killers = lastKill?.killers || [];
+
+  const killerNames = killers.slice(0, 3).map(k => k.name);
+  let killersText = killerNames.join(', ');
+
+  if (killers.length > 3) {
+    killersText += ` (+${killers.length - 3})`;
+  }
+
+  return `⏰ [${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para [B]${killersText}[/B]`;
 };
 
 const formatLevelMessage = ({ name, previousLevel, currentLevel, vocation, monitoredType }) => {
@@ -299,19 +309,39 @@ const getDeathCacheKey = ({ characterName, time }) => `${characterName}::${time}
 const getNotPokedKills = async (kills = []) => {
   try {
     const deathsCache = await getDeathsCache();
-    const cachedKeys = new Set(deathsCache.map(({ characterName, time }) => getDeathCacheKey({ characterName, time })));
+    const cachedKeys = new Set(
+      deathsCache.map(({ characterName, time }) =>
+        getDeathCacheKey({ characterName, time })
+      )
+    );
+
     const killsToPoke = [];
+
     for (const death of kills) {
+
       const { type, level, killers = [], time, characterName } = death;
+
       if (type !== 'friend' && type !== 'enemy') continue;
+
       const cacheKey = getDeathCacheKey({ characterName, time });
-      const mainKiller = killers.length > 0 ? killers[0].name : 'unknown';
-      const isCached = cachedKeys.has(cacheKey);
-      if (isCached) continue;
-      killsToPoke.push(formatDeathMessage({ type, characterName, level, mainKiller, time }));
+
+      if (cachedKeys.has(cacheKey)) continue;
+
+      killsToPoke.push(
+        formatDeathMessage({
+          type,
+          characterName,
+          level,
+          killers,   // ✅ PASSA killers
+          time
+        })
+      );
+
       await addDeathsCache({ characterName, time });
     }
+
     return killsToPoke;
+
   } catch (error) {
     throw error;
   }
