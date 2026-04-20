@@ -137,22 +137,6 @@ export const updateDailyInfoChannel = async (teamspeak) => {
   try {
     const worldOverview = await tibiaAPI.getWorldOverview();
     const serverName = worldOverview?.name || WORLD_NAME;
-     try {
-  const characters = await Characters.find({ type: 'friend' });
-
-  for (const char of characters) {
-    const resp = await tibiaAPI.getCharacter(char.characterName);
-
-    if (resp?.level) {
-      await PlayerHistory.create({
-        name: char.characterName,
-        level: resp.level
-      });
-    }
-  }
-} catch (e) {
-  console.log('Snapshot diário falhou:', e.message);
-}
 
     const rashid = getRashidLocation();
     const dreamBoss = getDreamCourtsBoss();
