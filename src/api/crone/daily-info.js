@@ -2,6 +2,7 @@ import moment from 'moment';
 import momentTimezone from 'moment-timezone';
 import TibiaAPI from '../tibia';
 import PlayerHistory from '../models/player-history.js';
+import Characters from '../models/characters.js';
 
 const { WORLD_NAME } = process.env;
 const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
