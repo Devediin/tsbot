@@ -92,12 +92,10 @@ const formatDeathAgeShort = (time) => {
   return `${diffDays}d`;
 };
 
-const formatDeathMessage = ({ type, characterName, level, lastKill, time }) => {
+const formatDeathMessage = ({ type, characterName, level, killers = [], time }) => {
   const typeLabel = getTypeLabel(type);
   const typeColorTag = getTypeColorTag(type);
   const deathAge = formatDeathAgeShort(time);
-
-  const killers = lastKill?.killers || [];
 
   const killerNames = killers.slice(0, 3).map(k => k.name);
   let killersText = killerNames.join(', ');
@@ -318,13 +316,11 @@ const getNotPokedKills = async (kills = []) => {
     const killsToPoke = [];
 
     for (const death of kills) {
-
       const { type, level, killers = [], time, characterName } = death;
 
       if (type !== 'friend' && type !== 'enemy') continue;
 
       const cacheKey = getDeathCacheKey({ characterName, time });
-
       if (cachedKeys.has(cacheKey)) continue;
 
       killsToPoke.push(
@@ -332,7 +328,7 @@ const getNotPokedKills = async (kills = []) => {
           type,
           characterName,
           level,
-          killers,   // ✅ PASSA killers
+          killers,
           time
         })
       );
