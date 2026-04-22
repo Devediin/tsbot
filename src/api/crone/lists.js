@@ -93,18 +93,17 @@ const formatDeathAgeShort = (time) => {
 };
 
 const formatDeathMessage = ({ type, characterName, level, killers = [], time }) => {
-  const typeLabel = getTypeLabel(type);
-  const typeColorTag = getTypeColorTag(type);
   const deathAge = formatDeathAgeShort(time);
 
-  const killerNames = killers.slice(0, 3).map(k => k.name);
-  let killersText = killerNames.join(', ');
+  const firstKiller = killers[0]?.name || 'unknown';
 
-  if (killers.length > 3) {
-    killersText += ` (+${killers.length - 3})`;
+  let killersText = firstKiller;
+
+  if (killers.length > 1) {
+    killersText += ` (+${killers.length - 1})`;
   }
 
-  return `⏰ [${deathAge}] 💀 ${typeColorTag} [${typeLabel}] [B]${characterName}[/B] morreu no level ${level} para [B]${killersText}[/B]`;
+  return `[${deathAge}] ${characterName} morreu ${level} para ${killersText}`;
 };
 
 const formatLevelMessage = ({ name, previousLevel, currentLevel, vocation, monitoredType }) => {
