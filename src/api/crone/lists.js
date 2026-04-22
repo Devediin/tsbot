@@ -38,7 +38,7 @@ import {
   deleteUnusedNeutralPageChannels,
 } from '../../scripts/channels';
 
-const lastDeathKillers = new Map();
+export const lastDeathKillers = new Map();
 const { WORLD_NAME } = process.env;
 const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
