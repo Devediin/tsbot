@@ -38,6 +38,7 @@ import {
   deleteUnusedNeutralPageChannels,
 } from '../../scripts/channels';
 
+const lastDeathKillers = new Map();
 const { WORLD_NAME } = process.env;
 const NEUTRAL_PAGE_SIZE = 50;
 const RECENT_OFFLINE_DEATH_WINDOW_SECONDS = 180;
@@ -92,9 +93,12 @@ const formatDeathAgeShort = (time) => {
   return `${diffDays}d`;
 };
 
-const formatDeathMessage = ({ type, characterName, level, killers = [], time }) => {
+const MAX_POKE_LENGTH = 95;
+
+const formatDeathMessage = ({ characterName, level, killers = [], time }) => {
   const deathAge = formatDeathAgeShort(time);
 
+  const safeName = characterName || 'Unknown';
   const firstKiller = killers[0]?.name || 'unknown';
 
   let extra = '';
@@ -103,16 +107,40 @@ const formatDeathMessage = ({ type, characterName, level, killers = [], time }) 
   }
 
   const templates = [
-    `${characterName} ${level} caiu pra ${firstKiller}${extra}`,
-    `${characterName} ${level} foi de base pra ${firstKiller}${extra}`,
-    `${characterName} ${level} virou tapete do ${firstKiller}${extra}`,
-    `${characterName} ${level} tomou bala de ${firstKiller}${extra}`,
-    `${characterName} ${level} foi pro respawn por ${firstKiller}${extra}`
+    `${safeName} ${level} caiu pra ${firstKiller}${extra}`,
+    `${safeName} ${level} foi de base pra ${firstKiller}${extra}`,
+    `${safeName} ${level} virou tapete do ${firstKiller}${extra}`,
+    `${safeName} ${level} tomou bala de ${firstKiller}${extra}`,
+    `${safeName} ${level} foi pro respawn por ${firstKiller}${extra}`
   ];
 
-  const randomMessage = templates[Math.floor(Math.random() * templates.length)];
+  const randomMessage =
+    templates[Math.floor(Math.random() * templates.length)];
 
-  return `[${deathAge}] ${randomMessage}`;
+  const baseMessage = `[${deathAge}] ${randomMessage}`;
+
+  const commandHint = ` | !lk ${safeName}`;
+
+  let finalMessage = baseMessage + commandHint;
+
+  // ✅ Se passar do limite, cortar a parte do texto principal
+  if (finalMessage.length > MAX_POKE_LENGTH) {
+
+    const allowedLength =
+      MAX_POKE_LENGTH - commandHint.length;
+
+    const truncatedBase =
+      baseMessage.substring(0, allowedLength - 3) + '...';
+
+    finalMessage = truncatedBase + commandHint;
+  }
+
+  lastDeathKillers.set(
+    safeName.toLowerCase(),
+    killers.map(k => k.name)
+  );
+
+  return finalMessage;
 };
 
 const formatLevelMessage = ({ name, previousLevel, currentLevel, vocation, monitoredType }) => {
