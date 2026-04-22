@@ -4,6 +4,7 @@ import { formatHelpMessage } from '../utils/help';
 import { isUserServerAdmin } from './server-groups';
 import { BOT_NAME, COMMANDS_MAP } from '../utils/constants';
 import { parseLootSession } from '../utils/lootSplit';
+import { lastDeathKillers } from '../api/crone/lists.js';
 
 const executeCommand = async (command, teamspeak, msgAsList, cid) => (
   new Promise(async (resolve, reject) => {
@@ -43,7 +44,28 @@ export const proceesCommand = async (event = {}, teamspeak) => {
     if (command === '!help') {
       return invoker.message(formatHelpMessage(dbUserGroups));
     }
+if (command === '!lk') {
 
+  msgAsList.shift();
+  const name = msgAsList.join(' ').trim().toLowerCase();
+
+  if (!name) {
+    return invoker.message('Use: !lk Nome');
+  }
+
+  const killers = lastDeathKillers.get(name);
+
+  if (!killers || killers.length === 0) {
+    return invoker.message('Nenhuma morte recente encontrada.');
+  }
+
+  const killersText = killers.map(k => `- ${k}`).join('\n');
+
+  return invoker.message(
+`Matadores de ${name}:
+${killersText}`
+  );
+}
 if (command === '!desc') {
   const link = `https://spkteam.duckdns.org`;
   return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
