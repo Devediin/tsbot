@@ -97,13 +97,22 @@ const formatDeathMessage = ({ type, characterName, level, killers = [], time }) 
 
   const firstKiller = killers[0]?.name || 'unknown';
 
-  let killersText = firstKiller;
-
+  let extra = '';
   if (killers.length > 1) {
-    killersText += ` (+${killers.length - 1})`;
+    extra = ` (+${killers.length - 1})`;
   }
 
-  return `[${deathAge}] ${characterName} morreu ${level} para ${killersText}`;
+  const templates = [
+    `${characterName} ${level} caiu pra ${firstKiller}${extra}`,
+    `${characterName} ${level} foi de base pra ${firstKiller}${extra}`,
+    `${characterName} ${level} virou tapete do ${firstKiller}${extra}`,
+    `${characterName} ${level} tomou bala de ${firstKiller}${extra}`,
+    `${characterName} ${level} foi pro respawn por ${firstKiller}${extra}`
+  ];
+
+  const randomMessage = templates[Math.floor(Math.random() * templates.length)];
+
+  return `[${deathAge}] ${randomMessage}`;
 };
 
 const formatLevelMessage = ({ name, previousLevel, currentLevel, vocation, monitoredType }) => {
