@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import PlayerHistory from './player-history.js';
 import LevelUpHistory from './level-up-history.js';
 
 const levelTrackerSchema = new mongoose.Schema({
@@ -47,67 +46,48 @@ export const ensureLevelTracker = async ({ name, level }) => (
   })
 );
 
+/* ✅ ESTA É A FUNÇÃO QUE O BOT REALMENTE USA */
 export const setLevelTrackerLevel = async ({ name, level }) => (
   new Promise(async (resolve, reject) => {
     try {
+
+      const existing = await LevelTracker.findOne({ name });
+
+      const previousLevel = existing ? Number(existing.lastLevel) : null;
+      const currentLevel = Number(level);
+      const leveledUp =
+        previousLevel !== null && currentLevel > previousLevel;
+
       const tracker = await LevelTracker.findOneAndUpdate(
         { name },
-        { $set: { lastLevel: Number(level) } },
+        { $set: { lastLevel: currentLevel } },
         { new: true, upsert: true }
       );
 
+      /* ✅ SALVA LEVEL UP AQUI */
+      if (leveledUp) {
+        await LevelUpHistory.create({
+          name,
+          previousLevel,
+          currentLevel,
+          gained: currentLevel - previousLevel
+        });
+      }
+
       resolve(tracker);
+
     } catch (error) {
       reject(error);
     }
   })
 );
 
+/* Pode manter se quiser, mas não é usado no fluxo principal */
 export const upsertLevelTracker = async ({ name, level }) => (
   new Promise(async (resolve, reject) => {
     try {
-      let tracker = await LevelTracker.findOne({ name });
-
-      if (!tracker) {
-        tracker = new LevelTracker({
-          name,
-          lastLevel: Number(level),
-        });
-
-        await tracker.save();
-
-        resolve({
-          previousLevel: null,
-          currentLevel: Number(level),
-          leveledUp: false
-        });
-
-        return;
-      }
-
-      const previousLevel = Number(tracker.lastLevel);
-      const currentLevel = Number(level);
-      const leveledUp = currentLevel > previousLevel;
-
-      tracker.lastLevel = currentLevel;
-      await tracker.save();
-
-      // ✅ Salva snapshot apenas quando subir level
-if (leveledUp) {
-  await LevelUpHistory.create({
-    name,
-    previousLevel,
-    currentLevel,
-    gained: currentLevel - previousLevel
-  });
-}
-
-      resolve({
-        previousLevel,
-        currentLevel,
-        leveledUp
-      });
-
+      const tracker = await setLevelTrackerLevel({ name, level });
+      resolve(tracker);
     } catch (error) {
       reject(error);
     }
