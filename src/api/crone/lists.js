@@ -475,7 +475,7 @@ export const startTasks = (teamspeak) => {
 
         if (isOnline && !global.focusOnlineState) {
           global.focusOnlineState = true;
-          await sendMassPoke(teamspeak, `🎯 FOCO ONLINE: ${global.currentFocus}`);
+          await sendMassPoke(teamspeak, `🎯 [b]FOCO ONLINE:[/b] ${global.currentFocus}`);
         }
 
         if (!isOnline) {
@@ -537,7 +537,7 @@ export const startTasks = (teamspeak) => {
             if (matchedDeath) {
               await sendMassPoke(
                 teamspeak,
-                `🚨 FOCO MATOU: ${global.currentFocus} eliminou ${matchedDeath.characterName}`
+                `🚨 [b]FOCO MATOU:[/b] ${global.currentFocus} eliminou ${matchedDeath.characterName}`
               );
             }
           }
