@@ -179,31 +179,31 @@ router.get('/ranking', async (req, res) => {
 router.get('/ranking-advanced', async (req, res) => {
   try {
 
-    const startOfMonth = moment().startOf('month').toDate();
+const startOfMonth = moment().startOf('month').toDate();
 
-    const characters = await Characters.find({ type: 'friend' });
+const characters = await Characters.find({ type: 'friend' });
 
-    const levelUpRanking = [];
+const levelUpRanking = [];
 
-    for (const char of characters) {
+for (const char of characters) {
 
-      const history = await PlayerHistory.find({ name: char.characterName })
-        .sort({ date: 1 });
+  const history = await PlayerHistory.find({ name: char.characterName })
+    .sort({ date: 1 });
 
-      if (!history || history.length < 2) continue;
+  if (!history || history.length === 0) continue;
 
-      const firstRecord = history.find(h => h.date >= startOfMonth) || history[0];
-      const lastRecord = history[history.length - 1];
+  const firstRecord = history.find(h => h.date >= startOfMonth) || history[0];
+  const lastRecord = history[history.length - 1];
 
-      const gain = lastRecord.level - firstRecord.level;
+  const gain = lastRecord.level - firstRecord.level;
 
-      levelUpRanking.push({
-        name: char.characterName,
-        levelGain: gain
-      });
-    }
+  levelUpRanking.push({
+    name: char.characterName,
+    levelGain: gain
+  });
+}
 
-    levelUpRanking.sort((a,b) => b.levelGain - a.levelGain);
+levelUpRanking.sort((a,b) => b.levelGain - a.levelGain);
 
     const deaths = await getDeathsCache();
     const deathsThisMonth = deaths.filter(d =>
