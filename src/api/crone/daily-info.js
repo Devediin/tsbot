@@ -1,7 +1,6 @@
 import moment from 'moment';
 import momentTimezone from 'moment-timezone';
 import TibiaAPI from '../tibia';
-import PlayerHistory from '../models/player-history.js';
 import Characters from '../models/characters.js';
 
 const { WORLD_NAME } = process.env;
@@ -137,7 +136,6 @@ export const updateDailyInfoChannel = async (teamspeak) => {
   try {
     const worldOverview = await tibiaAPI.getWorldOverview();
     const serverName = worldOverview?.name || WORLD_NAME;
-     import LevelTracker from '../models/level-tracker.js';
 
 console.log('[SNAPSHOT] Snapshot diário salvo com sucesso.');
 
