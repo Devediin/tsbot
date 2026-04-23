@@ -446,54 +446,126 @@ export const startTasks = (teamspeak) => {
       console.log('[CRON] fastTask ainda em execução. Pulando esta rodada.');
       return;
     }
+
     isFastTaskRunning = true;
+
     try {
       const enemyCharacters = await Characters.find({ type: 'enemy' });
       const friendCharacters = await Characters.find({ type: 'friend' });
+
       const monitoredCharacters = [
         ...enemyCharacters.map(({ type, characterName }) => ({ type, characterName })),
         ...friendCharacters.map(({ type, characterName }) => ({ type, characterName })),
       ];
+
       const playersOnline = await tibiaAPI.getWorldOnline();
       const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
+
+      /* =========================
+         FOCO - LOGIN
+      ========================= */
+
+      if (!global.focusOnlineState) {
+        global.focusOnlineState = false;
+      }
+
+      if (global.currentFocus) {
+        const focusName = global.currentFocus.toLowerCase();
+        const isOnline = playersOnline.some(p => p.name.toLowerCase() === focusName);
+
+        if (isOnline && !global.focusOnlineState) {
+          global.focusOnlineState = true;
+          await sendMassPoke(teamspeak, `🎯 FOCO ONLINE: ${global.currentFocus}`);
+        }
+
+        if (!isOnline) {
+          global.focusOnlineState = false;
+        }
+      }
+
       updateRecentlyOfflineMap(onlinePlayerNames);
-      const onlineEnemyCharacters = enemyCharacters.filter(({ characterName }) => onlinePlayerNames.has(characterName)).map(({ type, characterName }) => ({ type, characterName }));
-      const onlineFriendCharacters = friendCharacters.filter(({ characterName }) => onlinePlayerNames.has(characterName)).map(({ type, characterName }) => ({ type, characterName }));
+
+      const onlineEnemyCharacters = enemyCharacters
+        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
+        .map(({ type, characterName }) => ({ type, characterName }));
+
+      const onlineFriendCharacters = friendCharacters
+        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
+        .map(({ type, characterName }) => ({ type, characterName }));
+
       const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
-      const deathPriorityCharacters = [...onlineEnemyCharacters, ...onlineFriendCharacters, ...recentlyOfflineCharacters].filter(({ characterName }) => characterName);
+
+      const deathPriorityCharacters = [
+        ...onlineEnemyCharacters,
+        ...onlineFriendCharacters,
+        ...recentlyOfflineCharacters
+      ].filter(({ characterName }) => characterName);
+
       const allCharactersInformation = await getInformationFromCharacters(deathPriorityCharacters);
+
       const deathListByCharacters = [];
+
       if (allCharactersInformation && allCharactersInformation.length > 0) {
         allCharactersInformation.forEach((data) => {
           if (data && data.kills) deathListByCharacters.push(...data.kills);
         });
       }
+
       console.log(`[DEATH] Characters monitorados online: ${onlineEnemyCharacters.length + onlineFriendCharacters.length}`);
       console.log(`[DEATH] Characters monitorados recem-offline: ${recentlyOfflineCharacters.length}`);
       console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
+
       const killsToPoke = await getNotPokedKills(deathListByCharacters);
+
       if (killsToPoke.length > 0) {
         for (const killMessage of killsToPoke) {
           console.log(`[DEATH] Enviando poke: ${killMessage}`);
           await sendMassPoke(teamspeak, killMessage);
+
+          /* =========================
+             FOCO - MATOU FRIEND
+          ========================= */
+
+          if (global.currentFocus) {
+            const focusName = global.currentFocus.toLowerCase();
+
+            const matchedDeath = deathListByCharacters.find(d =>
+              d.type === 'friend' &&
+              d.killers?.some(k => k.name?.toLowerCase() === focusName)
+            );
+
+            if (matchedDeath) {
+              await sendMassPoke(
+                teamspeak,
+                `🚨 FOCO MATOU: ${global.currentFocus} eliminou ${matchedDeath.characterName}`
+              );
+            }
+          }
         }
       }
+
       await processLevelUps(playersOnline, friendCharacters, teamspeak);
       await syncOnlineTrackers(playersOnline);
       await syncMonthlyLevelTrackers(playersOnline);
+
       const enemyOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, enemyCharacters));
       const friendOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, friendCharacters));
+
       const channelLists = await teamspeak.channelList();
       const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
+
       await updateChannel(teamspeak, 'enemy', enemyOnlineOfflineData, channelListsName);
       await updateChannel(teamspeak, 'friend', friendOnlineOfflineData, channelListsName);
+
       await moveAfkClients(teamspeak);
       await processServerSaveStatus(teamspeak);
+
     } catch (error) {
       console.error('[CRON] Erro na fastTask:', error);
     } finally {
       isFastTaskRunning = false;
     }
+
   }, { scheduled: false });
 
   const neutralTask = cron.schedule('*/30 * * * * *', async () => {
