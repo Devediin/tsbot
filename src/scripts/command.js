@@ -136,7 +136,7 @@ if (command === '!spy') {
 
     if (!data.possibleInvisibleCharacters ||
         data.possibleInvisibleCharacters.length === 0) {
-      return invoker.message(`Nenhum personagem secundário encontrado para ${name}.`);
+      return invoker.message(`🔎 Nenhum personagem secundário encontrado para [b]${name}[/b].`);
     }
 
     const sorted = data.possibleInvisibleCharacters
@@ -144,15 +144,22 @@ if (command === '!spy') {
       .slice(0, 5);
 
     const result =
-      `[b]Possíveis personagens de ${name}:[/b]\n\n` +
-      sorted.map((p, index) =>
-        `${index + 1}. ${p.otherCharacterName} — ${p.numberOfMatches} registros em comum`
-      ).join('\n');
+      `🕵️ Possíveis personagens de [b]${name}[/b]:\n\n` +
+      sorted.map((p, index) => {
+
+        const medal = index === 0 ? '👑 ' : '• ';
+        const intensity =
+          p.numberOfMatches >= 50 ? '🔥 ' :
+          p.numberOfMatches >= 10 ? '⚠️ ' :
+          '';
+
+        return `${medal}${intensity}${p.otherCharacterName} — ${p.numberOfMatches} registros em comum`;
+      }).join('\n');
 
     return invoker.message(result);
 
   } catch (error) {
-    return invoker.message('Erro ao consultar TibiaStalker.');
+    return invoker.message('❌ Erro ao consultar TibiaStalker.');
   }
 }
 
