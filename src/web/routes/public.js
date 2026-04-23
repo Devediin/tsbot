@@ -190,4 +190,70 @@ router.get('/ranking-monthly', async (req, res) => {
   }
 });
 
+/* =========================
+   WAR (NOVA ROTA)
+========================= */
+
+router.get('/war', async (req, res) => {
+  try {
+
+    const deaths = await getDeathsCache();
+    const fifteenMinutesAgo = moment().subtract(15, 'minutes').toDate();
+
+    let threat = null;
+
+    const recentFriendDeath = deaths
+      .filter(d => d.type === 'friend')
+      .sort((a,b) => new Date(b.time) - new Date(a.time))[0];
+
+    if (recentFriendDeath && new Date(recentFriendDeath.time) >= fifteenMinutesAgo) {
+      const killer = recentFriendDeath.killers?.[0]?.name || 'Unknown';
+      const minutesPassed = moment().diff(moment(recentFriendDeath.time), 'minutes');
+      const remaining = 15 - minutesPassed;
+
+      if (remaining > 0) {
+        threat = {
+          name: killer,
+          remaining
+        };
+      }
+    }
+
+    const enemyKills = {};
+    const friendKills = {};
+
+    deaths.forEach(d => {
+      if (d.type === 'friend') {
+        const killer = d.killers?.[0]?.name;
+        if (killer) {
+          enemyKills[killer] = (enemyKills[killer] || 0) + 1;
+        }
+      }
+
+      if (d.type === 'enemy') {
+        friendKills[d.characterName] =
+          (friendKills[d.characterName] || 0) + 1;
+      }
+    });
+
+    const topEnemy = Object.entries(enemyKills)
+      .sort((a,b) => b[1] - a[1])[0] || null;
+
+    const topFriend = Object.entries(friendKills)
+      .sort((a,b) => b[1] - a[1])[0] || null;
+
+    res.json({
+      threat,
+      topEnemy,
+      topFriend,
+      totalDeaths: Object.values(enemyKills).reduce((a,b) => a+b, 0),
+      totalKills: Object.values(friendKills).reduce((a,b) => a+b, 0)
+    });
+
+  } catch (e) {
+    console.error(e);
+    res.json({});
+  }
+});
+
 export default router;
