@@ -85,6 +85,23 @@ async function loadRanking() {
   }
 }
 
+  const recentList = document.getElementById('recentLevelUps');
+recentList.innerHTML = '';
+
+if (data.recentLevelUps && data.recentLevelUps.length > 0) {
+  data.recentLevelUps.forEach(entry => {
+    const gained = entry.gained || (entry.currentLevel - entry.previousLevel);
+    recentList.innerHTML += `
+      <li>
+        ✨ <a href="https://www.tibia.com/community/?name=${encodeURIComponent(entry.name)}" target="_blank">
+          ${entry.name}
+        </a> +${gained}
+      </li>`;
+  });
+} else {
+  recentList.innerHTML = '<li>Sem level ups recentes.</li>';
+}
+
 loadRanking();
 </script>
 
