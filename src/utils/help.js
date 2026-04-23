@@ -3,19 +3,31 @@ import { COMMANDS_MAP } from './constants';
 export const formatHelpMessage = (dbUserGroups = []) => {
 
   let response = `
+[b]⚔️ SPK TEAM - COMANDOS ⚔️[/b]
 
-[b]⚔️ SPK TEAM - COMANDOS DISPONÍVEIS ⚔️[/b]
-
-[b]📌 UTILITÁRIOS[/b]
+[b]📌 COMANDOS PÚBLICOS[/b]
 !desc - Link para gerar sua descrição
 !loot <log> - Divide loot da hunt
 !lk <nome> - Lista os matadores da última morte
 !spy <nome> - Ver possíveis personagens secundários
-!char <nome> - (Em breve) Estatísticas completas do personagem
+!char <nome> - Estatísticas completas do personagem
 
 `;
 
-  response += `[b]🔐 COMANDOS POR PERMISSÃO[/b]\n`;
+  response += `[b]🛠️ MODERAÇÃO[/b]\n`;
+
+  const moderationCommands = ['!mk', '!mp', '!mmove'];
+
+  moderationCommands.forEach(cmd => {
+    const command = Object.values(COMMANDS_MAP).find(c =>
+      c.howToUse && c.howToUse.startsWith(cmd)
+    );
+    if (command) {
+      response += `${command.howToUse}\n`;
+    }
+  });
+
+  response += `\n[b]🔐 ADMINISTRATIVO[/b]\n`;
 
   const hiddenCommands = [
     '!addNeutral',
@@ -37,6 +49,8 @@ export const formatHelpMessage = (dbUserGroups = []) => {
     const commandName = howToUse.split(' ')[0];
     if (hiddenCommands.includes(commandName)) return;
 
+    const isAdminCommand = groups.length > 0;
+
     let isVisibleByGroup = false;
 
     dbUserGroups.forEach(({ name }) => {
@@ -45,11 +59,11 @@ export const formatHelpMessage = (dbUserGroups = []) => {
       }
     });
 
-    if (groups.length === 0 || isVisibleByGroup) {
+    if (isAdminCommand && isVisibleByGroup) {
 
       if (commandName === '!dailyinfo') {
-        response += `!dailyinfo <texto do world board> - Atualiza Yasir e Daily Info no portal (Admin)\n`;
-      } else {
+        response += `!dailyinfo <texto world board> - Atualiza Yasir e Daily Info\n`;
+      } else if (!moderationCommands.includes(commandName)) {
         response += `${howToUse}\n`;
       }
 
