@@ -144,9 +144,9 @@ if (command === '!spy') {
       .slice(0, 5);
 
     const result =
-      `Possíveis personagens de ${name}:\n\n` +
-      sorted.map(p =>
-        `- ${p.otherCharacterName} (${p.numberOfMatches} matches)`
+      `[b]Possíveis personagens de ${name}:[/b]\n\n` +
+      sorted.map((p, index) =>
+        `${index + 1}. ${p.otherCharacterName} — ${p.numberOfMatches} registros em comum`
       ).join('\n');
 
     return invoker.message(result);
