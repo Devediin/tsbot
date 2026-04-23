@@ -9,6 +9,10 @@ import { parseLootSession } from '../utils/lootSplit';
 import { lastDeathKillers } from '../api/crone/lists.js';
 import { getOnlineTrackerByName } from '../api/models/online-tracker.js';
 
+if (!global.currentFocus) {
+  global.currentFocus = null;
+}
+
 const executeCommand = async (command, teamspeak, msgAsList, cid) => (
   new Promise(async (resolve, reject) => {
     const { exec } = COMMANDS_MAP[command];
@@ -48,6 +52,24 @@ export const proceesCommand = async (event = {}, teamspeak) => {
     if (command === '!help') {
       return invoker.message(formatHelpMessage(dbUserGroups));
     }
+
+/* FOCO */
+if (command === '!foco') {
+  msgAsList.shift();
+  const name = msgAsList.join(' ').trim();
+
+  if (!name) {
+    return invoker.message('Use: !foco Nome');
+  }
+
+  if (global.currentFocus && global.currentFocus.toLowerCase() === name.toLowerCase()) {
+    global.currentFocus = null;
+    return invoker.message(`🎯 Foco removido: ${name}`);
+  }
+
+  global.currentFocus = name;
+  return invoker.message(`🎯 Foco ativado: ${name}`);
+}
 
     /* LK */
     if (command === '!lk') {
@@ -158,58 +180,57 @@ ${sorted.map((p, i) =>
     }
 
     /* CHAR */
-if (command === '!char') {
-  msgAsList.shift();
-  const name = msgAsList.join(' ').trim();
+    if (command === '!char') {
+      msgAsList.shift();
+      const name = msgAsList.join(' ').trim();
 
-  if (!name) {
-    return invoker.message('Use: !char Nome');
-  }
+      if (!name) {
+        return invoker.message('Use: !char Nome');
+      }
 
-  try {
-    const resp = await axios.get(
-      `https://api.tibiadata.com/v4/character/${encodeURIComponent(name)}`
-    );
+      try {
+        const resp = await axios.get(
+          `https://api.tibiadata.com/v4/character/${encodeURIComponent(name)}`
+        );
 
-    const info = resp.data.character.character;
+        const info = resp.data.character.character;
 
-    if (!info) {
-      return invoker.message('❌ Personagem não encontrado.');
-    }
+        if (!info) {
+          return invoker.message('❌ Personagem não encontrado.');
+        }
 
-    const tracker = await getOnlineTrackerByName(name);
+        const tracker = await getOnlineTrackerByName(name);
 
-    let status = 'Offline';
-    let onlineTime = 'Offline';
+        let status = 'Offline';
+        let onlineTime = 'Offline';
 
-    if (tracker?.isOnline) {
-      status = 'Online';
+        if (tracker?.isOnline) {
+          status = 'Online';
 
-      const diff = moment().diff(
-        moment(tracker.firstSeenOnline),
-        'minutes'
-      );
+          const diff = moment().diff(
+            moment(tracker.firstSeenOnline),
+            'minutes'
+          );
 
-      onlineTime =
-        Math.floor(diff / 60) > 0
-          ? `${Math.floor(diff / 60)}h ${diff % 60}m`
-          : `${diff}m`;
-    }
+          onlineTime =
+            Math.floor(diff / 60) > 0
+              ? `${Math.floor(diff / 60)}h ${diff % 60}m`
+              : `${diff}m`;
+        }
 
-    return invoker.message(
+        return invoker.message(
 `👤 [b]${name}[/b]
 📊 Level: ${info.level}
 🛡 Vocação: ${info.vocation}
 🟢 Status: ${status}
 ⏱ Online hoje: ${onlineTime}`
-    );
+        );
 
-  } catch (error) {
-    return invoker.message('❌ Erro ao consultar personagem.');
-  }
-}
+      } catch (error) {
+        return invoker.message('❌ Erro ao consultar personagem.');
+      }
+    }
 
-    /* PERMISSÕES PADRÃO */
     const { ok, message } = await canDo(command, dbUserGroups);
     const isServerAdmin = await isUserServerAdmin(teamspeak, parsedServerGroups);
 
