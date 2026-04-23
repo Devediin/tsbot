@@ -40,26 +40,67 @@
 <script src="/assets/navbar.js"></script>
 
 <script>
+
+let threatInterval = null;
+
+function tibiaLink(name) {
+  return `<a href="https://www.tibia.com/community/?name=${encodeURIComponent(name)}" target="_blank">${name}</a>`;
+}
+
+function startThreatCountdown(name, remainingMinutes) {
+  const threatElement = document.getElementById('threat');
+
+  let remainingSeconds = remainingMinutes * 60;
+
+  if (threatInterval) clearInterval(threatInterval);
+
+  threatInterval = setInterval(() => {
+    if (remainingSeconds <= 0) {
+      clearInterval(threatInterval);
+      threatElement.innerText = 'Nenhuma ameaça ativa.';
+      return;
+    }
+
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+
+    threatElement.innerHTML =
+      `${tibiaLink(name)} com PZ por ${minutes}m ${seconds}s`;
+
+    remainingSeconds--;
+  }, 1000);
+}
+
 async function loadWar() {
   const res = await fetch('/api/public/war');
   const data = await res.json();
 
-  document.getElementById('threat').innerText =
-    data.threat
-      ? `${data.threat.name} ainda com PZ por ${data.threat.remaining} min`
-      : 'Nenhuma ameaça ativa.';
+  // THREAT
+  if (data.threat) {
+    startThreatCountdown(data.threat.name, data.threat.remaining);
+  } else {
+    document.getElementById('threat').innerText = 'Nenhuma ameaça ativa.';
+  }
 
+  // STATS
   document.getElementById('stats').innerText =
     `Kills: ${data.totalKills} | Deaths: ${data.totalDeaths}`;
 
-  document.getElementById('topEnemy').innerText =
-    data.topEnemy ? `${data.topEnemy[0]} (${data.topEnemy[1]} kills)` : '—';
+  // TOP ENEMY
+  document.getElementById('topEnemy').innerHTML =
+    data.topEnemy
+      ? `${tibiaLink(data.topEnemy[0])} (${data.topEnemy[1]} kills)`
+      : '—';
 
-  document.getElementById('topFriend').innerText =
-    data.topFriend ? `${data.topFriend[0]} (${data.topFriend[1]} kills)` : '—';
+  // TOP FRIEND
+  document.getElementById('topFriend').innerHTML =
+    data.topFriend
+      ? `${tibiaLink(data.topFriend[0])} (${data.topFriend[1]} kills)`
+      : '—';
 }
 
 loadWar();
+
 </script>
 
 </body>
