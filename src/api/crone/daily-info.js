@@ -137,6 +137,19 @@ export const updateDailyInfoChannel = async (teamspeak) => {
   try {
     const worldOverview = await tibiaAPI.getWorldOverview();
     const serverName = worldOverview?.name || WORLD_NAME;
+     import LevelTracker from '../models/level-tracker.js';
+import PlayerHistory from '../models/player-history.js';
+
+const trackers = await LevelTracker.find();
+
+for (const tracker of trackers) {
+  await PlayerHistory.create({
+    name: tracker.name,
+    level: tracker.lastLevel
+  });
+}
+
+console.log('[SNAPSHOT] Snapshot diário salvo com sucesso.');
 
     const rashid = getRashidLocation();
     const dreamBoss = getDreamCourtsBoss();
