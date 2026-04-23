@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>🏆 Ranking do Time</title>
+<title>🏆 Ranking</title>
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="icon" href="/assets/favicon.png">
 </head>
@@ -15,31 +15,9 @@
 
 <h1>🏆 Ranking do Time</h1>
 
-<h2 style="margin-top:40px;">📅 Ranking Mensal</h2>
-
-<div class="ranking-grid">
-
-  <div class="card">
-    <h3>📈 Quem Mais Upou</h3>
-    <ul id="levelUpList">
-      <li class="loading">⏳ Carregando...</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <h3>💀 Mais Mortes</h3>
-    <ul id="deathList">
-      <li class="loading">⏳ Carregando...</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <h3>⏳ Mais Tempo Online</h3>
-    <ul id="onlineList">
-      <li class="loading">⏳ Carregando...</li>
-    </ul>
-  </div>
-
+<div class="card">
+  <h2>👑 Maior Level Atual</h2>
+  <p id="topLevel">⏳ Carregando...</p>
 </div>
 
 </div>
@@ -48,64 +26,16 @@
 
 <script>
 async function loadRanking() {
-  try {
+  const res = await fetch('/api/public/ranking');
+  const data = await res.json();
 
-    const res = await fetch('/api/public/ranking-advanced');
-    const data = await res.json();
-
-    const levelList = document.getElementById('levelUpList');
-    const deathList = document.getElementById('deathList');
-    const onlineList = document.getElementById('onlineList');
-
-    levelList.innerHTML = '';
-    deathList.innerHTML = '';
-    onlineList.innerHTML = '';
-
-    // ✅ LEVEL UP MENSAL
-    if (data.levelUpRanking && data.levelUpRanking.length > 0) {
-      data.levelUpRanking.slice(0,5).forEach((p, index) => {
-        levelList.innerHTML += `
-          <li class="${index === 0 ? 'top-1' : ''}">
-            🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
-              ${p.name}
-            </a> — +${p.levelGain} levels
-          </li>`;
-      });
-    } else {
-      levelList.innerHTML = '<li>Sem level ups no mês.</li>';
-    }
-
-    // ✅ MAIS MORTES
-    if (data.deathRanking && data.deathRanking.length > 0) {
-      data.deathRanking.slice(0,5).forEach((p, index) => {
-        deathList.innerHTML += `
-          <li class="${index === 0 ? 'top-1' : ''}">
-            💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
-              ${p.name}
-            </a> — ${p.deaths} mortes
-          </li>`;
-      });
-    } else {
-      deathList.innerHTML = '<li>Sem mortes no período.</li>';
-    }
-
-    // ✅ TEMPO ONLINE
-    if (data.onlineRanking && data.onlineRanking.length > 0) {
-      data.onlineRanking.slice(0,5).forEach((p, index) => {
-        const hours = Math.floor(p.minutes / 60);
-        onlineList.innerHTML += `
-          <li class="${index === 0 ? 'top-1' : ''}">
-            ⏳ <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
-              ${p.name}
-            </a> — ${hours}h online
-          </li>`;
-      });
-    } else {
-      onlineList.innerHTML = '<li>Sem dados de online.</li>';
-    }
-
-  } catch (e) {
-    console.log('Erro ao carregar ranking');
+  if (data.topLevel) {
+    document.getElementById('topLevel').innerHTML =
+      `👑 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(data.topLevel.name)}" target="_blank">
+        ${data.topLevel.name}
+      </a> — Level ${data.topLevel.level}`;
+  } else {
+    document.getElementById('topLevel').innerText = 'Sem dados.';
   }
 }
 
