@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>⚔️ Painel de Guerra</title>
+<link rel="stylesheet" href="/assets/styles.css">
+<link rel="icon" href="/assets/favicon.png">
+</head>
+<body>
+
+<div class="overlay"></div>
+<div id="navbar"></div>
+
+<div class="container">
+
+<h1>⚔️ Painel de Guerra</h1>
+
+<div class="card">
+  <h2>📊 Estatísticas Gerais</h2>
+  <p id="stats"></p>
+</div>
+
+<div class="card">
+  <h2>🔥 Ameaça Ativa</h2>
+  <p id="threat"></p>
+</div>
+
+<div class="card">
+  <h2>🏹 Destaques</h2>
+  <p id="top"></p>
+</div>
+
+</div>
+
+<script src="/assets/navbar.js"></script>
+
+<script>
+async function loadWar() {
+  const res = await fetch('/api/public/war');
+  const data = await res.json();
+
+  document.getElementById('stats').innerText =
+    `Kills: ${data.totalKills} | Deaths: ${data.totalDeaths} | KD: ${data.kdRatio.toFixed(2)}`;
+
+  if (data.threat) {
+    document.getElementById('threat').innerText =
+      `⚠️ ${data.threat.name} ainda com PZ por ${data.threat.remaining} min`;
+  } else {
+    document.getElementById('threat').innerText =
+      'Nenhuma ameaça ativa.';
+  }
+
+  document.getElementById('top').innerText =
+    `Enemy mais perigoso: ${data.topEnemy?.[0] || '—'}\n` +
+    `Friend mais agressivo: ${data.topFriend?.[0] || '—'}`;
+}
+
+loadWar();
+</script>
+
+</body>
+</html>
