@@ -16,18 +16,23 @@
 <h1>⚔️ Painel de Guerra</h1>
 
 <div class="card">
-  <h2>📊 Estatísticas Gerais</h2>
-  <p id="stats"></p>
-</div>
-
-<div class="card">
-  <h2>🔥 Ameaça Ativa</h2>
+  <h3>🚨 Ameaça Ativa</h3>
   <p id="threat"></p>
 </div>
 
 <div class="card">
-  <h2>🏹 Destaques</h2>
-  <p id="top"></p>
+  <h3>📊 Estatísticas</h3>
+  <p id="stats"></p>
+</div>
+
+<div class="card">
+  <h3>🔥 Enemy Mais Perigoso</h3>
+  <p id="topEnemy"></p>
+</div>
+
+<div class="card">
+  <h3>🏹 Friend Mais Agressivo</h3>
+  <p id="topFriend"></p>
 </div>
 
 </div>
@@ -39,20 +44,19 @@ async function loadWar() {
   const res = await fetch('/api/public/war');
   const data = await res.json();
 
+  document.getElementById('threat').innerText =
+    data.threat
+      ? `${data.threat.name} ainda com PZ por ${data.threat.remaining} min`
+      : 'Nenhuma ameaça ativa.';
+
   document.getElementById('stats').innerText =
-    `Kills: ${data.totalKills} | Deaths: ${data.totalDeaths} | KD: ${data.kdRatio.toFixed(2)}`;
+    `Kills: ${data.totalKills} | Deaths: ${data.totalDeaths}`;
 
-  if (data.threat) {
-    document.getElementById('threat').innerText =
-      `⚠️ ${data.threat.name} ainda com PZ por ${data.threat.remaining} min`;
-  } else {
-    document.getElementById('threat').innerText =
-      'Nenhuma ameaça ativa.';
-  }
+  document.getElementById('topEnemy').innerText =
+    data.topEnemy ? `${data.topEnemy[0]} (${data.topEnemy[1]} kills)` : '—';
 
-  document.getElementById('top').innerText =
-    `Enemy mais perigoso: ${data.topEnemy?.[0] || '—'}\n` +
-    `Friend mais agressivo: ${data.topFriend?.[0] || '—'}`;
+  document.getElementById('topFriend').innerText =
+    data.topFriend ? `${data.topFriend[0]} (${data.topFriend[1]} kills)` : '—';
 }
 
 loadWar();
