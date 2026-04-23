@@ -47,9 +47,11 @@ app.get('/ranking', (req, res) => {
 // Pasta pública
 app.use(express.static(path.join(process.cwd(), 'src/web/public')));
 
-app.listen(PORT, () => {
-  console.log(`🌐 Web Panel running on port ${PORT}`);
-});
 app.get('/war', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'src/web/public/war.html'));
 });
+
+app.listen(PORT, () => {
+  console.log(`🌐 Web Panel running on port ${PORT}`);
+});
+
