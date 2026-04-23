@@ -5,7 +5,6 @@
 <title>⚔️ Painel de Guerra</title>
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="icon" href="/assets/favicon.png">
-
 </head>
 <body>
 
@@ -14,17 +13,17 @@
 
 <div class="container">
 
-<h1>⚔️ War Control Panel</h1>
+<h1>⚔️ Painel de Guerra</h1>
 
 <div class="card">
-  <h3>🚨 Active Threat</h3>
+  <h3>🚨 Ameaça Ativa</h3>
   <div id="threatContainer"></div>
 </div>
 
 <div class="war-grid">
 
   <div class="card">
-    <h3>💀 Deaths</h3>
+    <h3>💀 Mortes</h3>
     <div id="totalDeaths" class="war-stat-number"></div>
   </div>
 
@@ -34,7 +33,7 @@
   </div>
 
   <div class="card">
-    <h3>⚖️ K/D Ratio</h3>
+    <h3>⚖️ K/D</h3>
     <div id="kdRatio" class="war-stat-number"></div>
   </div>
 
@@ -43,12 +42,12 @@
 <div class="war-grid">
 
   <div class="card war-link">
-    <h3>🔥 Most Dangerous Enemy</h3>
+    <h3>🔥 Enemy Mais Perigoso</h3>
     <p id="topEnemy"></p>
   </div>
 
   <div class="card war-link">
-    <h3>🏹 Most Aggressive Friend</h3>
+    <h3>🏹 Friend Mais Agressivo</h3>
     <p id="topFriend"></p>
   </div>
 
@@ -76,7 +75,7 @@ function startThreatCountdown(name, remainingMinutes) {
     <div class="threat-wrapper">
       <div class="threat-header">
         <span class="skull">☠️</span>
-        <span class="threat-badge">PZ ACTIVE</span>
+        <span class="threat-badge">PZ ATIVA</span>
         <span id="threatText"></span>
       </div>
       <div class="progress-bar">
@@ -94,7 +93,7 @@ function startThreatCountdown(name, remainingMinutes) {
 
     if (remainingSeconds <= 0) {
       clearInterval(threatInterval);
-      container.innerHTML = 'No active threats.';
+      container.innerHTML = 'Nenhuma ameaça ativa.';
       return;
     }
 
@@ -102,7 +101,7 @@ function startThreatCountdown(name, remainingMinutes) {
     const seconds = remainingSeconds % 60;
 
     threatText.innerHTML =
-      `${tibiaLink(name)} — ${minutes}m ${seconds}s remaining`;
+      `${tibiaLink(name)} — ${minutes}m ${seconds}s restantes`;
 
     const percent = (remainingSeconds / totalSeconds) * 100;
     progressFill.style.width = percent + '%';
@@ -119,7 +118,7 @@ async function loadWar() {
   if (data.threat) {
     startThreatCountdown(data.threat.name, data.threat.remaining);
   } else {
-    document.getElementById('threatContainer').innerText = 'No active threats.';
+    document.getElementById('threatContainer').innerText = 'Nenhuma ameaça ativa.';
   }
 
   document.getElementById('totalDeaths').innerText = data.totalDeaths;
