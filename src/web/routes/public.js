@@ -3,13 +3,16 @@ import axios from 'axios';
 import Characters from '../../api/models/characters.js';
 import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
+import LevelUpHistory from '../../api/models/level-up-history.js';
 import moment from 'moment';
 import { parseLootSession } from '../../utils/lootSplit.js';
-import mongoose from 'mongoose';
 
 const router = express.Router();
 
-/* DAILY */
+/* =========================
+   DAILY
+========================= */
+
 router.get('/daily', (req, res) =>
   res.json(global.dailyInfoCachePortal || {})
 );
@@ -21,7 +24,10 @@ router.get('/live', (req, res) =>
   })
 );
 
-/* ONLINE */
+/* =========================
+   ONLINE
+========================= */
+
 router.get('/online', async (req, res) => {
   try {
     const characters = await Characters.find({ type: 'friend' });
@@ -80,7 +86,10 @@ router.get('/online', async (req, res) => {
   }
 });
 
-/* DEATHS */
+/* =========================
+   DEATHS
+========================= */
+
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
@@ -110,7 +119,10 @@ router.get('/deaths', async (req, res) => {
   }
 });
 
-/* LOOT */
+/* =========================
+   LOOT SPLIT
+========================= */
+
 router.post('/loot', (req, res) => {
   try {
     const { text } = req.body;
@@ -127,46 +139,18 @@ router.post('/loot', (req, res) => {
   }
 });
 
-/* RANKING SIMPLES */
-router.get('/ranking', async (req, res) => {
-  try {
-
-    const characters = await Characters.find({ type: 'friend' });
-
-    const ranking = [];
-
-    for (const char of characters) {
-
-      const resp = await axios.get(
-        `https://api.tibiadata.com/v4/character/${encodeURIComponent(char.characterName)}`
-      );
-
-      const info = resp.data.character.character;
-
-      ranking.push({
-        name: char.characterName,
-        level: info.level
-      });
-    }
-
-    ranking.sort((a,b) => b.level - a.level);
-
-    res.json({
-      topLevel: ranking[0] || null
-    });
-
-  } catch (e) {
-    res.json({});
-  }
-});
+/* =========================
+   RANKING MENSAL
+========================= */
 
 router.get('/ranking-monthly', async (req, res) => {
   try {
+
     const startOfMonth = moment().startOf('month').toDate();
 
-    const levelUps = await mongoose.connection.collection('leveluphistories')
-      .find({ date: { $gte: startOfMonth } })
-      .toArray();
+    const levelUps = await LevelUpHistory.find({
+      date: { $gte: startOfMonth }
+    });
 
     const levelMap = {};
 
@@ -201,21 +185,23 @@ router.get('/ranking-monthly', async (req, res) => {
       }))
       .sort((a,b) => b.deaths - a.deaths);
 
-const recentLevelUps = await mongoose.connection
-  .collection('leveluphistories')
-  .find({})
-  .sort({ date: -1 })
-  .limit(10)
-  .toArray();
+    const recentLevelUps = await LevelUpHistory.find({})
+      .sort({ date: -1 })
+      .limit(10);
 
-res.json({
-  levelRanking,
-  deathRanking,
-  recentLevelUps
-});
+    res.json({
+      levelRanking,
+      deathRanking,
+      recentLevelUps
+    });
 
   } catch (e) {
-    res.json({});
+    console.error(e);
+    res.json({
+      levelRanking: [],
+      deathRanking: [],
+      recentLevelUps: []
+    });
   }
 });
 
