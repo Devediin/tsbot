@@ -1,4 +1,5 @@
 import axios from 'axios';
+import moment from 'moment';
 import { canDo } from '../utils/permissions';
 import ServerGroups from '../api/models/server-groups';
 import { formatHelpMessage } from '../utils/help';
@@ -6,6 +7,7 @@ import { isUserServerAdmin } from './server-groups';
 import { BOT_NAME, COMMANDS_MAP } from '../utils/constants';
 import { parseLootSession } from '../utils/lootSplit';
 import { lastDeathKillers } from '../api/crone/lists.js';
+import { getOnlineTrackerByName } from '../api/models/online-tracker.js';
 
 const executeCommand = async (command, teamspeak, msgAsList, cid) => (
   new Promise(async (resolve, reject) => {
@@ -42,10 +44,12 @@ export const proceesCommand = async (event = {}, teamspeak) => {
 
     const dbUserGroups = await ServerGroups.find({ sgid: { $in: parsedServerGroups } });
 
+    /* HELP */
     if (command === '!help') {
       return invoker.message(formatHelpMessage(dbUserGroups));
     }
 
+    /* LK */
     if (command === '!lk') {
       msgAsList.shift();
       const name = msgAsList.join(' ').trim().toLowerCase();
@@ -60,19 +64,22 @@ export const proceesCommand = async (event = {}, teamspeak) => {
         return invoker.message('Nenhuma morte recente encontrada.');
       }
 
-      const killersText = killers.map(k => `- ${k}`).join('\n');
-
       return invoker.message(
-`Matadores de ${name}:
-${killersText}`
+`💀 Matadores de ${name}:
+
+${killers.map(k => `• ${k}`).join('\n')}`
       );
     }
 
+    /* DESC */
     if (command === '!desc') {
-      const link = `https://spkteam.duckdns.org`;
-      return invoker.message(`📜 Gere sua descrição aqui:\n[url]${link}[/url]`);
+      return invoker.message(
+`📜 Gere sua descrição no portal:
+https://spkteam.duckdns.org`
+      );
     }
 
+    /* LOOT */
     if (command === '!loot') {
       msgAsList.shift();
       const text = msgAsList.join(' ').trim();
@@ -87,8 +94,7 @@ Log inválido ou incompleto.`
       try {
         const result = parseLootSession(text);
 
-        let response = '';
-        response += '[b]RESULTADO DO LOOT SPLIT[/b]\n';
+        let response = '💰 [b]RESULTADO DO LOOT[/b]\n';
         response += '━━━━━━━━━━━━━━━━━━\n';
 
         result.transfers.forEach(t => {
@@ -101,68 +107,101 @@ Log inválido ou incompleto.`
 
         const totalKK = (result.totalProfit / 1000000).toFixed(2);
         const perPlayerK = Math.round(result.perPlayer / 1000);
-        const perHourK = Math.round(result.profitPerHour / 1000);
 
         response += '━━━━━━━━━━━━━━━━━━\n';
         response += `Total: [b]${totalKK}kk[/b]\n`;
-        response += `Cada jogador: [b]${perPlayerK}k[/b]\n`;
-        response += `Por hora: [b]${perHourK}k[/b]`;
+        response += `Cada jogador: [b]${perPlayerK}k[/b]`;
 
         return invoker.message(response);
 
-      } catch (err) {
-        return invoker.message(
-`[b]LOOT SPLIT[/b]
-Erro ao processar o loot.`
-        );
+      } catch {
+        return invoker.message('❌ Erro ao processar loot.');
       }
     }
 
-if (command === '!spy') {
+    /* SPY */
+    if (command === '!spy') {
+      msgAsList.shift();
+      const name = msgAsList.join(' ').trim();
 
-  msgAsList.shift();
-  const name = msgAsList.join(' ').trim();
+      if (!name) {
+        return invoker.message('Use: !spy Nome');
+      }
 
-  if (!name) {
-    return invoker.message('Use: !spy Nome');
-  }
+      try {
+        const response = await axios.get(
+          `https://api.tibiastalker.pl/api/tibia-stalker/v1/characters/${encodeURIComponent(name)}`
+        );
 
-  try {
-    const response = await axios.get(
-      `https://api.tibiastalker.pl/api/tibia-stalker/v1/characters/${encodeURIComponent(name)}`
-    );
+        const data = response.data;
 
-    const data = response.data;
+        if (!data.possibleInvisibleCharacters ||
+            data.possibleInvisibleCharacters.length === 0) {
+          return invoker.message(`🔎 Nenhum secundário encontrado para ${name}.`);
+        }
 
-    if (!data.possibleInvisibleCharacters ||
-        data.possibleInvisibleCharacters.length === 0) {
-      return invoker.message(`🔎 Nenhum personagem secundário encontrado para [b]${name}[/b].`);
+        const sorted = data.possibleInvisibleCharacters
+          .sort((a,b) => b.numberOfMatches - a.numberOfMatches)
+          .slice(0, 5);
+
+        return invoker.message(
+`🕵️ Possíveis personagens de [b]${name}[/b]:
+
+${sorted.map((p, i) =>
+  `${i === 0 ? '👑' : '•'} ${p.otherCharacterName} — ${p.numberOfMatches} registros`
+).join('\n')}`
+        );
+
+      } catch {
+        return invoker.message('❌ Erro ao consultar TibiaStalker.');
+      }
     }
 
-    const sorted = data.possibleInvisibleCharacters
-      .sort((a,b) => b.numberOfMatches - a.numberOfMatches)
-      .slice(0, 5);
+    /* CHAR */
+    if (command === '!char') {
+      msgAsList.shift();
+      const name = msgAsList.join(' ').trim();
 
-    const result =
-      `🕵️ Possíveis personagens de [b]${name}[/b]:\n\n` +
-      sorted.map((p, index) => {
+      if (!name) {
+        return invoker.message('Use: !char Nome');
+      }
 
-        const medal = index === 0 ? '👑 ' : '• ';
-        const intensity =
-          p.numberOfMatches >= 50 ? '🔥 ' :
-          p.numberOfMatches >= 10 ? '⚠️ ' :
-          '';
+      try {
+        const resp = await axios.get(
+          `https://api.tibiadata.com/v4/character/${encodeURIComponent(name)}`
+        );
 
-        return `${medal}${intensity}${p.otherCharacterName} — ${p.numberOfMatches} registros em comum`;
-      }).join('\n');
+        const info = resp.data.character.character;
 
-    return invoker.message(result);
+        if (!info) {
+          return invoker.message('❌ Personagem não encontrado.');
+        }
 
-  } catch (error) {
-    return invoker.message('❌ Erro ao consultar TibiaStalker.');
-  }
-}
+        const tracker = await getOnlineTrackerByName(name);
 
+        let onlineTime = 'Offline';
+        if (tracker?.isOnline) {
+          const diff = moment().diff(moment(tracker.firstSeenOnline), 'minutes');
+          onlineTime =
+            Math.floor(diff / 60) > 0
+              ? `${Math.floor(diff / 60)}h ${diff % 60}m`
+              : `${diff}m`;
+        }
+
+        return invoker.message(
+`👤 [b]${name}[/b]
+📊 Level: ${info.level}
+🛡 Vocação: ${info.vocation}
+🟢 Status: ${info.status}
+⏱ Online hoje: ${onlineTime}`
+        );
+
+      } catch {
+        return invoker.message('❌ Erro ao consultar personagem.');
+      }
+    }
+
+    /* PERMISSÕES PADRÃO */
     const { ok, message } = await canDo(command, dbUserGroups);
     const isServerAdmin = await isUserServerAdmin(teamspeak, parsedServerGroups);
 
