@@ -37,6 +37,7 @@ import {
   upsertNeutralPageChannel,
   deleteUnusedNeutralPageChannels,
 } from '../../scripts/channels';
+import WarEvent from '../models/war-event';
 
 export const lastDeathKillers = new Map();
 const { WORLD_NAME } = process.env;
@@ -347,6 +348,27 @@ const getNotPokedKills = async (kills = []) => {
 
       const cacheKey = getDeathCacheKey({ characterName, time });
       if (cachedKeys.has(cacheKey)) continue;
+
+      /* =========================
+         NOVO: SALVAR NO MONGO
+      ========================= */
+
+      try {
+        await WarEvent.create({
+          characterName,
+          type,
+          level,
+          killers: killers.map(k => ({
+            name: k.name,
+            isPlayer: k.player ?? true
+          })),
+          time: new Date(time)
+        });
+      } catch (err) {
+        console.error('[WAR] Erro salvando WarEvent:', err.message);
+      }
+
+      /* ========================= */
 
       killsToPoke.push(
         formatDeathMessage({
