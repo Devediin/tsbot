@@ -9,10 +9,7 @@ import { parseLootSession } from '../../utils/lootSplit.js';
 
 const router = express.Router();
 
-/* =========================
-   DAILY
-========================= */
-
+/* DAILY */
 router.get('/daily', (req, res) =>
   res.json(global.dailyInfoCachePortal || {})
 );
@@ -24,10 +21,7 @@ router.get('/live', (req, res) =>
   })
 );
 
-/* =========================
-   ONLINE
-========================= */
-
+/* ONLINE */
 router.get('/online', async (req, res) => {
   try {
     const characters = await Characters.find({ type: 'friend' });
@@ -86,10 +80,7 @@ router.get('/online', async (req, res) => {
   }
 });
 
-/* =========================
-   DEATHS
-========================= */
-
+/* DEATHS */
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
@@ -119,103 +110,80 @@ router.get('/deaths', async (req, res) => {
   }
 });
 
-/* =========================
-   LOOT SPLIT
-========================= */
-
+/* LOOT */
 router.post('/loot', (req, res) => {
   try {
     const { text } = req.body;
-
     if (!text) {
       return res.status(400).json({ error: 'Texto não enviado.' });
     }
-
     const result = parseLootSession(text);
     res.json(result);
-
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-/* =========================
-   RANKING MENSAL (USANDO monthlyLevelTrackers)
-========================= */
-
-router.get('/ranking-monthly', async (req, res) => {
+/* WAR */
+router.get('/war', async (req, res) => {
   try {
 
-    const monthKey = moment().format('YYYY-MM');
+    const deaths = await getDeathsCache();
+    const fifteenMinutesAgo = moment().subtract(15, 'minutes').toDate();
 
-    const monthlyData = await mongoose.connection
-      .collection('monthlyLevelTrackers')
-      .find({ monthKey })
-      .toArray();
+    let threat = null;
 
-    const levelRanking = [];
+    const recentFriendDeath = deaths
+      .filter(d => d.type === 'friend')
+      .sort((a,b) => new Date(b.time) - new Date(a.time))[0];
 
-    for (const entry of monthlyData) {
+    if (recentFriendDeath && new Date(recentFriendDeath.time) >= fifteenMinutesAgo) {
+      const killer = recentFriendDeath.killers?.[0]?.name || 'Unknown';
+      const minutesPassed = moment().diff(moment(recentFriendDeath.time), 'minutes');
+      const remaining = 15 - minutesPassed;
 
-      const tracker = await mongoose.connection
-        .collection('levelTrackers')
-        .findOne({ name: entry.name });
-
-      if (!tracker) continue;
-
-      const gain = tracker.lastLevel - entry.startLevel;
-
-      if (gain > 0) {
-        levelRanking.push({
-          name: entry.name,
-          totalGain: gain
-        });
+      if (remaining > 0) {
+        threat = {
+          name: killer,
+          remaining
+        };
       }
     }
 
-    levelRanking.sort((a,b) => b.totalGain - a.totalGain);
+    const enemyKills = {};
+    const friendKills = {};
 
-    const deaths = await getDeathsCache();
-    const startOfMonth = moment().startOf('month').toDate();
+    deaths.forEach(d => {
+      if (d.type === 'friend') {
+        const killer = d.killers?.[0]?.name;
+        if (killer) {
+          enemyKills[killer] = (enemyKills[killer] || 0) + 1;
+        }
+      }
 
-    const deathsThisMonth = deaths.filter(d =>
-      new Date(d.time) >= startOfMonth
-    );
-
-    const deathMap = {};
-
-    deathsThisMonth.forEach(d => {
-      deathMap[d.characterName] =
-        (deathMap[d.characterName] || 0) + 1;
+      if (d.type === 'enemy') {
+        friendKills[d.characterName] =
+          (friendKills[d.characterName] || 0) + 1;
+      }
     });
 
-    const deathRanking = Object.keys(deathMap)
-      .map(name => ({
-        name,
-        deaths: deathMap[name]
-      }))
-      .sort((a,b) => b.deaths - a.deaths);
+    const topEnemy = Object.entries(enemyKills)
+      .sort((a,b) => b[1] - a[1])[0] || null;
 
-    const recentLevelUps = await mongoose.connection
-      .collection('leveluphistories')
-      .find({})
-      .sort({ date: -1 })
-      .limit(10)
-      .toArray();
+    const topFriend = Object.entries(friendKills)
+      .sort((a,b) => b[1] - a[1])[0] || null;
 
     res.json({
-      levelRanking,
-      deathRanking,
-      recentLevelUps
+      threat,
+      topEnemy,
+      topFriend,
+      totalDeaths: Object.values(enemyKills).reduce((a,b) => a+b, 0),
+      totalKills: Object.values(friendKills).reduce((a,b) => a+b, 0)
     });
 
   } catch (e) {
     console.error(e);
-    res.json({
-      levelRanking: [],
-      deathRanking: [],
-      recentLevelUps: []
-    });
+    res.json({});
   }
 });
 
