@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import PlayerHistory from './player-history.js';
+import LevelUpHistory from './level-up-history.js';
 
 const levelTrackerSchema = new mongoose.Schema({
   name: {
@@ -92,12 +93,14 @@ export const upsertLevelTracker = async ({ name, level }) => (
       await tracker.save();
 
       // ✅ Salva snapshot apenas quando subir level
-      if (leveledUp) {
-        await PlayerHistory.create({
-          name,
-          level: currentLevel
-        });
-      }
+if (leveledUp) {
+  await LevelUpHistory.create({
+    name,
+    previousLevel,
+    currentLevel,
+    gained: currentLevel - previousLevel
+  });
+}
 
       resolve({
         previousLevel,
