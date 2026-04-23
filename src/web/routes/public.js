@@ -6,13 +6,9 @@ import { getDeathsCache } from '../../api/models/meta.js';
 import moment from 'moment';
 import { parseLootSession } from '../../utils/lootSplit.js';
 
-
 const router = express.Router();
 
-/* =========================
-   DAILY
-========================= */
-
+/* DAILY */
 router.get('/daily', (req, res) =>
   res.json(global.dailyInfoCachePortal || {})
 );
@@ -24,10 +20,7 @@ router.get('/live', (req, res) =>
   })
 );
 
-/* =========================
-   ONLINE
-========================= */
-
+/* ONLINE */
 router.get('/online', async (req, res) => {
   try {
     const characters = await Characters.find({ type: 'friend' });
@@ -86,10 +79,7 @@ router.get('/online', async (req, res) => {
   }
 });
 
-/* =========================
-   DEATHS
-========================= */
-
+/* DEATHS */
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
@@ -119,10 +109,7 @@ router.get('/deaths', async (req, res) => {
   }
 });
 
-/* =========================
-   LOOT SPLIT
-========================= */
-
+/* LOOT */
 router.post('/loot', (req, res) => {
   try {
     const { text } = req.body;
@@ -139,16 +126,16 @@ router.post('/loot', (req, res) => {
   }
 });
 
-/* =========================
-   RANKING GERAL
-========================= */
-
+/* RANKING SIMPLES */
 router.get('/ranking', async (req, res) => {
   try {
+
     const characters = await Characters.find({ type: 'friend' });
+
     const ranking = [];
 
     for (const char of characters) {
+
       const resp = await axios.get(
         `https://api.tibiadata.com/v4/character/${encodeURIComponent(char.characterName)}`
       );
@@ -169,105 +156,6 @@ router.get('/ranking', async (req, res) => {
 
   } catch (e) {
     res.json({});
-  }
-});
-
-/* =========================
-   RANKING MENSAL (UNIFICADO)
-========================= */
-
-router.get('/ranking-advanced', async (req, res) => {
-  try {
-
-const startOfMonth = moment().startOf('month').toDate();
-
-const characters = await Characters.find({ type: 'friend' });
-
-const levelUpRanking = [];
-
-for (const char of characters) {
-
-  const history = await PlayerHistory.find({ name: char.characterName })
-    .sort({ date: 1 });
-
-  if (!history || history.length === 0) continue;
-
-  const firstRecord = history.find(h => h.date >= startOfMonth) || history[0];
-  const lastRecord = history[history.length - 1];
-
-  const gain = lastRecord.level - firstRecord.level;
-
-  levelUpRanking.push({
-    name: char.characterName,
-    levelGain: gain
-  });
-}
-
-levelUpRanking.sort((a,b) => b.levelGain - a.levelGain);
-
-    const deaths = await getDeathsCache();
-    const deathsThisMonth = deaths.filter(d =>
-      new Date(d.time) >= startOfMonth
-    );
-
-    const deathCount = {};
-
-    deathsThisMonth.forEach(d => {
-      deathCount[d.characterName] =
-        (deathCount[d.characterName] || 0) + 1;
-    });
-
-    const deathRanking = Object.keys(deathCount)
-      .map(name => ({
-        name,
-        deaths: deathCount[name]
-      }))
-      .sort((a,b) => b.deaths - a.deaths);
-
-    res.json({
-      levelUpRanking,
-      deathRanking
-    });
-
-  } catch (e) {
-    console.error(e);
-    res.json({});
-  }
-});
-
-/* =========================
-   DESTAQUE MENSAL
-========================= */
-
-import LevelUpHistory from '../../api/models/level-up-history.js';
-
-router.get('/ranking-monthly', async (req, res) => {
-  try {
-
-    const startOfMonth = moment().startOf('month').toDate();
-
-    const levelUps = await LevelUpHistory.find({
-      date: { $gte: startOfMonth }
-    });
-
-    const totals = {};
-
-    levelUps.forEach(entry => {
-      totals[entry.name] =
-        (totals[entry.name] || 0) + entry.gained;
-    });
-
-    const ranking = Object.keys(totals)
-      .map(name => ({
-        name,
-        totalGain: totals[name]
-      }))
-      .sort((a,b) => b.totalGain - a.totalGain);
-
-    res.json(ranking);
-
-  } catch (e) {
-    res.json([]);
   }
 });
 
