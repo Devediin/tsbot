@@ -503,3 +503,6 @@ button {
   50% { box-shadow: 0 0 20px gold; }
   100% { box-shadow: 0 0 5px gold; }
 }
+#recentLevelUps li {
+  margin-bottom: 6px;
+}
