@@ -5,7 +5,7 @@ import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
 import moment from 'moment';
 import { parseLootSession } from '../../utils/lootSplit.js';
-import PlayerHistory from '../../api/models/player-history.js';
+
 
 const router = express.Router();
 
@@ -239,24 +239,35 @@ levelUpRanking.sort((a,b) => b.levelGain - a.levelGain);
    DESTAQUE MENSAL
 ========================= */
 
-router.get('/monthly-highlight', async (req, res) => {
+import LevelUpHistory from '../../api/models/level-up-history.js';
+
+router.get('/ranking-monthly', async (req, res) => {
   try {
 
-    const ranking = await new Promise(resolve => {
-      router.handle(
-        { method: 'GET', url: '/ranking-advanced' },
-        { json: resolve },
-        () => {}
-      );
+    const startOfMonth = moment().startOf('month').toDate();
+
+    const levelUps = await LevelUpHistory.find({
+      date: { $gte: startOfMonth }
     });
 
-    res.json({
-      playerOfMonth: ranking.levelUpRanking?.[0] || null,
-      tragedyOfMonth: ranking.deathRanking?.[0] || null
+    const totals = {};
+
+    levelUps.forEach(entry => {
+      totals[entry.name] =
+        (totals[entry.name] || 0) + entry.gained;
     });
+
+    const ranking = Object.keys(totals)
+      .map(name => ({
+        name,
+        totalGain: totals[name]
+      }))
+      .sort((a,b) => b.totalGain - a.totalGain);
+
+    res.json(ranking);
 
   } catch (e) {
-    res.json({});
+    res.json([]);
   }
 });
 
