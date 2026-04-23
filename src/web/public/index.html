@@ -182,6 +182,7 @@ async function loadHighlights() {
         `🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(top.name)}" target="_blank">
           ${top.name}
         </a> — +${top.totalGain} levels`;
+      playerDiv.parentElement.classList.add('top-highlight');
     } else {
       playerDiv.innerText = 'Sem level ups no mês.';
     }
