@@ -2,6 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import mongoose from 'mongoose';
 import Characters from '../../api/models/characters.js';
+import WarEvent from '../../api/models/war-event.js';
 import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
 import moment from 'moment';
@@ -80,7 +81,7 @@ router.get('/online', async (req, res) => {
   }
 });
 
-/* DEATHS */
+/* DEATHS (mantido como estava) */
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
@@ -124,7 +125,7 @@ router.post('/loot', (req, res) => {
   }
 });
 
-/* RANKING MENSAL (ESTÁVEL) */
+/* RANKING MENSAL (mantido como estava) */
 router.get('/ranking-monthly', async (req, res) => {
   try {
 
@@ -191,22 +192,22 @@ router.get('/ranking-monthly', async (req, res) => {
 });
 
 /* =========================
-   WAR (NOVA ROTA)
+   WAR (AGORA USANDO MONGO)
 ========================= */
 
 router.get('/war', async (req, res) => {
   try {
 
-    const deaths = await getDeathsCache();
     const fifteenMinutesAgo = moment().subtract(15, 'minutes').toDate();
+
+    // THREAT
+    const recentFriendDeath = await WarEvent
+      .findOne({ type: 'friend' })
+      .sort({ time: -1 });
 
     let threat = null;
 
-    const recentFriendDeath = deaths
-      .filter(d => d.type === 'friend')
-      .sort((a,b) => new Date(b.time) - new Date(a.time))[0];
-
-    if (recentFriendDeath && new Date(recentFriendDeath.time) >= fifteenMinutesAgo) {
+    if (recentFriendDeath && recentFriendDeath.time >= fifteenMinutesAgo) {
       const killer = recentFriendDeath.killers?.[0]?.name || 'Unknown';
       const minutesPassed = moment().diff(moment(recentFriendDeath.time), 'minutes');
       const remaining = 15 - minutesPassed;
@@ -219,39 +220,45 @@ router.get('/war', async (req, res) => {
       }
     }
 
-    const enemyKills = {};
-    const friendKills = {};
+    // TOTALS
+    const totalDeaths = await WarEvent.countDocuments({ type: 'friend' });
+    const totalKills = await WarEvent.countDocuments({ type: 'enemy' });
 
-    deaths.forEach(d => {
-      if (d.type === 'friend') {
-        const killer = d.killers?.[0]?.name;
-        if (killer) {
-          enemyKills[killer] = (enemyKills[killer] || 0) + 1;
-        }
-      }
+    // TOP ENEMY
+    const enemyAgg = await WarEvent.aggregate([
+      { $match: { type: 'friend' } },
+      { $unwind: "$killers" },
+      { $group: { _id: "$killers.name", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
+    ]);
 
-      if (d.type === 'enemy') {
-        friendKills[d.characterName] =
-          (friendKills[d.characterName] || 0) + 1;
-      }
-    });
+    const topEnemy = enemyAgg.length > 0
+      ? [enemyAgg[0]._id, enemyAgg[0].count]
+      : null;
 
-    const topEnemy = Object.entries(enemyKills)
-      .sort((a,b) => b[1] - a[1])[0] || null;
+    // TOP FRIEND
+    const friendAgg = await WarEvent.aggregate([
+      { $match: { type: 'enemy' } },
+      { $group: { _id: "$characterName", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
+    ]);
 
-    const topFriend = Object.entries(friendKills)
-      .sort((a,b) => b[1] - a[1])[0] || null;
+    const topFriend = friendAgg.length > 0
+      ? [friendAgg[0]._id, friendAgg[0].count]
+      : null;
 
     res.json({
       threat,
       topEnemy,
       topFriend,
-      totalDeaths: Object.values(enemyKills).reduce((a,b) => a+b, 0),
-      totalKills: Object.values(friendKills).reduce((a,b) => a+b, 0)
+      totalDeaths,
+      totalKills
     });
 
   } catch (e) {
-    console.error(e);
+    console.error('[WAR ROUTE ERROR]', e);
     res.json({});
   }
 });
