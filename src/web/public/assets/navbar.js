@@ -6,6 +6,7 @@ function renderNavbar() {
       <a href="/dashboard">📊 Dashboard</a>
       <a href="/tools">🧮 Tools</a>
       <a href="/ranking">🏆 Ranking</a>
+      <a href="/war">⚔️ War</a>
       <span class="theme-toggle" onclick="toggleTheme()">🌓</span>
     </div>
   `;
