@@ -133,23 +133,22 @@ router.post('/loot', (req, res) => {
 
     const result = parseLootSession(text);
     res.json(result);
+
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-/* RANKING */
+/* =========================
+   RANKING GERAL
+========================= */
+
 router.get('/ranking', async (req, res) => {
   try {
-
     const characters = await Characters.find({ type: 'friend' });
-
     const ranking = [];
 
     for (const char of characters) {
-
-      const tracker = await getOnlineTrackerByName(char.characterName);
-
       const resp = await axios.get(
         `https://api.tibiadata.com/v4/character/${encodeURIComponent(char.characterName)}`
       );
@@ -158,23 +157,14 @@ router.get('/ranking', async (req, res) => {
 
       ranking.push({
         name: char.characterName,
-        level: info.level,
-        vocation: info.vocation,
-        onlineTimeMinutes: tracker?.isOnline
-          ? moment().diff(moment(tracker.firstSeenOnline), 'minutes')
-          : 0
+        level: info.level
       });
     }
 
-    const sortedByLevel = [...ranking].sort((a,b) => b.level - a.level);
-    const sortedByOnline = [...ranking].sort((a,b) => b.onlineTimeMinutes - a.onlineTimeMinutes);
+    ranking.sort((a,b) => b.level - a.level);
 
     res.json({
-      topLevel: sortedByLevel[0] || null,
-      topOnlineToday: sortedByOnline[0] || null,
-      averageLevel: Math.round(
-        ranking.reduce((sum, p) => sum + p.level, 0) / (ranking.length || 1)
-      )
+      topLevel: ranking[0] || null
     });
 
   } catch (e) {
@@ -182,34 +172,38 @@ router.get('/ranking', async (req, res) => {
   }
 });
 
+/* =========================
+   RANKING MENSAL (UNIFICADO)
+========================= */
+
 router.get('/ranking-advanced', async (req, res) => {
   try {
 
     const startOfMonth = moment().startOf('month').toDate();
 
-    const histories = await PlayerHistory.find({
-      date: { $gte: startOfMonth }
-    }).sort({ date: 1 });
+    const characters = await Characters.find({ type: 'friend' });
 
-    const groupedLevels = {};
+    const levelUpRanking = [];
 
-    histories.forEach(entry => {
-      if (!groupedLevels[entry.name]) {
-        groupedLevels[entry.name] = {
-          first: entry.level,
-          last: entry.level
-        };
-      } else {
-        groupedLevels[entry.name].last = entry.level;
-      }
-    });
+    for (const char of characters) {
 
-    const levelUpRanking = Object.keys(groupedLevels)
-      .map(name => ({
-        name,
-        levelGain: groupedLevels[name].last - groupedLevels[name].first
-      }))
-      .sort((a,b) => b.levelGain - a.levelGain);
+      const history = await PlayerHistory.find({ name: char.characterName })
+        .sort({ date: 1 });
+
+      if (!history || history.length < 2) continue;
+
+      const firstRecord = history.find(h => h.date >= startOfMonth) || history[0];
+      const lastRecord = history[history.length - 1];
+
+      const gain = lastRecord.level - firstRecord.level;
+
+      levelUpRanking.push({
+        name: char.characterName,
+        levelGain: gain
+      });
+    }
+
+    levelUpRanking.sort((a,b) => b.levelGain - a.levelGain);
 
     const deaths = await getDeathsCache();
     const deathsThisMonth = deaths.filter(d =>
@@ -230,32 +224,9 @@ router.get('/ranking-advanced', async (req, res) => {
       }))
       .sort((a,b) => b.deaths - a.deaths);
 
-    const characters = await Characters.find({ type: 'friend' });
-
-    const onlineRanking = [];
-
-    for (const char of characters) {
-      const tracker = await getOnlineTrackerByName(char.characterName);
-
-      if (tracker?.firstSeenOnline) {
-        const totalMinutes = moment().diff(
-          moment(tracker.firstSeenOnline),
-          'minutes'
-        );
-
-        onlineRanking.push({
-          name: char.characterName,
-          minutes: totalMinutes
-        });
-      }
-    }
-
-    onlineRanking.sort((a,b) => b.minutes - a.minutes);
-
     res.json({
       levelUpRanking,
-      deathRanking,
-      onlineRanking
+      deathRanking
     });
 
   } catch (e) {
@@ -264,57 +235,24 @@ router.get('/ranking-advanced', async (req, res) => {
   }
 });
 
+/* =========================
+   DESTAQUE MENSAL
+========================= */
+
 router.get('/monthly-highlight', async (req, res) => {
   try {
 
-    const startOfMonth = moment().startOf('month').toDate();
-
-    const histories = await PlayerHistory.find({
-      date: { $gte: startOfMonth }
-    }).sort({ date: 1 });
-
-    const groupedLevels = {};
-
-    histories.forEach(entry => {
-      if (!groupedLevels[entry.name]) {
-        groupedLevels[entry.name] = {
-          first: entry.level,
-          last: entry.level
-        };
-      } else {
-        groupedLevels[entry.name].last = entry.level;
-      }
+    const ranking = await new Promise(resolve => {
+      router.handle(
+        { method: 'GET', url: '/ranking-advanced' },
+        { json: resolve },
+        () => {}
+      );
     });
-
-    const levelUpRanking = Object.keys(groupedLevels)
-      .map(name => ({
-        name,
-        levelGain: groupedLevels[name].last - groupedLevels[name].first
-      }))
-      .sort((a,b) => b.levelGain - a.levelGain);
-
-    const deaths = await getDeathsCache();
-    const deathsThisMonth = deaths.filter(d =>
-      new Date(d.time) >= startOfMonth
-    );
-
-    const deathCount = {};
-
-    deathsThisMonth.forEach(d => {
-      deathCount[d.characterName] =
-        (deathCount[d.characterName] || 0) + 1;
-    });
-
-    const deathRanking = Object.keys(deathCount)
-      .map(name => ({
-        name,
-        deaths: deathCount[name]
-      }))
-      .sort((a,b) => b.deaths - a.deaths);
 
     res.json({
-      playerOfMonth: levelUpRanking[0] || null,
-      tragedyOfMonth: deathRanking[0] || null
+      playerOfMonth: ranking.levelUpRanking?.[0] || null,
+      tragedyOfMonth: ranking.deathRanking?.[0] || null
     });
 
   } catch (e) {
