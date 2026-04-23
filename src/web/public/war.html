@@ -7,22 +7,46 @@
 <link rel="icon" href="/assets/favicon.png">
 
 <style>
-.threat-box {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+
+.war-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
 }
 
-.threat-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
+.war-stat-number {
+  font-size: 32px;
   font-weight: bold;
 }
 
+.kd-positive { color: #00ff88; }
+.kd-negative { color: #ff4444; }
+
+.threat-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.threat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.threat-badge {
+  background: #ff0000;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
 .skull {
-  font-size: 22px;
+  font-size: 20px;
   animation: pulse 1s infinite;
 }
 
@@ -34,18 +58,28 @@
 
 .progress-bar {
   width: 100%;
-  height: 12px;
+  height: 14px;
   background: #2b2b2b;
-  border-radius: 6px;
+  border-radius: 7px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   width: 100%;
-  background: linear-gradient(90deg, #ff0000, #990000);
+  background: linear-gradient(90deg, #ff0000, #ff8800);
   transition: width 1s linear;
 }
+
+.war-link a {
+  color: #00AAFF;
+  text-decoration: none;
+}
+
+.war-link a:hover {
+  text-decoration: underline;
+}
+
 </style>
 
 </head>
@@ -56,26 +90,44 @@
 
 <div class="container">
 
-<h1>⚔️ Painel de Guerra</h1>
+<h1>⚔️ War Control Panel</h1>
 
 <div class="card">
-  <h3>🚨 Ameaça Ativa</h3>
+  <h3>🚨 Active Threat</h3>
   <div id="threatContainer"></div>
 </div>
 
-<div class="card">
-  <h3>📊 Estatísticas</h3>
-  <p id="stats"></p>
+<div class="war-grid">
+
+  <div class="card">
+    <h3>💀 Deaths</h3>
+    <div id="totalDeaths" class="war-stat-number"></div>
+  </div>
+
+  <div class="card">
+    <h3>🔥 Kills</h3>
+    <div id="totalKills" class="war-stat-number"></div>
+  </div>
+
+  <div class="card">
+    <h3>⚖️ K/D Ratio</h3>
+    <div id="kdRatio" class="war-stat-number"></div>
+  </div>
+
 </div>
 
-<div class="card">
-  <h3>🔥 Enemy Mais Perigoso</h3>
-  <p id="topEnemy"></p>
-</div>
+<div class="war-grid">
 
-<div class="card">
-  <h3>🏹 Friend Mais Agressivo</h3>
-  <p id="topFriend"></p>
+  <div class="card war-link">
+    <h3>🔥 Most Dangerous Enemy</h3>
+    <p id="topEnemy"></p>
+  </div>
+
+  <div class="card war-link">
+    <h3>🏹 Most Aggressive Friend</h3>
+    <p id="topFriend"></p>
+  </div>
+
 </div>
 
 </div>
@@ -97,9 +149,10 @@ function startThreatCountdown(name, remainingMinutes) {
   let remainingSeconds = remainingMinutes * 60;
 
   container.innerHTML = `
-    <div class="threat-box">
-      <div class="threat-top">
+    <div class="threat-wrapper">
+      <div class="threat-header">
         <span class="skull">☠️</span>
+        <span class="threat-badge">PZ ACTIVE</span>
         <span id="threatText"></span>
       </div>
       <div class="progress-bar">
@@ -117,7 +170,7 @@ function startThreatCountdown(name, remainingMinutes) {
 
     if (remainingSeconds <= 0) {
       clearInterval(threatInterval);
-      container.innerHTML = 'Nenhuma ameaça ativa.';
+      container.innerHTML = 'No active threats.';
       return;
     }
 
@@ -125,7 +178,7 @@ function startThreatCountdown(name, remainingMinutes) {
     const seconds = remainingSeconds % 60;
 
     threatText.innerHTML =
-      `${tibiaLink(name)} com PZ por ${minutes}m ${seconds}s`;
+      `${tibiaLink(name)} — ${minutes}m ${seconds}s remaining`;
 
     const percent = (remainingSeconds / totalSeconds) * 100;
     progressFill.style.width = percent + '%';
@@ -142,20 +195,33 @@ async function loadWar() {
   if (data.threat) {
     startThreatCountdown(data.threat.name, data.threat.remaining);
   } else {
-    document.getElementById('threatContainer').innerText = 'Nenhuma ameaça ativa.';
+    document.getElementById('threatContainer').innerText = 'No active threats.';
   }
 
-  document.getElementById('stats').innerText =
-    `Kills: ${data.totalKills} | Deaths: ${data.totalDeaths}`;
+  document.getElementById('totalDeaths').innerText = data.totalDeaths;
+  document.getElementById('totalKills').innerText = data.totalKills;
+
+  const kd = data.totalDeaths > 0
+    ? (data.totalKills / data.totalDeaths).toFixed(2)
+    : data.totalKills.toFixed(2);
+
+  const kdElement = document.getElementById('kdRatio');
+  kdElement.innerText = kd;
+
+  if (kd >= 1) {
+    kdElement.classList.add('kd-positive');
+  } else {
+    kdElement.classList.add('kd-negative');
+  }
 
   document.getElementById('topEnemy').innerHTML =
     data.topEnemy
-      ? `${tibiaLink(data.topEnemy[0])} (${data.topEnemy[1]} kills)`
+      ? `${tibiaLink(data.topEnemy[0])} — ${data.topEnemy[1]} kills`
       : '—';
 
   document.getElementById('topFriend').innerHTML =
     data.topFriend
-      ? `${tibiaLink(data.topFriend[0])} (${data.topFriend[1]} kills)`
+      ? `${tibiaLink(data.topFriend[0])} — ${data.topFriend[1]} kills`
       : '—';
 }
 
