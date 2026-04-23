@@ -1,9 +1,9 @@
 import express from 'express';
 import axios from 'axios';
+import mongoose from 'mongoose';
 import Characters from '../../api/models/characters.js';
 import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
-import LevelUpHistory from '../../api/models/level-up-history.js';
 import moment from 'moment';
 import { parseLootSession } from '../../utils/lootSplit.js';
 
@@ -140,33 +140,44 @@ router.post('/loot', (req, res) => {
 });
 
 /* =========================
-   RANKING MENSAL
+   RANKING MENSAL (USANDO monthlyLevelTrackers)
 ========================= */
 
 router.get('/ranking-monthly', async (req, res) => {
   try {
 
-    const startOfMonth = moment().startOf('month').toDate();
+    const monthKey = moment().format('YYYY-MM');
 
-    const levelUps = await LevelUpHistory.find({
-      date: { $gte: startOfMonth }
-    });
+    const monthlyData = await mongoose.connection
+      .collection('monthlyLevelTrackers')
+      .find({ monthKey })
+      .toArray();
 
-    const levelMap = {};
+    const levelRanking = [];
 
-    levelUps.forEach(entry => {
-      levelMap[entry.name] =
-        (levelMap[entry.name] || 0) + entry.gained;
-    });
+    for (const entry of monthlyData) {
 
-    const levelRanking = Object.keys(levelMap)
-      .map(name => ({
-        name,
-        totalGain: levelMap[name]
-      }))
-      .sort((a,b) => b.totalGain - a.totalGain);
+      const tracker = await mongoose.connection
+        .collection('levelTrackers')
+        .findOne({ name: entry.name });
+
+      if (!tracker) continue;
+
+      const gain = tracker.lastLevel - entry.startLevel;
+
+      if (gain > 0) {
+        levelRanking.push({
+          name: entry.name,
+          totalGain: gain
+        });
+      }
+    }
+
+    levelRanking.sort((a,b) => b.totalGain - a.totalGain);
 
     const deaths = await getDeathsCache();
+    const startOfMonth = moment().startOf('month').toDate();
+
     const deathsThisMonth = deaths.filter(d =>
       new Date(d.time) >= startOfMonth
     );
@@ -185,9 +196,12 @@ router.get('/ranking-monthly', async (req, res) => {
       }))
       .sort((a,b) => b.deaths - a.deaths);
 
-    const recentLevelUps = await LevelUpHistory.find({})
+    const recentLevelUps = await mongoose.connection
+      .collection('leveluphistories')
+      .find({})
       .sort({ date: -1 })
-      .limit(10);
+      .limit(10)
+      .toArray();
 
     res.json({
       levelRanking,
