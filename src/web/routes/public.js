@@ -5,6 +5,7 @@ import { getOnlineTrackerByName } from '../../api/models/online-tracker.js';
 import { getDeathsCache } from '../../api/models/meta.js';
 import moment from 'moment';
 import { parseLootSession } from '../../utils/lootSplit.js';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -152,6 +153,57 @@ router.get('/ranking', async (req, res) => {
 
     res.json({
       topLevel: ranking[0] || null
+    });
+
+  } catch (e) {
+    res.json({});
+  }
+});
+
+router.get('/ranking-monthly', async (req, res) => {
+  try {
+    const startOfMonth = moment().startOf('month').toDate();
+
+    const levelUps = await mongoose.connection.collection('leveluphistories')
+      .find({ date: { $gte: startOfMonth } })
+      .toArray();
+
+    const levelMap = {};
+
+    levelUps.forEach(entry => {
+      levelMap[entry.name] =
+        (levelMap[entry.name] || 0) + entry.gained;
+    });
+
+    const levelRanking = Object.keys(levelMap)
+      .map(name => ({
+        name,
+        totalGain: levelMap[name]
+      }))
+      .sort((a,b) => b.totalGain - a.totalGain);
+
+    const deaths = await getDeathsCache();
+    const deathsThisMonth = deaths.filter(d =>
+      new Date(d.time) >= startOfMonth
+    );
+
+    const deathMap = {};
+
+    deathsThisMonth.forEach(d => {
+      deathMap[d.characterName] =
+        (deathMap[d.characterName] || 0) + 1;
+    });
+
+    const deathRanking = Object.keys(deathMap)
+      .map(name => ({
+        name,
+        deaths: deathMap[name]
+      }))
+      .sort((a,b) => b.deaths - a.deaths);
+
+    res.json({
+      levelRanking,
+      deathRanking
     });
 
   } catch (e) {
