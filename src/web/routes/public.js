@@ -201,10 +201,18 @@ router.get('/ranking-monthly', async (req, res) => {
       }))
       .sort((a,b) => b.deaths - a.deaths);
 
-    res.json({
-      levelRanking,
-      deathRanking
-    });
+const recentLevelUps = await mongoose.connection
+  .collection('leveluphistories')
+  .find({})
+  .sort({ date: -1 })
+  .limit(10)
+  .toArray();
+
+res.json({
+  levelRanking,
+  deathRanking,
+  recentLevelUps
+});
 
   } catch (e) {
     res.json({});
