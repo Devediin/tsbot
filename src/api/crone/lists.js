@@ -95,7 +95,7 @@ const formatDeathAgeShort = (time) => {
 
 const MAX_POKE_LENGTH = 95;
 
-const formatDeathMessage = ({ characterName, level, killers = [], time }) => {
+const formatDeathMessage = ({ type, characterName, level, killers = [], time }) => {
   const deathAge = formatDeathAgeShort(time);
 
   const safeName = characterName || 'Unknown';
@@ -106,33 +106,26 @@ const formatDeathMessage = ({ characterName, level, killers = [], time }) => {
     extra = ` (+${killers.length - 1})`;
   }
 
+  const typeTag = type === 'friend'
+    ? '[FRIEND]'
+    : type === 'enemy'
+      ? '[ENEMY]'
+      : '';
+
   const templates = [
-    `${safeName} ${level} caiu pra ${firstKiller}${extra}`,
-    `${safeName} ${level} foi de base pra ${firstKiller}${extra}`,
-    `${safeName} ${level} virou tapete do ${firstKiller}${extra}`,
-    `${safeName} ${level} tomou bala de ${firstKiller}${extra}`,
-    `${safeName} ${level} foi pro respawn por ${firstKiller}${extra}`
+    `${typeTag} ${safeName} ${level} caiu pra ${firstKiller}${extra}`,
+    `${typeTag} ${safeName} ${level} foi de base pra ${firstKiller}${extra}`,
+    `${typeTag} ${safeName} ${level} tomou bala de ${firstKiller}${extra}`,
+    `${typeTag} ${safeName} ${level} virou tapete do ${firstKiller}${extra}`
   ];
 
   const randomMessage =
     templates[Math.floor(Math.random() * templates.length)];
 
-  const baseMessage = `[${deathAge}] ${randomMessage}`;
+  let finalMessage = `[${deathAge}] ${randomMessage}`;
 
-  const commandHint = ` | !lk ${safeName}`;
-
-  let finalMessage = baseMessage + commandHint;
-
-  // ✅ Se passar do limite, cortar a parte do texto principal
   if (finalMessage.length > MAX_POKE_LENGTH) {
-
-    const allowedLength =
-      MAX_POKE_LENGTH - commandHint.length;
-
-    const truncatedBase =
-      baseMessage.substring(0, allowedLength - 3) + '...';
-
-    finalMessage = truncatedBase + commandHint;
+    finalMessage = finalMessage.substring(0, MAX_POKE_LENGTH - 3) + '...';
   }
 
   lastDeathKillers.set(
