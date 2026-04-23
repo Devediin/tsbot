@@ -118,44 +118,43 @@ Erro ao processar o loot.`
       }
     }
 
-    if (command === '!spy') {
+if (command === '!spy') {
 
-      msgAsList.shift();
-      const name = msgAsList.join(' ').trim();
+  msgAsList.shift();
+  const name = msgAsList.join(' ').trim();
 
-      if (!name) {
-        return invoker.message('Use: !spy Nome');
-      }
+  if (!name) {
+    return invoker.message('Use: !spy Nome');
+  }
 
-      try {
-        const response = await axios.get(
-          `https://api.tibiastalker.pl/character/${encodeURIComponent(name)}`
-        );
+  try {
+    const response = await axios.get(
+      `https://api.tibiastalker.pl/api/tibia-stalker/v1/characters/${encodeURIComponent(name)}`
+    );
 
-        const data = response.data;
+    const data = response.data;
 
-        if (!data.possibleInvisibleCharacters ||
-            data.possibleInvisibleCharacters.length === 0) {
-          return invoker.message(`Nenhum personagem secundário encontrado para ${name}.`);
-        }
-
-        // ✅ ordenar por numberOfMatches (maior primeiro)
-        const sorted = data.possibleInvisibleCharacters
-          .sort((a,b) => b.numberOfMatches - a.numberOfMatches)
-          .slice(0, 5);
-
-        const result =
-          `Possíveis personagens de ${name}:\n\n` +
-          sorted.map(p =>
-            `- ${p.otherCharacterName} (${p.numberOfMatches} matches)`
-          ).join('\n');
-
-        return invoker.message(result);
-
-      } catch (error) {
-        return invoker.message('Erro ao consultar TibiaStalker.');
-      }
+    if (!data.possibleInvisibleCharacters ||
+        data.possibleInvisibleCharacters.length === 0) {
+      return invoker.message(`Nenhum personagem secundário encontrado para ${name}.`);
     }
+
+    const sorted = data.possibleInvisibleCharacters
+      .sort((a,b) => b.numberOfMatches - a.numberOfMatches)
+      .slice(0, 5);
+
+    const result =
+      `Possíveis personagens de ${name}:\n\n` +
+      sorted.map(p =>
+        `- ${p.otherCharacterName} (${p.numberOfMatches} matches)`
+      ).join('\n');
+
+    return invoker.message(result);
+
+  } catch (error) {
+    return invoker.message('Erro ao consultar TibiaStalker.');
+  }
+}
 
     const { ok, message } = await canDo(command, dbUserGroups);
     const isServerAdmin = await isUserServerAdmin(teamspeak, parsedServerGroups);
