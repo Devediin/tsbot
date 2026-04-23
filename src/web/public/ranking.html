@@ -60,18 +60,21 @@ async function loadRanking() {
     deathList.innerHTML = '';
     onlineList.innerHTML = '';
 
-    if (data.levelUpRanking && data.levelUpRanking.length > 0) {
-      data.levelUpRanking.slice(0,5).forEach((p, index) => {
-        levelList.innerHTML += `
-          <li class="${index === 0 ? 'top-1' : ''}">
-            🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
-              ${p.name}
-            </a> — +${p.levelGain} levels
-          </li>`;
-      });
-    } else {
-      levelList.innerHTML = '<li>Sem dados suficientes.</li>';
-    }
+const resMonthly = await fetch('/api/public/ranking-monthly');
+const monthlyData = await resMonthly.json();
+
+if (monthlyData && monthlyData.length > 0) {
+  monthlyData.slice(0,5).forEach((p, index) => {
+    levelList.innerHTML += `
+      <li class="${index === 0 ? 'top-1' : ''}">
+        🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
+          ${p.name}
+        </a> — +${p.totalGain} levels
+      </li>`;
+  });
+} else {
+  levelList.innerHTML = '<li>Sem level ups no mês.</li>';
+}
 
     if (data.deathRanking && data.deathRanking.length > 0) {
       data.deathRanking.slice(0,5).forEach((p, index) => {
