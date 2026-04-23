@@ -30,12 +30,14 @@
       <li class="loading">⏳ Carregando...</li>
     </ul>
   </div>
-<div class="card">
-  <h3>✨ Últimos Level Ups</h3>
-  <ul id="recentLevelUps">
-    <li class="loading">⏳ Carregando...</li>
-  </ul>
-</div>
+
+  <div class="card">
+    <h3>✨ Últimos Level Ups</h3>
+    <ul id="recentLevelUps">
+      <li class="loading">⏳ Carregando...</li>
+    </ul>
+  </div>
+
 </div>
 
 </div>
@@ -50,11 +52,14 @@ async function loadRanking() {
 
     const levelList = document.getElementById('levelList');
     const deathList = document.getElementById('deathList');
+    const recentList = document.getElementById('recentLevelUps');
 
     levelList.innerHTML = '';
     deathList.innerHTML = '';
+    recentList.innerHTML = '';
 
-    if (data.levelRanking.length > 0) {
+    // ✅ LEVEL RANKING
+    if (data.levelRanking && data.levelRanking.length > 0) {
       data.levelRanking.slice(0,5).forEach((p, index) => {
         levelList.innerHTML += `
           <li class="${index === 0 ? 'top-1' : ''}">
@@ -67,7 +72,8 @@ async function loadRanking() {
       levelList.innerHTML = '<li>Sem level ups no mês.</li>';
     }
 
-    if (data.deathRanking.length > 0) {
+    // ✅ DEATH RANKING
+    if (data.deathRanking && data.deathRanking.length > 0) {
       data.deathRanking.slice(0,5).forEach((p, index) => {
         deathList.innerHTML += `
           <li class="${index === 0 ? 'top-1' : ''}">
@@ -80,26 +86,23 @@ async function loadRanking() {
       deathList.innerHTML = '<li>Sem mortes no mês.</li>';
     }
 
+    // ✅ RECENT LEVEL UPS
+    if (data.recentLevelUps && data.recentLevelUps.length > 0) {
+      data.recentLevelUps.forEach(entry => {
+        recentList.innerHTML += `
+          <li>
+            ✨ <a href="https://www.tibia.com/community/?name=${encodeURIComponent(entry.name)}" target="_blank">
+              ${entry.name}
+            </a> +${entry.gained}
+          </li>`;
+      });
+    } else {
+      recentList.innerHTML = '<li>Sem level ups recentes.</li>';
+    }
+
   } catch (e) {
     console.log('Erro ao carregar ranking');
   }
-}
-
-  const recentList = document.getElementById('recentLevelUps');
-recentList.innerHTML = '';
-
-if (data.recentLevelUps && data.recentLevelUps.length > 0) {
-  data.recentLevelUps.forEach(entry => {
-    const gained = entry.gained || (entry.currentLevel - entry.previousLevel);
-    recentList.innerHTML += `
-      <li>
-        ✨ <a href="https://www.tibia.com/community/?name=${encodeURIComponent(entry.name)}" target="_blank">
-          ${entry.name}
-        </a> +${gained}
-      </li>`;
-  });
-} else {
-  recentList.innerHTML = '<li>Sem level ups recentes.</li>';
 }
 
 loadRanking();
