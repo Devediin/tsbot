@@ -170,25 +170,30 @@ async function loadLive() {
 
 async function loadHighlights() {
   try {
-    const res = await fetch('/api/public/monthly-highlight');
+    const res = await fetch('/api/public/ranking-monthly');
     const data = await res.json();
 
-    if (data.playerOfMonth) {
-      document.getElementById('playerOfMonth').innerHTML =
-        `🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(data.playerOfMonth.name)}" target="_blank">
-          ${data.playerOfMonth.name}
-        </a> — +${data.playerOfMonth.levelGain} levels`;
+    const playerDiv = document.getElementById('playerOfMonth');
+    const tragedyDiv = document.getElementById('tragedyOfMonth');
+
+    if (data.levelRanking && data.levelRanking.length > 0) {
+      const top = data.levelRanking[0];
+      playerDiv.innerHTML =
+        `🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(top.name)}" target="_blank">
+          ${top.name}
+        </a> — +${top.totalGain} levels`;
     } else {
-      document.getElementById('playerOfMonth').innerText = 'Sem dados.';
+      playerDiv.innerText = 'Sem level ups no mês.';
     }
 
-    if (data.tragedyOfMonth) {
-      document.getElementById('tragedyOfMonth').innerHTML =
-        `💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(data.tragedyOfMonth.name)}" target="_blank">
-          ${data.tragedyOfMonth.name}
-        </a> — ${data.tragedyOfMonth.deaths} mortes`;
+    if (data.deathRanking && data.deathRanking.length > 0) {
+      const topDeath = data.deathRanking[0];
+      tragedyDiv.innerHTML =
+        `💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(topDeath.name)}" target="_blank">
+          ${topDeath.name}
+        </a> — ${topDeath.deaths} mortes`;
     } else {
-      document.getElementById('tragedyOfMonth').innerText = 'Sem dados.';
+      tragedyDiv.innerText = 'Sem mortes no mês.';
     }
 
   } catch (e) {
