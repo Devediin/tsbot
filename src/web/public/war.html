@@ -5,6 +5,49 @@
 <title>⚔️ Painel de Guerra</title>
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="icon" href="/assets/favicon.png">
+
+<style>
+.threat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.threat-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.skull {
+  font-size: 22px;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: #2b2b2b;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff0000, #990000);
+  transition: width 1s linear;
+}
+</style>
+
 </head>
 <body>
 
@@ -17,7 +60,7 @@
 
 <div class="card">
   <h3>🚨 Ameaça Ativa</h3>
-  <p id="threat"></p>
+  <div id="threatContainer"></div>
 </div>
 
 <div class="card">
@@ -48,26 +91,47 @@ function tibiaLink(name) {
 }
 
 function startThreatCountdown(name, remainingMinutes) {
-  const threatElement = document.getElementById('threat');
 
+  const container = document.getElementById('threatContainer');
+  const totalSeconds = 15 * 60;
   let remainingSeconds = remainingMinutes * 60;
+
+  container.innerHTML = `
+    <div class="threat-box">
+      <div class="threat-top">
+        <span class="skull">☠️</span>
+        <span id="threatText"></span>
+      </div>
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+    </div>
+  `;
+
+  const threatText = document.getElementById('threatText');
+  const progressFill = document.getElementById('progressFill');
 
   if (threatInterval) clearInterval(threatInterval);
 
   threatInterval = setInterval(() => {
+
     if (remainingSeconds <= 0) {
       clearInterval(threatInterval);
-      threatElement.innerText = 'Nenhuma ameaça ativa.';
+      container.innerHTML = 'Nenhuma ameaça ativa.';
       return;
     }
 
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = remainingSeconds % 60;
 
-    threatElement.innerHTML =
+    threatText.innerHTML =
       `${tibiaLink(name)} com PZ por ${minutes}m ${seconds}s`;
 
+    const percent = (remainingSeconds / totalSeconds) * 100;
+    progressFill.style.width = percent + '%';
+
     remainingSeconds--;
+
   }, 1000);
 }
 
@@ -75,24 +139,20 @@ async function loadWar() {
   const res = await fetch('/api/public/war');
   const data = await res.json();
 
-  // THREAT
   if (data.threat) {
     startThreatCountdown(data.threat.name, data.threat.remaining);
   } else {
-    document.getElementById('threat').innerText = 'Nenhuma ameaça ativa.';
+    document.getElementById('threatContainer').innerText = 'Nenhuma ameaça ativa.';
   }
 
-  // STATS
   document.getElementById('stats').innerText =
     `Kills: ${data.totalKills} | Deaths: ${data.totalDeaths}`;
 
-  // TOP ENEMY
   document.getElementById('topEnemy').innerHTML =
     data.topEnemy
       ? `${tibiaLink(data.topEnemy[0])} (${data.topEnemy[1]} kills)`
       : '—';
 
-  // TOP FRIEND
   document.getElementById('topFriend').innerHTML =
     data.topFriend
       ? `${tibiaLink(data.topFriend[0])} (${data.topFriend[1]} kills)`
