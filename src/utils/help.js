@@ -11,11 +11,22 @@ export const formatHelpMessage = (dbUserGroups = []) => {
 !loot <log> - Divide loot da hunt
 !lk <nome> - Lista os matadores da última morte
 !spy <nome> - Ver possíveis personagens secundários
-!char <nome> - (Em breve) Estatísticas do personagem
+!char <nome> - (Em breve) Estatísticas completas do personagem
 
 `;
 
   response += `[b]🔐 COMANDOS POR PERMISSÃO[/b]\n`;
+
+  const hiddenCommands = [
+    '!addNeutral',
+    '!removeNeutral',
+    '!addMakersEnemy',
+    '!removeMakersEnemy',
+    '!addMakersFriend',
+    '!removeMakersFriend',
+    '!addPossibleEnemys',
+    '!removePossibleEnemys'
+  ];
 
   const availableCommands = Object.values(COMMANDS_MAP);
 
@@ -23,20 +34,7 @@ export const formatHelpMessage = (dbUserGroups = []) => {
 
     if (!howToUse) return;
 
-    // ignora comandos que você não quer mais mostrar
-    const hiddenCommands = [
-      '!addNeutral',
-      '!removeNeutral',
-      '!addMakersEnemy',
-      '!removeMakersEnemy',
-      '!addMakersFriend',
-      '!removeMakersFriend',
-      '!addPossibleEnemys',
-      '!removePossibleEnemys'
-    ];
-
     const commandName = howToUse.split(' ')[0];
-
     if (hiddenCommands.includes(commandName)) return;
 
     let isVisibleByGroup = false;
@@ -48,7 +46,13 @@ export const formatHelpMessage = (dbUserGroups = []) => {
     });
 
     if (groups.length === 0 || isVisibleByGroup) {
-      response += `${howToUse}\n`;
+
+      if (commandName === '!dailyinfo') {
+        response += `!dailyinfo <texto do world board> - Atualiza Yasir e Daily Info no portal (Admin)\n`;
+      } else {
+        response += `${howToUse}\n`;
+      }
+
     }
 
   });
