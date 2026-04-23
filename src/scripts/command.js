@@ -172,7 +172,6 @@ if (command === '!char') {
     );
 
     const info = resp.data.character.character;
-    const status = resp.data.character.status || 'Desconhecido';
 
     if (!info) {
       return invoker.message('❌ Personagem não encontrado.');
@@ -180,9 +179,17 @@ if (command === '!char') {
 
     const tracker = await getOnlineTrackerByName(name);
 
+    let status = 'Offline';
     let onlineTime = 'Offline';
+
     if (tracker?.isOnline) {
-      const diff = moment().diff(moment(tracker.firstSeenOnline), 'minutes');
+      status = 'Online';
+
+      const diff = moment().diff(
+        moment(tracker.firstSeenOnline),
+        'minutes'
+      );
+
       onlineTime =
         Math.floor(diff / 60) > 0
           ? `${Math.floor(diff / 60)}h ${diff % 60}m`
@@ -197,7 +204,7 @@ if (command === '!char') {
 ⏱ Online hoje: ${onlineTime}`
     );
 
-  } catch {
+  } catch (error) {
     return invoker.message('❌ Erro ao consultar personagem.');
   }
 }
