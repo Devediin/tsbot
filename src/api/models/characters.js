@@ -16,6 +16,10 @@ const characterSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  isFocus: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const Characters = mongoose.model('Characters', characterSchema, 'characters');
