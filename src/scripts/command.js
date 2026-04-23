@@ -158,48 +158,49 @@ ${sorted.map((p, i) =>
     }
 
     /* CHAR */
-    if (command === '!char') {
-      msgAsList.shift();
-      const name = msgAsList.join(' ').trim();
+if (command === '!char') {
+  msgAsList.shift();
+  const name = msgAsList.join(' ').trim();
 
-      if (!name) {
-        return invoker.message('Use: !char Nome');
-      }
+  if (!name) {
+    return invoker.message('Use: !char Nome');
+  }
 
-      try {
-        const resp = await axios.get(
-          `https://api.tibiadata.com/v4/character/${encodeURIComponent(name)}`
-        );
+  try {
+    const resp = await axios.get(
+      `https://api.tibiadata.com/v4/character/${encodeURIComponent(name)}`
+    );
 
-        const info = resp.data.character.character;
+    const info = resp.data.character.character;
+    const status = resp.data.character.status || 'Desconhecido';
 
-        if (!info) {
-          return invoker.message('❌ Personagem não encontrado.');
-        }
+    if (!info) {
+      return invoker.message('❌ Personagem não encontrado.');
+    }
 
-        const tracker = await getOnlineTrackerByName(name);
+    const tracker = await getOnlineTrackerByName(name);
 
-        let onlineTime = 'Offline';
-        if (tracker?.isOnline) {
-          const diff = moment().diff(moment(tracker.firstSeenOnline), 'minutes');
-          onlineTime =
-            Math.floor(diff / 60) > 0
-              ? `${Math.floor(diff / 60)}h ${diff % 60}m`
-              : `${diff}m`;
-        }
+    let onlineTime = 'Offline';
+    if (tracker?.isOnline) {
+      const diff = moment().diff(moment(tracker.firstSeenOnline), 'minutes');
+      onlineTime =
+        Math.floor(diff / 60) > 0
+          ? `${Math.floor(diff / 60)}h ${diff % 60}m`
+          : `${diff}m`;
+    }
 
-        return invoker.message(
+    return invoker.message(
 `👤 [b]${name}[/b]
 📊 Level: ${info.level}
 🛡 Vocação: ${info.vocation}
-🟢 Status: ${info.status}
+🟢 Status: ${status}
 ⏱ Online hoje: ${onlineTime}`
-        );
+    );
 
-      } catch {
-        return invoker.message('❌ Erro ao consultar personagem.');
-      }
-    }
+  } catch {
+    return invoker.message('❌ Erro ao consultar personagem.');
+  }
+}
 
     /* PERMISSÕES PADRÃO */
     const { ok, message } = await canDo(command, dbUserGroups);
