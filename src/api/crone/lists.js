@@ -106,23 +106,19 @@ const formatDeathMessage = ({ type, characterName, level, killers = [], time }) 
     extra = ` (+${killers.length - 1})`;
   }
 
-  const typeTag = type === 'friend'
-    ? '[FRIEND]'
-    : type === 'enemy'
-      ? '[ENEMY]'
-      : '';
+  const coloredTag =
+    type === 'enemy'
+      ? '[color=red][ENEMY][/color]'
+      : '[color=green][FRIEND][/color]';
 
   const templates = [
-    `${typeTag} ${safeName} ${level} caiu pra ${firstKiller}${extra}`,
-    `${typeTag} ${safeName} ${level} foi de base pra ${firstKiller}${extra}`,
-    `${typeTag} ${safeName} ${level} tomou bala de ${firstKiller}${extra}`,
-    `${typeTag} ${safeName} ${level} virou tapete do ${firstKiller}${extra}`
+    `${coloredTag} ${safeName} ${level} caiu pra ${firstKiller}${extra}`,
+    `${coloredTag} ${safeName} ${level} foi de base pra ${firstKiller}${extra}`,
+    `${coloredTag} ${safeName} ${level} tomou bala de ${firstKiller}${extra}`,
+    `${coloredTag} ${safeName} ${level} virou tapete do ${firstKiller}${extra}`
   ];
 
-  const randomMessage =
-    templates[Math.floor(Math.random() * templates.length)];
-
-  let finalMessage = `[${deathAge}] ${randomMessage}`;
+  let finalMessage = `[${deathAge}] ${templates[Math.floor(Math.random() * templates.length)]}`;
 
   if (finalMessage.length > MAX_POKE_LENGTH) {
     finalMessage = finalMessage.substring(0, MAX_POKE_LENGTH - 3) + '...';
