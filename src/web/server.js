@@ -12,7 +12,20 @@ const PORT = process.env.WEB_PORT || 3000;
    SEGURANÇA
 ========================= */
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://player.twitch.tv", "https://embed.twitch.tv"],
+        frameSrc: ["'self'", "https://player.twitch.tv", "https://www.twitch.tv"],
+        imgSrc: ["'self'", "data:", "https:"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+        connectSrc: ["'self'", "https:"],
+      },
+    },
+  })
+);
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minuto
