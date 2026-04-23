@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>🏆 Ranking</title>
+<title>📅 Ranking Mensal</title>
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="icon" href="/assets/favicon.png">
 </head>
@@ -13,11 +13,24 @@
 
 <div class="container">
 
-<h1>🏆 Ranking do Time</h1>
+<h1>📅 Ranking Mensal</h1>
 
-<div class="card">
-  <h2>👑 Maior Level Atual</h2>
-  <p id="topLevel">⏳ Carregando...</p>
+<div class="ranking-grid">
+
+  <div class="card">
+    <h3>📈 Quem Mais Upou</h3>
+    <ul id="levelList">
+      <li class="loading">⏳ Carregando...</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>💀 Mais Mortes</h3>
+    <ul id="deathList">
+      <li class="loading">⏳ Carregando...</li>
+    </ul>
+  </div>
+
 </div>
 
 </div>
@@ -26,16 +39,44 @@
 
 <script>
 async function loadRanking() {
-  const res = await fetch('/api/public/ranking');
-  const data = await res.json();
+  try {
+    const res = await fetch('/api/public/ranking-monthly');
+    const data = await res.json();
 
-  if (data.topLevel) {
-    document.getElementById('topLevel').innerHTML =
-      `👑 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(data.topLevel.name)}" target="_blank">
-        ${data.topLevel.name}
-      </a> — Level ${data.topLevel.level}`;
-  } else {
-    document.getElementById('topLevel').innerText = 'Sem dados.';
+    const levelList = document.getElementById('levelList');
+    const deathList = document.getElementById('deathList');
+
+    levelList.innerHTML = '';
+    deathList.innerHTML = '';
+
+    if (data.levelRanking.length > 0) {
+      data.levelRanking.slice(0,5).forEach((p, index) => {
+        levelList.innerHTML += `
+          <li class="${index === 0 ? 'top-1' : ''}">
+            🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
+              ${p.name}
+            </a> — +${p.totalGain} levels
+          </li>`;
+      });
+    } else {
+      levelList.innerHTML = '<li>Sem level ups no mês.</li>';
+    }
+
+    if (data.deathRanking.length > 0) {
+      data.deathRanking.slice(0,5).forEach((p, index) => {
+        deathList.innerHTML += `
+          <li class="${index === 0 ? 'top-1' : ''}">
+            💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
+              ${p.name}
+            </a> — ${p.deaths} mortes
+          </li>`;
+      });
+    } else {
+      deathList.innerHTML = '<li>Sem mortes no mês.</li>';
+    }
+
+  } catch (e) {
+    console.log('Erro ao carregar ranking');
   }
 }
 
