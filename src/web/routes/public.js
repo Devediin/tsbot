@@ -81,16 +81,19 @@ router.get('/online', async (req, res) => {
   }
 });
 
-/* DEATHS (mantido como estava) */
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
     const detailed = [];
 
     for (const d of deaths.slice(-10).reverse()) {
+      // BUSCA O TIPO NO BANCO (importante para a cor)
+      const charData = await Characters.findOne({ characterName: d.characterName });
+      const type = charData ? charData.type : 'neutral';
+
       const resp = await axios.get(
         `https://api.tibiadata.com/v4/character/${encodeURIComponent(d.characterName)}`
-      );
+      ).catch(() => ({ data: { character: {} } }));
 
       const lastKill =
         resp.data.character.deaths?.find(k => k.time === d.time) ||
@@ -98,6 +101,7 @@ router.get('/deaths', async (req, res) => {
 
       detailed.push({
         characterName: d.characterName,
+        type: type, // NOVO: envia friend/enemy
         level: lastKill?.level || '???',
         killers: lastKill?.killers
           ? lastKill.killers.map(k => k.name).join(' e ')
