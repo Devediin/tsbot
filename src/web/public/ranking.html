@@ -58,53 +58,49 @@ async function loadRanking() {
     deathList.innerHTML = '';
     recentList.innerHTML = '';
 
+    const getColor = (type) => type === 'enemy' ? '#ff4444' : (type === 'friend' ? '#00ff00' : '#fff');
+
     // ✅ LEVEL RANKING
     if (data.levelRanking && data.levelRanking.length > 0) {
-      data.levelRanking.slice(0,5).forEach((p, index) => {
+      data.levelRanking.slice(0,10).forEach((p, index) => {
+        const color = getColor(p.type);
         levelList.innerHTML += `
-          <li class="${index === 0 ? 'top-1' : ''}">
-            🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
-              ${p.name}
-            </a> — +${p.totalGain} levels
+          <li style="margin-bottom: 8px;">
+            <span style="color: #555;">#${index+1}</span> 
+            <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank" style="color: ${color}; text-decoration: none; font-weight: bold;">${p.name}</a> 
+            <span style="color: #888;">— +${p.totalGain} levels</span>
           </li>`;
       });
-    } else {
-      levelList.innerHTML = '<li>Sem level ups no mês.</li>';
     }
 
     // ✅ DEATH RANKING
     if (data.deathRanking && data.deathRanking.length > 0) {
-      data.deathRanking.slice(0,5).forEach((p, index) => {
+      data.deathRanking.slice(0,10).forEach((p, index) => {
+        const color = getColor(p.type);
         deathList.innerHTML += `
-          <li class="${index === 0 ? 'top-1' : ''}">
-            💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank">
-              ${p.name}
-            </a> — ${p.deaths} mortes
+          <li style="margin-bottom: 8px;">
+            <span style="color: #555;">#${index+1}</span> 
+            <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank" style="color: ${color}; text-decoration: none; font-weight: bold;">${p.name}</a> 
+            <span style="color: #888;">— ${p.deaths} mortes</span>
           </li>`;
       });
-    } else {
-      deathList.innerHTML = '<li>Sem mortes no mês.</li>';
     }
 
     // ✅ RECENT LEVEL UPS
     if (data.recentLevelUps && data.recentLevelUps.length > 0) {
       data.recentLevelUps.forEach(entry => {
+        const color = getColor(entry.type);
         recentList.innerHTML += `
-          <li>
-            ✨ <a href="https://www.tibia.com/community/?name=${encodeURIComponent(entry.name)}" target="_blank">
-              ${entry.name}
-            </a> +${entry.gained}
+          <li style="margin-bottom: 5px; font-size: 0.9rem;">
+            <span style="color: #666;">✨</span> 
+            <a href="https://www.tibia.com/community/?name=${encodeURIComponent(entry.name)}" target="_blank" style="color: ${color}; text-decoration: none;">${entry.name}</a> 
+            <b style="color: #aaa;">Lv ${entry.level}</b>
           </li>`;
       });
-    } else {
-      recentList.innerHTML = '<li>Sem level ups recentes.</li>';
     }
 
-  } catch (e) {
-    console.log('Erro ao carregar ranking');
-  }
+  } catch (e) { console.log('Erro ao carregar ranking'); }
 }
-
 loadRanking();
 </script>
 
