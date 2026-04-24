@@ -19,6 +19,7 @@ export const syncGuildsTask = async (teamspeak, guildName, type) => {
     const emoji = type === 'friend' ? '🟢' : '🔴';
     const typeLabel = type === 'friend' ? 'FRIEND' : 'ENEMY';
 
+    // TRATAR ENTRADAS E RENAMES
     for (const name of joined) {
       let renameMsg = '';
       try {
@@ -37,9 +38,12 @@ export const syncGuildsTask = async (teamspeak, guildName, type) => {
       await sendMassPrivateMessage(teamspeak, `${emoji} [b]GUILD ${typeLabel}:[/b] ${name} ENTROU na guild ${guildName}.${renameMsg}`);
     }
 
+    // TRATAR SAÍDAS
     for (const name of left) {
       await Characters.deleteOne({ characterName: name });
       await sendMassPrivateMessage(teamspeak, `${emoji} [b]GUILD ${typeLabel}:[/b] ${name} SAIU da guild ${guildName}.`);
     }
-  } catch (error) { console.error(`[SYNC ERROR] ${guildName}:`, error); }
+  } catch (error) {
+    console.error(`[SYNC ERROR] ${guildName}:`, error);
+  }
 };
