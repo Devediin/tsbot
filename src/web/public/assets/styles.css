@@ -687,3 +687,41 @@ button {
 
 .death-friend { border-left-color: #00ff00; background: linear-gradient(90deg, rgba(0, 255, 0, 0.05) 0%, transparent 100%); }
 .death-friend .death-name { color: #00ff00; }
+
+/* Efeito de Sangue no Fundo do Body da War */
+.war-page {
+    background: radial-gradient(circle at center, #1a0505 0%, #000 100%);
+    color: #eee;
+}
+
+/* Título de War com Brilho de Sangue */
+.war-title {
+    color: #ff0000;
+    text-transform: uppercase;
+    font-weight: 900;
+    text-shadow: 0 0 15px rgba(255, 0, 0, 0.7);
+    border-bottom: 2px solid #ff0000;
+    margin-bottom: 20px;
+}
+
+/* Cartões de War */
+.war-card {
+    background: rgba(40, 0, 0, 0.4);
+    border: 1px solid #600;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+/* Lista de Inimigos Mortos estilo "Killfeed" */
+.war-death-row {
+    border-bottom: 1px solid #300;
+    padding: 8px 5px;
+    background: linear-gradient(90deg, rgba(255,0,0,0.05) 0%, transparent 100%);
+}
+
+.war-time { color: #666; font-size: 0.75rem; margin-right: 5px; }
+.war-name { color: #ff4444; font-weight: bold; }
+.war-killers-small { font-size: 0.8rem; color: #999; font-style: italic; }
+
+/* Destaque para números de morte */
+#totalKills { color: #00ff00; font-size: 2.5rem; text-shadow: 0 0 10px rgba(0,255,0,0.4); }
+#totalDeaths { color: #ff0000; font-size: 2.5rem; text-shadow: 0 0 10px rgba(255,0,0,0.4); }
