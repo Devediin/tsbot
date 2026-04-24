@@ -38,6 +38,7 @@ import {
   deleteUnusedNeutralPageChannels,
 } from '../../scripts/channels';
 import WarEvent from '../models/war-event';
+import { syncGuildsTask } from './guild-sync.js';
 
 export const lastDeathKillers = new Map();
 const { WORLD_NAME } = process.env;
@@ -627,4 +628,14 @@ export const startTasks = (teamspeak) => {
 
   fastTask.start();
   neutralTask.start();
+
+    // Sincronização de Guildas (De hora em hora - minuto 0)
+  cron.schedule('0 * * * *', async () => {
+    console.log('[CRON] Iniciando Sincronização de Guildas...');
+    // Sincroniza seus aliados
+    await syncGuildsTask(teamspeak, 'Slowmotion Corps', 'friend');
+    // Sincroniza os inimigos (Coloque o nome da guild inimiga aqui)
+    await syncGuildsTask(teamspeak, 'NOME_DA_GUILD_INIMIGA', 'enemy');
+  });
+  
 };
