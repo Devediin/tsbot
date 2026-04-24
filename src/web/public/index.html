@@ -118,23 +118,21 @@ async function loadDaily() {
     document.getElementById('rashidCity').innerText = data.rashid.city;
     document.getElementById('yasirStatus').innerText = data.yasir.active ? '🟢 Disponível hoje' : '🔴 Não ativo hoje';
     document.getElementById('updatedAt').innerText = `Atualizado em ${data.updatedAt}`;
-    
-    const drome = data.tibiadrome;
-    document.getElementById('tibiadromeInfo').innerText = `#${drome.number || drome.rotation} (${drome.start} → ${drome.end})`;
+    document.getElementById('tibiadromeInfo').innerText = `#${data.tibiadrome.number} (${data.tibiadrome.start} → ${data.tibiadrome.end})`;
 
-    // Boosted Creature
+    // Creature Boosted com Fallback
     document.getElementById('boostedCreature').innerHTML = `
-      <img src="${data.boosted.creatureImg}" class="status-img" onerror="this.style.display='none'">
+      <img src="${data.boosted.creatureImg}" class="status-img" onerror="this.src='${data.boosted.creatureFallback}'; this.onerror=null;">
       <span style="color:#0f0; font-weight:bold;">${data.boosted.creature}</span>`;
 
-    // Boosted Boss
+    // Boss Boosted com Fallback
     document.getElementById('boostedBoss').innerHTML = `
-      <img src="${data.boosted.bossImg}" class="status-img" onerror="this.style.display='none'">
+      <img src="${data.boosted.bossImg}" class="status-img" onerror="this.src='${data.boosted.bossFallback}'; this.onerror=null;">
       <span style="color:#f44; font-weight:bold;">${data.boosted.boss}</span>`;
 
-    // Dream Boss (Corrigido para pegar data.dreamCourts.image)
+    // Dream Boss
     document.getElementById('dreamBoss').innerHTML = `
-      <img src="${data.dreamCourts.image}" class="status-img" onerror="this.style.display='none'">
+      <img src="${data.dreamCourts.image}" class="status-img" onerror="this.style.opacity='0'">
       <span style="font-weight:bold;">${data.dreamCourts.boss}</span>`;
 
     // World Changes
@@ -159,21 +157,13 @@ async function loadLive() {
     const liveContent = document.getElementById('liveContent');
     const channel = "ediintv";
 
-    // O embed da Twitch precisa de tratamento de erro e tempo real
-    if (data.live === true) {
+    // Verificação de live (aceita true booleano ou string)
+    if (data.live == true || data.live == "true") {
       liveTitle.innerHTML = `🟢 AO VIVO AGORA`;
-      liveContent.innerHTML = `
-        <div class="live-wrapper">
-          <iframe 
-            src="https://player.twitch.tv/?channel=${channel}&parent=spkteam.duckdns.org&muted=false" 
-            height="360" width="100%" allowfullscreen>
-          </iframe>
-        </div>`;
+      liveContent.innerHTML = `<div class="live-wrapper"><iframe src="https://player.twitch.tv/?channel=${channel}&parent=spkteam.duckdns.org&muted=false" height="360" width="100%" allowfullscreen="true"></iframe></div>`;
     } else {
       liveTitle.innerHTML = '🔴 LIVE OFFLINE';
-      liveContent.innerHTML = `
-        <img src="https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg" style="width:100%; border-radius:10px;"/>
-      `;
+      liveContent.innerHTML = `<img src="https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg" style="width:100%; border-radius:10px;"/>`;
     }
   } catch (e) { console.error('Erro loadLive:', e); }
 }
