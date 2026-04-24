@@ -6,7 +6,6 @@
 <title>Dashboard</title>
 <link rel="stylesheet" href="/assets/styles.css">
 <script src="/assets/theme.js"></script>
-
 </head>
 
 <body>
@@ -39,12 +38,11 @@
 </div>
 
 <script>
-
 let refreshInterval = 15;
 let timer = refreshInterval;
 
 function tibiaLink(name) {
-  return `https://www.tibia.com/community/?name=${encodeURIComponent(name)}`;
+  return `https://www.tibia.com/community/?subtopic=characters&name=${encodeURIComponent(name)}`;
 }
 
 function triggerGlow() {
@@ -62,55 +60,37 @@ function triggerGlow() {
 async function loadOnline() {
   const res = await fetch('/api/public/online');
   const data = await res.json();
-
   const grid = document.getElementById('online');
   grid.innerHTML = '';
-
   let total = 0;
 
   for (const vocation in data) {
     if (!data[vocation] || data[vocation].length === 0) continue;
-
     const players = data[vocation];
     players.sort((a, b) => b.level - a.level);
-
     const topLevel = players[0].level;
     total += players.length;
 
-    let html = `
-      <div class="vocation-card">
-        <h3>${vocation} (${players.length})</h3>
-        <ul>
-    `;
-
+    let html = `<div class="vocation-card"><h3>${vocation} (${players.length})</h3><ul>`;
     players.forEach(p => {
       const topClass = p.level === topLevel ? 'top-player' : '';
       html += `
         <li class="${topClass}">
-          <div class="player-name">
-            <a href="${tibiaLink(p.name)}" target="_blank">
-              ${p.name}
-            </a>
-          </div>
-          <div class="player-meta">
-            Level ${p.level} — ${p.onlineTime}
-          </div>
-        </li>
-      `;
+          <div class="player-name"><a href="${tibiaLink(p.name)}" target="_blank">${p.name}</a></div>
+          <div class="player-meta">Level ${p.level} — ${p.onlineTime}</div>
+        </li>`;
     });
-
     html += `</ul></div>`;
     grid.innerHTML += html;
   }
-
-  document.getElementById('totalOnline').innerText =
-    `Total Online: ${total}`;
+  document.getElementById('totalOnline').innerText = `Total Online: ${total}`;
 }
 
 async function loadDeaths() {
   const res = await fetch('/api/public/deaths');
   const data = await res.json();
   const container = document.getElementById('deaths');
+  
   container.innerHTML = `
     <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; font-size: 0.75rem; border: 1px solid #333;">
       <span style="color: #00ff00; font-weight: bold;">● FRIEND</span>
@@ -118,14 +98,18 @@ async function loadDeaths() {
     </div>
   `;
 
+  if (!data.deaths || data.deaths.length === 0) {
+    container.innerHTML += '<p style="text-align:center; color:#666;">Nenhuma morte detectada.</p>';
+    return;
+  }
+
   data.deaths.forEach(d => {
     const typeClass = d.type === 'enemy' ? 'death-enemy' : 'death-friend';
-    const tibiaLink = `https://www.tibia.com/community/?subtopic=characters&name=${encodeURIComponent(d.characterName)}`;
     
     container.innerHTML += `
       <div class="death-row ${typeClass}">
         <div class="death-main">
-          <a href="${tibiaLink}" target="_blank" class="death-name">${d.characterName}</a>
+          <a href="${tibiaLink(d.characterName)}" target="_blank" class="death-name">${d.characterName}</a>
           <span class="death-level">Lv ${d.level}</span>
         </div>
         <div class="death-killers-line">
@@ -133,12 +117,12 @@ async function loadDeaths() {
         </div>
       </div>
     `;
-  });}
+  });
+}
 
 function updateTimer() {
   timer--;
   document.getElementById('timer').innerText = timer;
-
   if (timer <= 0) {
     timer = refreshInterval;
     loadOnline();
@@ -150,8 +134,8 @@ function updateTimer() {
 loadOnline();
 loadDeaths();
 setInterval(updateTimer, 1000);
-
 </script>
+
 <script src="/assets/navbar.js"></script>
 <script src="/assets/theme.js"></script>
 </body>
