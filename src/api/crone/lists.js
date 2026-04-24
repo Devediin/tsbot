@@ -470,20 +470,25 @@ export const startTasks = (teamspeak) => {
       const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
 
       /* =========================
-         FOCO - LOGIN
+         FOCO - BANCO (LOGIN)
       ========================= */
 
       if (!global.focusOnlineState) {
         global.focusOnlineState = false;
       }
 
-      if (global.currentFocus) {
-        const focusName = global.currentFocus.toLowerCase();
+      const focusCharacter = await Characters.findOne({ isFocus: true });
+
+      if (focusCharacter) {
+        const focusName = focusCharacter.characterName.toLowerCase();
         const isOnline = playersOnline.some(p => p.name.toLowerCase() === focusName);
 
         if (isOnline && !global.focusOnlineState) {
           global.focusOnlineState = true;
-          await sendMassPoke(teamspeak, `🎯 [b]FOCO ONLINE:[/b] ${global.currentFocus}`);
+          await sendMassPoke(
+            teamspeak,
+            `🎯 [b]FOCO ONLINE:[/b] ${focusCharacter.characterName}`
+          );
         }
 
         if (!isOnline) {
@@ -528,29 +533,30 @@ export const startTasks = (teamspeak) => {
       if (killsToPoke.length > 0) {
         for (const deathData of killsToPoke) {
           console.log(`[DEATH] Enviando poke: ${deathData.shortMessage}`);
+          // 1. Envia o Poke (Curto + Negrito + Cor)
           await sendMassPoke(teamspeak, deathData.shortMessage);
+          // 2. Envia a Mensagem Privada (Completa + Emojis)
           await sendMassPrivateMessage(teamspeak, deathData.fullMessage);
         }
       }
-          /* =========================
-             FOCO - MATOU FRIEND
-          ========================= */
 
-          if (global.currentFocus) {
-            const focusName = global.currentFocus.toLowerCase();
+      /* =========================
+         FOCO - MATOU FRIEND
+      ========================= */
 
-            const matchedDeath = deathListByCharacters.find(d =>
-              d.type === 'friend' &&
-              d.killers?.some(k => k.name?.toLowerCase() === focusName)
-            );
+      if (focusCharacter) {
+        const focusName = focusCharacter.characterName.toLowerCase();
 
-            if (matchedDeath) {
-              await sendMassPoke(
-                teamspeak,
-                `🚨 [b]FOCO MATOU:[/b] ${global.currentFocus} eliminou ${matchedDeath.characterName}`
-              );
-            }
-          }
+        const matchedDeath = deathListByCharacters.find(d =>
+          d.type === 'friend' &&
+          d.killers?.some(k => k.name?.toLowerCase() === focusName)
+        );
+
+        if (matchedDeath) {
+          await sendMassPoke(
+            teamspeak,
+            `🚨 [b]FOCO MATOU:[/b] ${focusCharacter.characterName} eliminou ${matchedDeath.characterName}`
+          );
         }
       }
 
