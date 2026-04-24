@@ -5,52 +5,87 @@
 <title>⚔️ Painel de Guerra</title>
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="icon" href="/assets/favicon.png">
+<style>
+  /* Estilos específicos para a War Page que dão o efeito "Blood" */
+  body { background-color: #0a0000; }
+  .war-mode {
+    background: radial-gradient(circle at center, #1a0505 0%, #000 100%);
+    min-height: 100vh;
+  }
+  .war-stat-number { font-size: 3rem; font-weight: 900; }
+  #totalKills { color: #00ff00; text-shadow: 0 0 15px rgba(0,255,0,0.5); }
+  #totalDeaths { color: #ff0000; text-shadow: 0 0 15px rgba(255,0,0,0.5); }
+  .kd-positive { color: #00ff00; }
+  .kd-negative { color: #ff0000; }
+  
+  .killfeed-container {
+    margin-top: 20px;
+    background: rgba(20, 0, 0, 0.6);
+    border: 1px solid #400;
+    border-radius: 8px;
+    padding: 15px;
+  }
+  .war-death-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid #200;
+    font-size: 0.9rem;
+    align-items: center;
+  }
+  .war-death-row:last-child { border-bottom: none; }
+  .war-time { color: #666; font-size: 0.75rem; }
+  .war-target { color: #ff4444; font-weight: bold; text-decoration: none; }
+  .war-killers { color: #aaa; font-style: italic; font-size: 0.85rem; }
+</style>
 </head>
-<body>
+<body class="war-mode">
 
 <div class="overlay"></div>
 <div id="navbar"></div>
 
 <div class="container">
 
-<h1>⚔️ Painel de Guerra</h1>
+<h1 class="war-title">⚔️ Painel de Guerra</h1>
 
-<div class="card">
-  <h3>🚨 Ameaça Ativa</h3>
+<div class="card war-card">
+  <h3>🚨 Ameaça Ativa (PZ)</h3>
   <div id="threatContainer"></div>
 </div>
 
 <div class="war-grid">
-
-  <div class="card">
-    <h3>💀 Mortes</h3>
-    <div id="totalDeaths" class="war-stat-number"></div>
+  <div class="card war-card">
+    <h3>💀 Mortes (Friend)</h3>
+    <div id="totalDeaths" class="war-stat-number">-</div>
   </div>
 
-  <div class="card">
-    <h3>🔥 Kills</h3>
-    <div id="totalKills" class="war-stat-number"></div>
+  <div class="card war-card">
+    <h3>🔥 Kills (Enemy)</h3>
+    <div id="totalKills" class="war-stat-number">-</div>
   </div>
 
-  <div class="card">
-    <h3>⚖️ K/D</h3>
-    <div id="kdRatio" class="war-stat-number"></div>
+  <div class="card war-card">
+    <h3>⚖️ K/D Ratio</h3>
+    <div id="kdRatio" class="war-stat-number">-</div>
   </div>
-
 </div>
 
 <div class="war-grid">
-
-  <div class="card war-link">
+  <div class="card war-card">
     <h3>🔥 Enemy Mais Perigoso</h3>
-    <p id="topEnemy"></p>
+    <p id="topEnemy">Buscando...</p>
   </div>
 
-  <div class="card war-link">
+  <div class="card war-card">
     <h3>🏹 Friend Mais Agressivo</h3>
-    <p id="topFriend"></p>
+    <p id="topFriend">Buscando...</p>
   </div>
+</div>
 
+<!-- NOVO BLOCO: ÚLTIMAS MORTES DE ENEMYS -->
+<div class="killfeed-container">
+  <h3 style="color: #ff4444; text-transform: uppercase; margin-bottom: 15px;">🩸 Últimas Baixas Inimigas</h3>
+  <div id="lastEnemys"></div>
 </div>
 
 </div>
@@ -58,14 +93,16 @@
 <script src="/assets/navbar.js"></script>
 
 <script>
-
 let threatInterval = null;
+let currentThreatName = null;
 
 function tibiaLink(name) {
-  return `<a href="https://www.tibia.com/community/?name=${encodeURIComponent(name)}" target="_blank">${name}</a>`;
+  return `<a href="https://www.tibia.com/community/?name=${encodeURIComponent(name)}" target="_blank" style="color: inherit; font-weight: bold;">${name}</a>`;
 }
 
 function startThreatCountdown(name, remainingMinutes) {
+  if (currentThreatName === name && threatInterval) return; 
+  currentThreatName = name;
 
   const container = document.getElementById('threatContainer');
   const totalSeconds = 15 * 60;
@@ -74,12 +111,10 @@ function startThreatCountdown(name, remainingMinutes) {
   container.innerHTML = `
     <div class="threat-wrapper">
       <div class="threat-header">
-        <span class="skull">☠️</span>
-        <span class="threat-badge">PZ ATIVA</span>
         <span id="threatText"></span>
       </div>
-      <div class="progress-bar">
-        <div id="progressFill" class="progress-fill"></div>
+      <div class="progress-bar" style="background: #200; height: 10px; border-radius: 5px; margin-top: 10px;">
+        <div id="progressFill" style="background: #f00; height: 100%; width: 0%; border-radius: 5px; transition: width 1s linear;"></div>
       </div>
     </div>
   `;
@@ -90,66 +125,71 @@ function startThreatCountdown(name, remainingMinutes) {
   if (threatInterval) clearInterval(threatInterval);
 
   threatInterval = setInterval(() => {
-
     if (remainingSeconds <= 0) {
       clearInterval(threatInterval);
-      container.innerHTML = 'Nenhuma ameaça ativa.';
+      currentThreatName = null;
+      container.innerHTML = 'Nenhuma PZ ativa no momento.';
       return;
     }
 
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = remainingSeconds % 60;
-
-    threatText.innerHTML =
-      `${tibiaLink(name)} — ${minutes}m ${seconds}s restantes`;
-
+    threatText.innerHTML = `<span style="color: #f44;">☠️ PZ:</span> ${tibiaLink(name)} — <b>${minutes}m ${seconds}s</b>`;
     const percent = (remainingSeconds / totalSeconds) * 100;
     progressFill.style.width = percent + '%';
-
     remainingSeconds--;
-
   }, 1000);
 }
 
 async function loadWar() {
-  const res = await fetch('/api/public/war');
-  const data = await res.json();
+  try {
+    const res = await fetch('/api/public/war');
+    const data = await res.json();
 
-  if (data.threat) {
-    startThreatCountdown(data.threat.name, data.threat.remaining);
-  } else {
-    document.getElementById('threatContainer').innerText = 'Nenhuma ameaça ativa.';
+    // 1. Threat
+    if (data.threat) {
+      startThreatCountdown(data.threat.name, data.threat.remaining);
+    } else if (!threatInterval) {
+      document.getElementById('threatContainer').innerText = 'Nenhuma PZ ativa no momento.';
+    }
+
+    // 2. Stats
+    document.getElementById('totalDeaths').innerText = data.totalDeaths || 0;
+    document.getElementById('totalKills').innerText = data.totalKills || 0;
+
+    const kd = data.totalDeaths > 0 ? (data.totalKills / data.totalDeaths).toFixed(2) : (data.totalKills || 0).toFixed(2);
+    const kdElement = document.getElementById('kdRatio');
+    kdElement.innerText = kd;
+    kdElement.className = 'war-stat-number ' + (kd >= 1 ? 'kd-positive' : 'kd-negative');
+
+    // 3. Tops
+    document.getElementById('topEnemy').innerHTML = data.topEnemy ? `${tibiaLink(data.topEnemy[0])} — <span style="color: #f44;">${data.topEnemy[1]} Frags</span>` : '—';
+    document.getElementById('topFriend').innerHTML = data.topFriend ? `${tibiaLink(data.topFriend[0])} — <span style="color: #0f0;">${data.topFriend[1]} Frags</span>` : '—';
+
+    // 4. Killfeed (Inimigos)
+    const enemyContainer = document.getElementById('lastEnemys');
+    if (data.lastEnemys && data.lastEnemys.length > 0) {
+      enemyContainer.innerHTML = data.lastEnemys.map(e => `
+        <div class="war-death-row">
+          <div>
+            <span class="war-time">${new Date(e.time).toLocaleTimeString()}</span>
+            <a href="https://www.tibia.com/community/?name=${encodeURIComponent(e.name)}" target="_blank" class="war-target">${e.name}</a>
+            <span style="color: #666; font-size: 0.8rem;"> (Lv ${e.level})</span>
+          </div>
+          <div class="war-killers">por: ${e.killers}</div>
+        </div>
+      `).join('');
+    } else {
+      enemyContainer.innerHTML = '<p style="text-align:center; color: #444;">Aguardando o primeiro frag...</p>';
+    }
+  } catch (e) {
+    console.error("Erro ao carregar dados da guerra", e);
   }
-
-  document.getElementById('totalDeaths').innerText = data.totalDeaths;
-  document.getElementById('totalKills').innerText = data.totalKills;
-
-  const kd = data.totalDeaths > 0
-    ? (data.totalKills / data.totalDeaths).toFixed(2)
-    : data.totalKills.toFixed(2);
-
-  const kdElement = document.getElementById('kdRatio');
-  kdElement.innerText = kd;
-
-  if (kd >= 1) {
-    kdElement.classList.add('kd-positive');
-  } else {
-    kdElement.classList.add('kd-negative');
-  }
-
-  document.getElementById('topEnemy').innerHTML =
-    data.topEnemy
-      ? `${tibiaLink(data.topEnemy[0])} — ${data.topEnemy[1]} kills`
-      : '—';
-
-  document.getElementById('topFriend').innerHTML =
-    data.topFriend
-      ? `${tibiaLink(data.topFriend[0])} — ${data.topFriend[1]} kills`
-      : '—';
 }
 
+// Refresh de 3 segundos
+setInterval(loadWar, 3000);
 loadWar();
-
 </script>
 
 </body>
