@@ -52,7 +52,6 @@ export default class TibiaAPI {
       });
       return flatList;
     } catch (error) {
-      console.error(`[GUILD API ERROR] ${guildName}:`, error.message);
       return [];
     }
   }
