@@ -629,13 +629,17 @@ export const startTasks = (teamspeak) => {
   fastTask.start();
   neutralTask.start();
 
-    // Sincronização de Guildas (De hora em hora - minuto 0)
+  // Sincronização Automática de Guildas (De hora em hora)
   cron.schedule('0 * * * *', async () => {
-    console.log('[CRON] Iniciando Sincronização de Guildas...');
-    // Sincroniza seus aliados
-    await syncGuildsTask(teamspeak, 'Slowmotion Corps', 'friend');
-    // Sincroniza os inimigos (Coloque o nome da guild inimiga aqui)
-    await syncGuildsTask(teamspeak, 'NOME_DA_GUILD_INIMIGA', 'enemy');
+    console.log('[CRON] Buscando guilds para sincronização...');
+    
+    // Busca todas as guilds únicas que estão na sua Enemy List e Friend List
+    const friendGuilds = await Characters.distinct('guildName', { type: 'friend' });
+    const enemyGuilds = await Characters.distinct('guildName', { type: 'enemy' });
+
+    // Roda a sincronização para cada uma encontrada
+    for (const g of friendGuilds) { if (g) await syncGuildsTask(teamspeak, g, 'friend'); }
+    for (const g of enemyGuilds) { if (g) await syncGuildsTask(teamspeak, g, 'enemy'); }
   });
   
 };
