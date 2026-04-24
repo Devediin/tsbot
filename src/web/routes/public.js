@@ -131,64 +131,59 @@ router.post('/loot', (req, res) => {
   }
 });
 
+/* RANKING */
 router.get('/ranking-monthly', async (req, res) => {
   try {
     const monthKey = moment().format('YYYY-MM');
 
-    // Função auxiliar para pegar o tipo do personagem
-    const getCharType = async (name) => {
-      const char = await Characters.findOne({ characterName: name });
-      return char ? char.type : 'neutral';
-    };
-
-    // 1. LEVEL RANKING (Mensal)
+    // 1. LEVEL RANKING (Só quem ainda é monitorado)
     const monthlyData = await mongoose.connection.collection('monthlyLevelTrackers').find({ monthKey }).toArray();
     const levelRanking = [];
     for (const entry of monthlyData) {
+      const char = await Characters.findOne({ characterName: entry.name });
+      if (!char) continue; // SE SAIU DA GUILD, PULA
+
       const tracker = await mongoose.connection.collection('levelTrackers').findOne({ name: entry.name });
       if (tracker) {
         const gain = tracker.lastLevel - entry.startLevel;
         if (gain > 0) {
-          levelRanking.push({
-            name: entry.name,
-            totalGain: gain,
-            type: await getCharType(entry.name)
-          });
+          levelRanking.push({ name: entry.name, totalGain: gain, type: char.type });
         }
       }
     }
     levelRanking.sort((a, b) => b.totalGain - a.totalGain);
 
-    // 2. DEATH RANKING
+    // 2. DEATH RANKING (Só quem ainda é monitorado)
     const deaths = await getDeathsCache();
     const startOfMonth = moment().startOf('month').toDate();
     const deathMap = {};
     for (const d of deaths) {
       if (new Date(d.time) >= startOfMonth) {
-        deathMap[d.characterName] = (deathMap[d.characterName] || 0) + 1;
+        const char = await Characters.findOne({ characterName: d.characterName });
+        if (char) { // SÓ ADICIONA SE EXISTIR NO BANCO
+          deathMap[d.characterName] = { count: (deathMap[d.characterName]?.count || 0) + 1, type: char.type };
+        }
       }
     }
-    const deathRanking = [];
-    for (const name of Object.keys(deathMap)) {
-      deathRanking.push({
-        name,
-        deaths: deathMap[name],
-        type: await getCharType(name)
-      });
-    }
-    deathRanking.sort((a, b) => b.deaths - a.deaths);
+    const deathRanking = Object.keys(deathMap).map(name => ({
+      name, deaths: deathMap[name].count, type: deathMap[name].type
+    })).sort((a, b) => b.deaths - a.deaths);
 
-    // 3. RECENT LEVEL UPS (Corrigido campo 'level' e adicionado 'type')
+    // 3. ÚLTIMOS LEVEL UPS (Filtro rigoroso + campo correto)
     const recentHistory = await mongoose.connection.collection('leveluphistories')
-      .find({}).sort({ createdAt: -1 }).limit(10).toArray();
+      .find({}).sort({ _id: -1 }).limit(50).toArray();
     
     const recentLevelUps = [];
     for (const h of recentHistory) {
+      const char = await Characters.findOne({ characterName: h.name });
+      if (!char) continue; // SE SAIU DA GUILD, PULA
+
       recentLevelUps.push({
         name: h.name,
-        level: h.level, // Campo correto do banco
-        type: await getCharType(h.name)
+        level: h.level || h.newLevel || h.currentLevel || '?', // Tenta vários campos para evitar undefined
+        type: char.type
       });
+      if (recentLevelUps.length >= 10) break; // Pega os 10 mais recentes que ainda estão na guild
     }
 
     res.json({ levelRanking, deathRanking, recentLevelUps });
