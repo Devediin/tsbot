@@ -5,6 +5,23 @@
 <link rel="icon" type="image/png" href="/assets/favicon.png">
 <title>SPK Team - Ourobra</title>
 <link rel="stylesheet" href="/assets/styles.css">
+<style>
+  /* Ajuste para as imagens ficarem centralizadas e nítidas */
+  .status-img {
+    height: 64px; 
+    width: auto;
+    image-rendering: pixelated; /* Mantém a nitidez de GIFs do Tibia */
+    margin-bottom: 10px;
+  }
+  .status-flex {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 100px;
+  }
+</style>
 </head>
 <body>
 
@@ -44,15 +61,15 @@
     </div>
     <div class="status-card">
       <h3>🐉 Boosted Creature</h3>
-      <div id="boostedCreature">Carregando...</div>
+      <div id="boostedCreature" class="status-flex">⏳...</div>
     </div>
     <div class="status-card">
       <h3>👹 Boosted Boss</h3>
-      <div id="boostedBoss">Carregando...</div>
+      <div id="boostedBoss" class="status-flex">⏳...</div>
     </div>
     <div class="status-card">
       <h3>👑 Dream Courts</h3>
-      <div id="dreamBoss">Carregando...</div>
+      <div id="dreamBoss" class="status-flex">⏳...</div>
     </div>
     <div class="status-card">
       <h3>🎭 Tibiadrome</h3>
@@ -70,7 +87,7 @@
       <h2>📅 Daily Info</h2>
       <div style="margin-bottom: 15px;">
         <h3>🧳 Rashid</h3>
-        <p id="rashidCity" style="font-weight: bold;"></p>
+        <p id="rashidCity" style="font-weight: bold; color: #fff;"></p>
       </div>
       <div id="worldChangesContainer" style="display: none; border-top: 1px solid #333; padding-top: 15px;">
         <h3 style="margin-bottom: 10px; color: #888; font-size: 0.9rem; text-transform: uppercase;">🌍 World Changes Ativas</h3>
@@ -97,50 +114,37 @@ async function loadDaily() {
     const data = await res.json();
     if (!data || !data.server) return;
 
-    // Campos de Texto Simples
-    if(document.getElementById('serverName')) document.getElementById('serverName').innerText = data.server.name;
-    if(document.getElementById('rashidCity')) document.getElementById('rashidCity').innerText = data.rashid.city;
-    if(document.getElementById('yasirStatus')) document.getElementById('yasirStatus').innerText = data.yasir.active ? '🟢 Disponível hoje' : '🔴 Não ativo hoje';
-    if(document.getElementById('updatedAt')) document.getElementById('updatedAt').innerText = `Atualizado em ${data.updatedAt}`;
+    document.getElementById('serverName').innerText = data.server.name;
+    document.getElementById('rashidCity').innerText = data.rashid.city;
+    document.getElementById('yasirStatus').innerText = data.yasir.active ? '🟢 Disponível hoje' : '🔴 Não ativo hoje';
+    document.getElementById('updatedAt').innerText = `Atualizado em ${data.updatedAt}`;
     
     const drome = data.tibiadrome;
-    if(document.getElementById('tibiadromeInfo')) document.getElementById('tibiadromeInfo').innerText = `#${drome.number || drome.rotation} (${drome.start} → ${drome.end})`;
+    document.getElementById('tibiadromeInfo').innerText = `#${drome.number || drome.rotation} (${drome.start} → ${drome.end})`;
 
-    // Boosted Creature (Com Imagem)
-    const bCreature = document.getElementById('boostedCreature');
-    if(bCreature) {
-        bCreature.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;">
-          <img src="${data.boosted.creatureImg}" style="height:45px; margin-bottom:5px;" onerror="this.style.display='none'">
-          <span style="color:#0f0; font-weight:bold;">${data.boosted.creature}</span>
-        </div>`;
-    }
+    // Boosted Creature
+    document.getElementById('boostedCreature').innerHTML = `
+      <img src="${data.boosted.creatureImg}" class="status-img" onerror="this.style.display='none'">
+      <span style="color:#0f0; font-weight:bold;">${data.boosted.creature}</span>`;
 
-    // Boosted Boss (Com Imagem)
-    const bBoss = document.getElementById('boostedBoss');
-    if(bBoss) {
-        bBoss.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;">
-          <img src="${data.boosted.bossImg}" style="height:45px; margin-bottom:5px;" onerror="this.style.display='none'">
-          <span style="color:#f44; font-weight:bold;">${data.boosted.boss}</span>
-        </div>`;
-    }
+    // Boosted Boss
+    document.getElementById('boostedBoss').innerHTML = `
+      <img src="${data.boosted.bossImg}" class="status-img" onerror="this.style.display='none'">
+      <span style="color:#f44; font-weight:bold;">${data.boosted.boss}</span>`;
 
-    // Dream Boss (Com Imagem)
-    const dBoss = document.getElementById('dreamBoss');
-    if(dBoss) {
-        dBoss.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center;">
-          <img src="${data.dreamCourts.image}" style="height:45px; margin-bottom:5px;" onerror="this.style.display='none'">
-          <span>${data.dreamCourts.boss}</span>
-        </div>`;
-    }
+    // Dream Boss (Corrigido para pegar data.dreamCourts.image)
+    document.getElementById('dreamBoss').innerHTML = `
+      <img src="${data.dreamCourts.image}" class="status-img" onerror="this.style.display='none'">
+      <span style="font-weight:bold;">${data.dreamCourts.boss}</span>`;
 
     // World Changes
     const wcContainer = document.getElementById('worldChangesContainer');
     const wcList = document.getElementById('worldChangesList');
-    if (wcContainer && wcList && data.worldChanges && data.worldChanges.length > 0) {
+    if (data.worldChanges && data.worldChanges.length > 0) {
       wcContainer.style.display = 'block';
       wcList.innerHTML = data.worldChanges.map(wc => `
         <div style="margin-bottom: 10px; text-align: left; padding-left: 10px; border-left: 2px solid #f00;">
-          <b style="color: #fff; font-size: 0.9rem;">${wc.name}</b><br>
+          <b style="color: #fff; font-size: 0.85rem;">${wc.name}</b><br>
           <small style="color: #666;">📍 ${wc.loc}</small>
         </div>`).join('');
     }
@@ -153,14 +157,23 @@ async function loadLive() {
     const data = await res.json();
     const liveTitle = document.getElementById('liveTitle');
     const liveContent = document.getElementById('liveContent');
-    const channel = data.data?.user || "ediintv";
+    const channel = "ediintv";
 
-    if (data.live && data.data) {
-      liveTitle.innerHTML = `🟢 AO VIVO`;
-      liveContent.innerHTML = `<iframe src="https://player.twitch.tv/?channel=${channel}&parent=spkteam.duckdns.org&muted=true" height="300" width="100%" allowfullscreen></iframe>`;
+    // O embed da Twitch precisa de tratamento de erro e tempo real
+    if (data.live === true) {
+      liveTitle.innerHTML = `🟢 AO VIVO AGORA`;
+      liveContent.innerHTML = `
+        <div class="live-wrapper">
+          <iframe 
+            src="https://player.twitch.tv/?channel=${channel}&parent=spkteam.duckdns.org&muted=false" 
+            height="360" width="100%" allowfullscreen>
+          </iframe>
+        </div>`;
     } else {
-      liveTitle.innerHTML = '🔴 OFFLINE';
-      liveContent.innerHTML = `<img src="https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg" style="width:100%; border-radius:10px;"/>`;
+      liveTitle.innerHTML = '🔴 LIVE OFFLINE';
+      liveContent.innerHTML = `
+        <img src="https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg" style="width:100%; border-radius:10px;"/>
+      `;
     }
   } catch (e) { console.error('Erro loadLive:', e); }
 }
@@ -169,25 +182,21 @@ async function loadHighlights() {
   try {
     const res = await fetch('/api/public/ranking-monthly');
     const data = await res.json();
-    const playerDiv = document.getElementById('playerOfMonth');
-    const tragedyDiv = document.getElementById('tragedyOfMonth');
-
     if (data.levelRanking && data.levelRanking.length > 0) {
       const top = data.levelRanking[0];
-      playerDiv.innerHTML = `🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(top.name)}" target="_blank">${top.name}</a> — +${top.totalGain} levels`;
-    } else { playerDiv.innerText = 'Sem level ups.'; }
-
+      document.getElementById('playerOfMonth').innerHTML = `🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(top.name)}" target="_blank" style="color:#0f0; text-decoration:none;">${top.name}</a> — +${top.totalGain} lvls`;
+    }
     if (data.deathRanking && data.deathRanking.length > 0) {
       const topDeath = data.deathRanking[0];
-      tragedyDiv.innerHTML = `💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(topDeath.name)}" target="_blank">${topDeath.name}</a> — ${topDeath.deaths} mortes`;
-    } else { tragedyDiv.innerText = 'Sem mortes.'; }
+      document.getElementById('tragedyOfMonth').innerHTML = `💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(topDeath.name)}" target="_blank" style="color:#f44; text-decoration:none;">${topDeath.name}</a> — ${topDeath.deaths} mortes`;
+    }
   } catch (e) { console.error('Erro loadHighlights:', e); }
 }
 
 loadDaily();
 loadLive();
 loadHighlights();
-setInterval(loadLive, 60000);
+setInterval(loadLive, 60000); // Checa live a cada 1 min
 </script>
 </body>
 </html>
