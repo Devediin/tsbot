@@ -103,38 +103,44 @@ const formatDeathMessage = ({ type, characterName, level, killers = [], time }) 
   // Filtra killers (remove o próprio char se ele se matou)
   const filteredKillers = killers.filter(k => k && k.name && k.name.toLowerCase() !== safeName.toLowerCase());
 
-  // --- Lógica para Killers (POKE: Máximo 2 | PRIVADA: Todos) ---
+  // --- Lógica de Killers ---
   const pokeKillersBase = filteredKillers.slice(0, 2).map(k => k.name).join(', ');
   const extraCount = filteredKillers.length - 2;
   const pokeKillersText = extraCount > 0 ? `${pokeKillersBase} (+${extraCount})` : (pokeKillersBase || killers[0]?.name || 'unknown');
   
   const fullKillersText = filteredKillers.map(k => k.name).join(', ') || killers[0]?.name || 'unknown';
 
-  const coloredTag = type === 'enemy' ? '[color=red][ENEMY][/color]' : '[color=green][FRIEND][/color]';
+  // --- Cores e Emojis ---
+  const isEnemy = type === 'enemy';
+  const color = isEnemy ? 'red' : 'green';
+  const tag = isEnemy ? '[ENEMY]' : '[FRIEND]';
+  const emoji = isEnemy ? '💀 🔴' : '🛡️ 🟢';
 
   // Seus templates originais
   const templates = [
-    `${coloredTag} ${safeName} ${level} caiu pra`,
-    `${coloredTag} ${safeName} ${level} foi de base pra`,
-    `${coloredTag} ${safeName} ${level} tomou bala de`,
-    `${coloredTag} ${safeName} ${level} virou tapete do`
+    `caiu pra`,
+    `foi de base pra`,
+    `tomou bala de`,
+    `virou tapete do`
   ];
   const selectedTemplate = templates[Math.floor(Math.random() * templates.length)];
 
-  // --- Mensagem Curta (Poke) ---
-  let shortMessage = `[${deathAge}] ${selectedTemplate} ${pokeKillersText}`;
+  // --- MENSAGEM CURTA (POKE) ---
+  // Formato: [b][color=red][ENEMY][/color] Nome Level caiu pra Killers (+X)[/b]
+  let shortMessage = `[b][${deathAge}] [color=${color}]${tag}[/color] ${safeName} ${level} ${selectedTemplate} ${pokeKillersText}[/b]`;
+  
   if (shortMessage.length > MAX_POKE_LENGTH) {
-    shortMessage = shortMessage.substring(0, MAX_POKE_LENGTH - 3) + '...';
+    shortMessage = shortMessage.substring(0, MAX_POKE_LENGTH - 7) + '...[/b]';
   }
 
-  // --- Mensagem Longa (Privada) ---
-  const fullMessage = `[${deathAge}] ${selectedTemplate} ${fullKillersText}`;
+  // --- MENSAGEM LONGA (PRIVADA) ---
+  // Formato: 💀 🔴 [b][ENEMY][/b] Nome Level caiu pra Killers (Full)
+  const fullMessage = `${emoji} [b][color=${color}]${tag}[/color][/b] [B]${safeName}[/B] (${level}) ${selectedTemplate} [i]${fullKillersText}[/i]`;
 
   lastDeathKillers.set(safeName.toLowerCase(), killers.map(k => k.name));
 
   return { shortMessage, fullMessage };
 };
-
 const formatLevelMessage = ({ name, previousLevel, currentLevel, vocation, monitoredType }) => {
   const typeLabel = getTypeLabel(monitoredType);
   const emoji = getVocationEmoji(vocation);
@@ -520,18 +526,12 @@ export const startTasks = (teamspeak) => {
       const killsToPoke = await getNotPokedKills(deathListByCharacters);
 
       if (killsToPoke.length > 0) {
-        for (const deathObj of killsToPoke) {
-          // deathObj agora contém { shortMessage, fullMessage }
-          console.log(`[DEATH] Enviando poke: ${deathObj.shortMessage}`);
-          
-          // Envia o Poke Curto (Limite 95 chars)
-          await sendMassPoke(teamspeak, deathObj.shortMessage);
-          
-          // Envia a Mensagem Privada (Sem limite agressivo)
-          await sendMassPrivateMessage(teamspeak, deathObj.fullMessage);
+        for (const deathData of killsToPoke) {
+          console.log(`[DEATH] Enviando poke: ${deathData.shortMessage}`);
+          await sendMassPoke(teamspeak, deathData.shortMessage);
+          await sendMassPrivateMessage(teamspeak, deathData.fullMessage);
         }
       }
-
           /* =========================
              FOCO - MATOU FRIEND
           ========================= */
