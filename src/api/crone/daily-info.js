@@ -17,14 +17,8 @@ global.activeWorldChanges = [];
 ========================= */
 const getWikiGif = (name) => {
   if (!name || name === 'Desconhecido') return '';
-  
-  // Formatação: Primeira letra Maiúscula, espaços viram "_" e termina em .gif
   const formattedName = name.charAt(0).toUpperCase() + name.slice(1).replace(/ /g, '_') + '.gif';
-  
-  // O TibiaWiki (MediaWiki) organiza arquivos pelo Hash MD5 do nome do arquivo
   const hash = crypto.createHash('md5').update(formattedName).digest('hex');
-  
-  // Estrutura do link: /images/ primeira_letra / duas_primeiras_letras / Nome_do_Arquivo.gif
   return `https://www.tibiawiki.com.br/images/${hash[0]}/${hash.substring(0, 2)}/${formattedName}`;
 };
 
@@ -46,7 +40,6 @@ const getRashidLocation = () => {
   return map[tibiaDate.format('dddd')] || 'Desconhecido';
 };
 
-// ATUALIZADO: Nomes completos para bater com os arquivos do TibiaWiki
 const dreamCourtsRotation = [
   'Izcandar the Banished',
   'Plagueroot',
@@ -87,8 +80,6 @@ export const parseWorldBoard = (text) => {
       if (lower.includes(mwc.key.toLowerCase())) { detected.push(mwc); }
     });
     global.activeWorldChanges = detected;
-
-    // Atualiza o cache do portal imediatamente
     if (global.dailyInfoCachePortal) {
       global.dailyInfoCachePortal.yasir = { active: global.isYasirActive };
       global.dailyInfoCachePortal.worldChanges = detected;
@@ -106,15 +97,20 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const dreamBossName = getDreamCourtsBoss();
     const tibiadrome = getTibiadromeInfo();
 
-    // Cache unificado (Tudo agora usa getWikiGif)
+    // Links de Imagem
+    const creatureGif = getWikiGif(bCreature.name);
+    const bossGif = getWikiGif(bBoss.name);
+    const dreamGif = getWikiGif(dreamBossName);
+
+    // Cache para o Portal
     global.dailyInfoCachePortal = {
       server: { name: worldOverview?.name || WORLD_NAME },
       boosted: { 
         creature: bCreature.name, 
-        creatureImg: getWikiGif(bCreature.name),
+        creatureImg: creatureGif,
         creatureFallback: bCreature.image,
         boss: bBoss.name,
-        bossImg: getWikiGif(bBoss.name),
+        bossImg: bossGif,
         bossFallback: bBoss.image
       },
       rashid: { city: rashid },
@@ -122,24 +118,44 @@ export const updateDailyInfoChannel = async (teamspeak) => {
       worldChanges: global.activeWorldChanges,
       dreamCourts: { 
         boss: dreamBossName,
-        image: getWikiGif(dreamBossName) // AUTOMÁTICO
+        image: dreamGif
       },
       tibiadrome: tibiadrome,
       updatedAt: momentTimezone.tz('America/Sao_Paulo').format('DD/MM/YYYY HH:mm'),
     };
 
-    let desc = `[center][b]⚔️ NIIDE HELPER - DAILY INFO ⚔️[/b][/center]\n[hr]\n`;
-    desc += `[b]🐉 BOOSTED:[/b] ${bCreature.name} | [b]👹 BOSS:[/b] ${bBoss.name}\n[hr]\n`;
-    desc += `📍 [b]RASHID:[/b] ${rashid}\n🧞 [b]YASIR:[/b] ${global.isYasirActive ? '🟢 SIM' : '🔴 NÃO'}\n[hr]\n`;
-    desc += `⭐ [b]DREAM BOSS:[/b] ${dreamBossName}\n🏆 [b]DROME:[/b] #${tibiadrome.number}\n`;
+    // --- MENSAGEM TS (COM BBCODE [IMG]) ---
+    let desc = `[center][size=14][b]⚔️ NIIDE HELPER - DAILY INFO ⚔️[/b][/size][/center]\n[hr]\n`;
+    
+    desc += `[b]🌍 SERVIDOR:[/b] 🟢 [b]${worldOverview?.name || WORLD_NAME}[/b]\n[hr]\n`;
+    
+    desc += `[b]🐉 BOOSTED DO DIA[/b]\n`;
+    desc += `[img]${creatureGif}[/img] [b]${bCreature.name}[/b]\n`;
+    desc += `[img]${bossGif}[/img] [b]${bBoss.name}[/b]\n[hr]\n`;
+
+    desc += `[b]🧳 RASHID HOJE[/b]\n`;
+    desc += `[img]https://www.tibiawiki.com.br/images/f/f5/Rashid.gif[/img] 📍 [b]${rashid}[/b]\n[hr]\n`;
+
+    desc += `[b]🧞 YASIR (ORIENTAL TRADER)[/b]\n`;
+    desc += `[img]https://www.tibiawiki.com.br/images/4/4a/Yasir.gif[/img] ${global.isYasirActive ? '🟢 DISPONÍVEL' : '🔴 NÃO ATIVO'}\n[hr]\n`;
+
+    desc += `[b]👑 DREAM COURTS[/b]\n`;
+    desc += `[img]${dreamGif}[/img] ⭐ [b]${dreamBossName}[/b]\n[hr]\n`;
+
+    desc += `[b]🎭 TIBIADROME[/b]\n🏆 Rotação [b]#${tibiadrome.number}[/b]\n📅 ${tibiadrome.start} → ${tibiadrome.end}\n`;
+
     if (global.activeWorldChanges.length > 0) {
-      desc += `[hr][b]🌍 WORLD CHANGES:[/b]\n`;
-      global.activeWorldChanges.forEach(wc => desc += `● ${wc.name}\n`);
+      desc += `[hr][b]🌍 WORLD CHANGES ATIVAS[/b]\n`;
+      global.activeWorldChanges.forEach(wc => {
+        desc += `● [b]${wc.name}[/b] (${wc.loc})\n`;
+      });
     }
+
+    desc += `\n[hr]\n[center][size=10]Atualizado automaticamente pelo NiideHelper[/size][/center]`;
 
     const channelList = await teamspeak.channelList();
     const dailyChannel = channelList.find(c => c.propcache?.channel_name?.includes('Daily Info'));
-    if (dailyChannel) await dailyChannel.edit({ channel_description: desc });
+    if (dailyChannel) await dailyChannel.edit({ channel_description: desc.trim() });
 
     console.log('[DAILY INFO] Atualizado.', 'Rashid:', rashid, 'Dream Boss:', dreamBossName);
 
