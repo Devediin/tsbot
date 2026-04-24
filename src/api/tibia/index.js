@@ -81,4 +81,24 @@ export default class TibiaAPI {
       onlineCount: Array.isArray(worldData.online_players) ? worldData.online_players.length : 0,
     };
   }
+
+  // NOVO: Busca Criatura Boostada (Endpoint específico v4)
+  async getBoostedCreature() {
+    try {
+      const { data } = await axios.get(`${TIBIA_DATA_API_URL}creatures`);
+      return data.creatures?.boosted?.name || 'Desconhecido';
+    } catch (e) {
+      return 'Desconhecido';
+    }
+  }
+
+  // NOVO: Busca Boss Boostado (Endpoint específico v4)
+  async getBoostedBoss() {
+    try {
+      const { data } = await axios.get(`${TIBIA_DATA_API_URL}boostablebosses`);
+      return data.boostable_bosses?.boosted?.name || 'Desconhecido';
+    } catch (e) {
+      return 'Desconhecido';
+    }
+  }
 }
