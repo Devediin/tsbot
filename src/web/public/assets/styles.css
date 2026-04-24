@@ -794,3 +794,51 @@ button {
 .live-indicator { text-align: center; font-size: 0.8rem; color: #666; margin-bottom: 20px; text-transform: uppercase; }
 .live-dot { color: #f00; animation: war-blink 1s infinite; margin-right: 5px; }
 @keyframes war-blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+.death-row {
+    padding: 10px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-left: 4px solid #444;
+}
+
+.death-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.death-name {
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.death-level {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+/* MATADORES EM 1 LINHA SÓ */
+.death-killers-line {
+    font-size: 0.85rem;
+    color: #bbb;
+    white-space: nowrap;      /* Trava em uma linha */
+    overflow: hidden;         /* Esconde o que sobrar */
+    text-overflow: ellipsis;  /* Coloca os "..." no final */
+    margin-top: 2px;
+}
+
+.killer-tag {
+    font-size: 0.7rem;
+    color: #555;
+    text-transform: uppercase;
+    margin-right: 4px;
+}
+
+/* CORES */
+.death-enemy { border-left-color: #ff4444; }
+.death-enemy .death-name { color: #ff4444; }
+
+.death-friend { border-left-color: #00ff00; }
+.death-friend .death-name { color: #00ff00; }
