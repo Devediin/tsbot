@@ -1,6 +1,6 @@
 import moment from 'moment';
 import momentTimezone from 'moment-timezone';
-import crypto from 'crypto'; // Necessário para gerar o link do Wiki
+import crypto from 'crypto';
 import TibiaAPI from '../tibia';
 import { WORLD_CHANGES_DICTIONARY } from '../data/worldChanges.js';
 
@@ -12,25 +12,25 @@ global.dailyInfoCachePortal = global.dailyInfoCachePortal || {};
 global.isYasirActive = false;
 global.activeWorldChanges = [];
 
-// Função que gera o link do GIF animado do TibiaWiki automaticamente
+/* =========================
+   GERADOR DE LINKS TIBIAWIKI (AUTOMÁTICO)
+========================= */
 const getWikiGif = (name) => {
   if (!name || name === 'Desconhecido') return '';
-  // Formata o nome: Primeira letra maiúscula e espaços viram "_"
+  
+  // Formatação: Primeira letra Maiúscula, espaços viram "_" e termina em .gif
   const formattedName = name.charAt(0).toUpperCase() + name.slice(1).replace(/ /g, '_') + '.gif';
-  // Gera o Hash MD5 do nome do arquivo
+  
+  // O TibiaWiki (MediaWiki) organiza arquivos pelo Hash MD5 do nome do arquivo
   const hash = crypto.createHash('md5').update(formattedName).digest('hex');
-  // O Wiki usa a primeira letra do hash e as duas primeiras como subpastas
+  
+  // Estrutura do link: /images/ primeira_letra / duas_primeiras_letras / Nome_do_Arquivo.gif
   return `https://www.tibiawiki.com.br/images/${hash[0]}/${hash.substring(0, 2)}/${formattedName}`;
 };
 
-const DREAM_COURTS_IMAGES = {
-  'Izcandar': 'https://www.tibiawiki.com.br/images/0/0f/Izcandar_the_Banished.gif',
-  'Plagueroot': 'https://www.tibiawiki.com.br/images/2/24/Plagueroot.gif',
-  'Malofur Mangrinder': 'https://www.tibiawiki.com.br/images/3/3b/Malofur_Mangrinder.gif',
-  'Maxxenius': 'https://www.tibiawiki.com.br/images/a/a2/Maxxenius.gif',
-  'Alptramun': 'https://www.tibiawiki.com.br/images/c/c9/Alptramun.gif'
-};
-
+/* =========================
+   FUNÇÕES BASE (MANTIDAS)
+========================= */
 const getTibiaDate = () => {
   const nowBRT = momentTimezone.tz('America/Sao_Paulo');
   if (nowBRT.hour() < 5) { nowBRT.subtract(1, 'day'); }
@@ -39,15 +39,22 @@ const getTibiaDate = () => {
 
 const getRashidLocation = () => {
   const tibiaDate = getTibiaDate();
-  const day = tibiaDate.format('dddd');
   const map = {
     Monday: 'Svargrond', Tuesday: 'Liberty Bay', Wednesday: 'Port Hope',
     Thursday: 'Ankrahmun', Friday: 'Darashia', Saturday: 'Edron', Sunday: 'Carlin',
   };
-  return map[day] || 'Desconhecido';
+  return map[tibiaDate.format('dddd')] || 'Desconhecido';
 };
 
-const dreamCourtsRotation = ['Izcandar', 'Plagueroot', 'Malofur Mangrinder', 'Maxxenius', 'Alptramun'];
+// ATUALIZADO: Nomes completos para bater com os arquivos do TibiaWiki
+const dreamCourtsRotation = [
+  'Izcandar the Banished',
+  'Plagueroot',
+  'Malofur Mangrinder',
+  'Maxxenius',
+  'Alptramun',
+];
+
 const DREAM_COURTS_BASE_DATE = momentTimezone.tz('2026-04-16T05:00:00', 'America/Sao_Paulo');
 
 const getDreamCourtsBoss = () => {
@@ -80,6 +87,8 @@ export const parseWorldBoard = (text) => {
       if (lower.includes(mwc.key.toLowerCase())) { detected.push(mwc); }
     });
     global.activeWorldChanges = detected;
+
+    // Atualiza o cache do portal imediatamente
     if (global.dailyInfoCachePortal) {
       global.dailyInfoCachePortal.yasir = { active: global.isYasirActive };
       global.dailyInfoCachePortal.worldChanges = detected;
@@ -97,29 +106,28 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const dreamBossName = getDreamCourtsBoss();
     const tibiadrome = getTibiadromeInfo();
 
-    // Cache para o Portal com links automáticos do Wiki
+    // Cache unificado (Tudo agora usa getWikiGif)
     global.dailyInfoCachePortal = {
       server: { name: worldOverview?.name || WORLD_NAME },
       boosted: { 
         creature: bCreature.name, 
-        creatureImg: getWikiGif(bCreature.name), // Link Wiki
-        creatureFallback: bCreature.image,      // Link TibiaData (Backup)
+        creatureImg: getWikiGif(bCreature.name),
+        creatureFallback: bCreature.image,
         boss: bBoss.name,
-        bossImg: getWikiGif(bBoss.name),         // Link Wiki
-        bossFallback: bBoss.image                // Link TibiaData (Backup)
+        bossImg: getWikiGif(bBoss.name),
+        bossFallback: bBoss.image
       },
       rashid: { city: rashid },
       yasir: { active: global.isYasirActive },
       worldChanges: global.activeWorldChanges,
       dreamCourts: { 
         boss: dreamBossName,
-        image: DREAM_COURTS_IMAGES[dreamBossName] || '' 
+        image: getWikiGif(dreamBossName) // AUTOMÁTICO
       },
       tibiadrome: tibiadrome,
       updatedAt: momentTimezone.tz('America/Sao_Paulo').format('DD/MM/YYYY HH:mm'),
     };
 
-    // Atualização TS (Apenas nomes)
     let desc = `[center][b]⚔️ NIIDE HELPER - DAILY INFO ⚔️[/b][/center]\n[hr]\n`;
     desc += `[b]🐉 BOOSTED:[/b] ${bCreature.name} | [b]👹 BOSS:[/b] ${bBoss.name}\n[hr]\n`;
     desc += `📍 [b]RASHID:[/b] ${rashid}\n🧞 [b]YASIR:[/b] ${global.isYasirActive ? '🟢 SIM' : '🔴 NÃO'}\n[hr]\n`;
@@ -132,5 +140,8 @@ export const updateDailyInfoChannel = async (teamspeak) => {
     const channelList = await teamspeak.channelList();
     const dailyChannel = channelList.find(c => c.propcache?.channel_name?.includes('Daily Info'));
     if (dailyChannel) await dailyChannel.edit({ channel_description: desc });
+
+    console.log('[DAILY INFO] Atualizado.', 'Rashid:', rashid, 'Dream Boss:', dreamBossName);
+
   } catch (error) { console.error('[DAILY INFO ERROR]', error); }
 };
