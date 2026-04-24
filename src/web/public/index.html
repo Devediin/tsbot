@@ -116,25 +116,45 @@ async function loadDaily() {
     const data = await res.json();
     if (!data.server) return;
 
-    // Preenche dados básicos
     document.getElementById('serverName').innerText = data.server.name;
     document.getElementById('rashidCity').innerText = data.rashid.city;
     document.getElementById('yasirStatus').innerText =
       data.yasir.active ? '🟢 Disponível hoje' : '🔴 Não ativo hoje';
-    document.getElementById('dreamBoss').innerText = data.dreamCourts.boss;
+    document.getElementById('updatedAt').innerText = `Atualizado em ${data.updatedAt}`;
+
+    // --- BOOSTED CREATURE ---
+    const creatureEl = document.getElementById('boostedCreature');
+    creatureEl.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+        <img src="${data.boosted.creatureImg}" style="height: 50px; width: auto;" onerror="this.style.display='none'">
+        <span>${data.boosted.creature}</span>
+      </div>
+    `;
+
+    // --- BOOSTED BOSS ---
+    const bossEl = document.getElementById('boostedBoss');
+    bossEl.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+        <img src="${data.boosted.bossImg}" style="height: 50px; width: auto;" onerror="this.style.display='none'">
+        <span>${data.boosted.boss}</span>
+      </div>
+    `;
+
+    // --- DREAM BOSS ---
+    const dreamEl = document.getElementById('dreamBoss');
+    dreamEl.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+        <img src="${data.dreamCourts.image}" style="height: 50px; width: auto;" onerror="this.style.display='none'">
+        <span>${data.dreamCourts.boss}</span>
+      </div>
+    `;
+
     document.getElementById('tibiadromeInfo').innerText =
       `#${data.tibiadrome.rotation} (${data.tibiadrome.start} → ${data.tibiadrome.end})`;
-    document.getElementById('updatedAt').innerText =
-      `Atualizado em ${data.updatedAt}`;
 
-    // Preenche Boosteds
-    document.getElementById('boostedCreature').innerText = data.boosted.creature;
-    document.getElementById('boostedBoss').innerText = data.boosted.boss;
-
-    // Preenche World Changes
+    // World Changes (Mantendo sua lógica anterior)
     const wcContainer = document.getElementById('worldChangesContainer');
     const wcList = document.getElementById('worldChangesList');
-    
     if (data.worldChanges && data.worldChanges.length > 0) {
       wcContainer.style.display = 'block';
       wcList.innerHTML = data.worldChanges.map(wc => `
@@ -143,12 +163,9 @@ async function loadDaily() {
           <small style="color: #666;">📍 ${wc.loc}</small>
         </div>
       `).join('');
-    } else {
-      wcContainer.style.display = 'none';
     }
-  } catch (e) {
-    console.log('Erro ao carregar Daily Info');
-  }
+  } catch (e) { console.log('Erro loadDaily'); }
+}
 }
 
 async function loadLive() {
