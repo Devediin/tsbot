@@ -203,68 +203,61 @@ router.get('/ranking-monthly', async (req, res) => {
 
 router.get('/war', async (req, res) => {
   try {
-
     const fifteenMinutesAgo = moment().subtract(15, 'minutes').toDate();
 
-    // THREAT
-    const recentFriendDeath = await WarEvent
-      .findOne({ type: 'friend' })
-      .sort({ time: -1 });
-
+    // THREAT (Se um Friend morreu nos últimos 15 min)
+    const recentFriendDeath = await WarEvent.findOne({ type: 'friend' }).sort({ time: -1 });
     let threat = null;
-
     if (recentFriendDeath && recentFriendDeath.time >= fifteenMinutesAgo) {
-      const killer = recentFriendDeath.killers?.[0]?.name || 'Unknown';
+      const killer = recentFriendDeath.killers?.find(k => k.isPlayer)?.name || 'Unknown';
       const minutesPassed = moment().diff(moment(recentFriendDeath.time), 'minutes');
       const remaining = 15 - minutesPassed;
-
-      if (remaining > 0) {
-        threat = {
-          name: killer,
-          remaining
-        };
-      }
+      if (remaining > 0) threat = { name: killer, remaining };
     }
 
     // TOTALS
-    const totalDeaths = await WarEvent.countDocuments({ type: 'friend' });
-    const totalKills = await WarEvent.countDocuments({ type: 'enemy' });
+    const totalDeaths = await WarEvent.countDocuments({ type: 'friend' }); // Amigo morto
+    const totalKills = await WarEvent.countDocuments({ type: 'enemy' });  // Inimigo morto
 
-    // TOP ENEMY
+    // ENEMY MAIS PERIGOSO (Quem mais matou Friends - PvP)
     const enemyAgg = await WarEvent.aggregate([
       { $match: { type: 'friend' } },
       { $unwind: "$killers" },
+      { $match: { "killers.isPlayer": true } }, // Somente PvP
       { $group: { _id: "$killers.name", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 1 }
     ]);
 
-    const topEnemy = enemyAgg.length > 0
-      ? [enemyAgg[0]._id, enemyAgg[0].count]
-      : null;
-
-    // TOP FRIEND
+    // FRIEND MAIS AGRESSIVO (Quem mais matou Inimigos - PvP)
     const friendAgg = await WarEvent.aggregate([
       { $match: { type: 'enemy' } },
-      { $group: { _id: "$characterName", count: { $sum: 1 } } },
+      { $unwind: "$killers" },
+      { $match: { "killers.isPlayer": true } }, // Somente PvP
+      { $group: { _id: "$killers.name", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 1 }
     ]);
 
-    const topFriend = friendAgg.length > 0
-      ? [friendAgg[0]._id, friendAgg[0].count]
-      : null;
+    // ÚLTIMOS 10 ENEMYS MORTOS (Histórico completo)
+    const lastEnemys = await WarEvent.find({ type: 'enemy' })
+      .sort({ time: -1 })
+      .limit(10);
 
     res.json({
       threat,
-      topEnemy,
-      topFriend,
+      topEnemy: enemyAgg.length > 0 ? [enemyAgg[0]._id, enemyAgg[0].count] : null,
+      topFriend: friendAgg.length > 0 ? [friendAgg[0]._id, friendAgg[0].count] : null,
       totalDeaths,
-      totalKills
+      totalKills,
+      lastEnemys: lastEnemys.map(e => ({
+        name: e.characterName,
+        level: e.level,
+        killers: e.killers.map(k => k.name).join(', '),
+        time: e.time
+      }))
     });
-
   } catch (e) {
-    console.error('[WAR ROUTE ERROR]', e);
     res.json({});
   }
 });
