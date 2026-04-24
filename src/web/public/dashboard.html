@@ -111,20 +111,26 @@ async function loadDeaths() {
   const res = await fetch('/api/public/deaths');
   const data = await res.json();
   const container = document.getElementById('deaths');
-  container.innerHTML = '';
+  
+  // LEGENDA PROFISSIONAL
+  container.innerHTML = `
+    <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-size: 0.8rem; border: 1px solid #333;">
+      <span style="color: #00ff00; font-weight: bold;">● FRIEND</span>
+      <span style="color: #ff4444; font-weight: bold;">● ENEMY</span>
+    </div>
+  `;
 
   data.deaths.forEach(d => {
+    // CLASSE DINÂMICA
+    const typeClass = d.type === 'enemy' ? 'death-enemy' : 'death-friend';
+    
     container.innerHTML += `
-      <div class="death-row">
-        <div>
-          <a href="${tibiaLink(d.characterName)}" target="_blank">
-            ${d.characterName}
-          </a>
+      <div class="death-row ${typeClass}">
+        <div class="death-header">
+          <span class="death-name">${d.characterName}</span>
+          <span class="death-level">Lv ${d.level}</span>
         </div>
-        <div class="death-level">
-          Lv ${d.level}
-        </div>
-        <div class="death-killer">
+        <div class="death-killers">
           ${d.killers}
         </div>
       </div>
