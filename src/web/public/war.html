@@ -14,6 +14,12 @@
     <h1 class="war-title-custom">WAR PANEL</h1>
     <div class="live-indicator"><span class="live-dot">●</span> LIVE FEED - UPDATING EVERY 3s</div>
 
+    <!-- PZ / THREAT CONTAINER -->
+    <div class="war-card-custom" style="margin-bottom: 20px; border-color: #f00;">
+        <h3 style="margin-top:0; color:#f44;">🚨 AMEAÇA ATIVA (PZ)</h3>
+        <div id="threatContainer">Nenhuma PZ ativa no momento.</div>
+    </div>
+
     <div class="war-grid-stats">
         <div class="war-card-custom" id="cardDeaths">
             <small>MORTES (FRIEND)</small>
@@ -48,8 +54,33 @@
 
 <script src="/assets/navbar.js"></script>
 <script>
+let threatInterval = null;
+let currentThreatName = null;
+
 function tibiaLink(name, color) {
     return `<a href="https://www.tibia.com/community/?name=${encodeURIComponent(name)}" target="_blank" style="color: ${color || 'inherit'}; text-decoration: none; font-weight:bold;">${name}</a>`;
+}
+
+function startThreatCountdown(name, remainingMinutes) {
+    if (currentThreatName === name && threatInterval) return;
+    currentThreatName = name;
+    const container = document.getElementById('threatContainer');
+    let remainingSeconds = Math.floor(remainingMinutes * 60);
+
+    if (threatInterval) clearInterval(threatInterval);
+
+    threatInterval = setInterval(() => {
+        if (remainingSeconds <= 0) {
+            clearInterval(threatInterval);
+            currentThreatName = null;
+            container.innerHTML = "Nenhuma PZ ativa no momento.";
+            return;
+        }
+        const m = Math.floor(remainingSeconds / 60);
+        const s = remainingSeconds % 60;
+        container.innerHTML = `<div class="threat-active">⚠️ <b>${tibiaLink(name, '#f44')}</b> está PK! Termina em: <span class="threat-timer">${m}m ${s}s</span></div>`;
+        remainingSeconds--;
+    }, 1000);
 }
 
 async function loadWar() {
@@ -58,27 +89,33 @@ async function loadWar() {
         const res = await fetch('/api/public/war');
         const data = await res.json();
 
-        // Efeito de Glow na atualização
         cards.forEach(c => c.classList.add('update-glow'));
         setTimeout(() => cards.forEach(c => c.classList.remove('update-glow')), 400);
+
+        if (data.threat) {
+            startThreatCountdown(data.threat.name, data.threat.remaining);
+        } else if (!currentThreatName) {
+            document.getElementById('threatContainer').innerText = "Nenhuma PZ ativa no momento.";
+        }
 
         document.getElementById('totalDeaths').innerText = data.totalDeaths || 0;
         document.getElementById('totalKills').innerText = data.totalKills || 0;
 
         const kd = data.totalDeaths > 0 ? (data.totalKills / data.totalDeaths).toFixed(2) : (data.totalKills || 0).toFixed(2);
-        document.getElementById('kdRatio').innerText = kd;
-        document.getElementById('kdRatio').style.color = kd >= 1 ? '#0f0' : '#f00';
+        const kdEl = document.getElementById('kdRatio');
+        kdEl.innerText = kd;
+        kdEl.style.color = kd >= 1 ? '#0f0' : '#f00';
 
         document.getElementById('topEnemy').innerHTML = data.topEnemy ? `${tibiaLink(data.topEnemy[0], '#f44')} <br> <small>${data.topEnemy[1]} Frags</small>` : '—';
         document.getElementById('topFriend').innerHTML = data.topFriend ? `${tibiaLink(data.topFriend[0], '#0f0')} <br> <small>${data.topFriend[1]} Frags</small>` : '—';
 
         const feed = document.getElementById('lastEnemys');
-        feed.innerHTML = data.lastEnemys.length ? data.lastEnemys.map(e => `
+        feed.innerHTML = data.lastEnemys.map(e => `
             <div class="feed-row-war">
                 <span>${new Date(e.time).toLocaleTimeString()} - ${tibiaLink(e.name, '#ff4444')} (Lv ${e.level})</span>
-                <span style="color: #666; font-style: italic; font-size: 0.8rem;">por: ${e.killers}</span>
+                <span style="color: #666; font-size: 0.8rem;">por: ${e.killers}</span>
             </div>
-        `).join('') : '<div style="text-align:center; color:#333;">Nenhuma queda registrada.</div>';
+        `).join('');
 
     } catch (e) { console.error(e); }
 }
