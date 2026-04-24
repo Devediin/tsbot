@@ -632,3 +632,58 @@ button {
     background: linear-gradient(90deg, rgba(0, 255, 0, 0.1) 0%, rgba(20, 20, 20, 0.8) 100%);
 }
 .death-friend .death-name { color: #00ff00; text-shadow: 0 0 8px rgba(0, 255, 0, 0.3); }
+.death-row {
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    background: rgba(20, 20, 20, 0.9);
+    border-left: 4px solid #444;
+    display: flex;
+    flex-direction: column;
+}
+
+.death-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.death-name {
+    font-size: 1rem;
+    font-weight: bold;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+.death-name:hover { text-decoration: underline; opacity: 0.8; }
+
+.death-level {
+    font-size: 0.75rem;
+    color: #888;
+    background: #000;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+/* Matadores em uma única linha com reticências se for muito longa */
+.death-killers-line {
+    font-size: 0.8rem;
+    color: #bbb;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; 
+}
+
+.killer-tag {
+    font-size: 0.7rem;
+    color: #555;
+    text-transform: uppercase;
+    margin-right: 4px;
+}
+
+.death-enemy { border-left-color: #ff4444; background: linear-gradient(90deg, rgba(255, 68, 68, 0.05) 0%, transparent 100%); }
+.death-enemy .death-name { color: #ff4444; }
+
+.death-friend { border-left-color: #00ff00; background: linear-gradient(90deg, rgba(0, 255, 0, 0.05) 0%, transparent 100%); }
+.death-friend .death-name { color: #00ff00; }
