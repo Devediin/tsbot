@@ -131,83 +131,71 @@ router.post('/loot', (req, res) => {
   }
 });
 
-/* RANKING MENSAL (Completo e Sincronizado) */
 router.get('/ranking-monthly', async (req, res) => {
   try {
     const monthKey = moment().format('YYYY-MM');
 
-    // 1. LEVEL RANKING (Quem mais upou no mês)
-    const monthlyData = await mongoose.connection
-      .collection('monthlyLevelTrackers')
-      .find({ monthKey })
-      .toArray();
+    // Função auxiliar para pegar o tipo do personagem
+    const getCharType = async (name) => {
+      const char = await Characters.findOne({ characterName: name });
+      return char ? char.type : 'neutral';
+    };
 
+    // 1. LEVEL RANKING (Mensal)
+    const monthlyData = await mongoose.connection.collection('monthlyLevelTrackers').find({ monthKey }).toArray();
     const levelRanking = [];
     for (const entry of monthlyData) {
-      const tracker = await mongoose.connection
-        .collection('levelTrackers')
-        .findOne({ name: entry.name });
-
+      const tracker = await mongoose.connection.collection('levelTrackers').findOne({ name: entry.name });
       if (tracker) {
         const gain = tracker.lastLevel - entry.startLevel;
         if (gain > 0) {
           levelRanking.push({
             name: entry.name,
-            totalGain: gain
+            totalGain: gain,
+            type: await getCharType(entry.name)
           });
         }
       }
     }
     levelRanking.sort((a, b) => b.totalGain - a.totalGain);
 
-    // 2. DEATH RANKING (Mortes do mês baseadas no Cache)
+    // 2. DEATH RANKING
     const deaths = await getDeathsCache();
     const startOfMonth = moment().startOf('month').toDate();
     const deathMap = {};
-
-    deaths.forEach(d => {
+    for (const d of deaths) {
       if (new Date(d.time) >= startOfMonth) {
         deathMap[d.characterName] = (deathMap[d.characterName] || 0) + 1;
       }
-    });
-
-    const deathRanking = Object.keys(deathMap)
-      .map(name => ({
+    }
+    const deathRanking = [];
+    for (const name of Object.keys(deathMap)) {
+      deathRanking.push({
         name,
-        deaths: deathMap[name]
-      }))
-      .sort((a, b) => b.deaths - a.deaths);
+        deaths: deathMap[name],
+        type: await getCharType(name)
+      });
+    }
+    deathRanking.sort((a, b) => b.deaths - a.deaths);
 
-    // 3. RECENT LEVEL UPS (Busca na collection de históricos)
-    const recentHistory = await mongoose.connection
-      .collection('leveluphistories')
-      .find({})
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .toArray();
+    // 3. RECENT LEVEL UPS (Corrigido campo 'level' e adicionado 'type')
+    const recentHistory = await mongoose.connection.collection('leveluphistories')
+      .find({}).sort({ createdAt: -1 }).limit(10).toArray();
+    
+    const recentLevelUps = [];
+    for (const h of recentHistory) {
+      recentLevelUps.push({
+        name: h.name,
+        level: h.level, // Campo correto do banco
+        type: await getCharType(h.name)
+      });
+    }
 
-    const recentLevelUps = recentHistory.map(h => ({
-      name: h.name,
-      gained: h.level // ou h.gained, dependendo de como o bot salva o level novo
-    }));
-
-    // Retorna os 3 arrays que o HTML precisa
-    res.json({
-      levelRanking,
-      deathRanking,
-      recentLevelUps
-    });
-
+    res.json({ levelRanking, deathRanking, recentLevelUps });
   } catch (e) {
-    console.error('[RANKING ERROR]', e);
-    res.json({
-      levelRanking: [],
-      deathRanking: [],
-      recentLevelUps: []
-    });
+    res.json({ levelRanking: [], deathRanking: [], recentLevelUps: [] });
   }
 });
-
 /* =========================
    WAR (AGORA USANDO MONGO)
 ========================= */
