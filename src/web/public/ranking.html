@@ -60,43 +60,32 @@ async function loadRanking() {
 
     const getColor = (type) => type === 'enemy' ? '#ff4444' : (type === 'friend' ? '#00ff00' : '#fff');
 
-    // ✅ LEVEL RANKING
+    // LISTA 1: QUEM MAIS UPOU
     if (data.levelRanking && data.levelRanking.length > 0) {
-      data.levelRanking.slice(0,10).forEach((p, index) => {
-        const color = getColor(p.type);
-        levelList.innerHTML += `
-          <li style="margin-bottom: 8px;">
-            <span style="color: #555;">#${index+1}</span> 
-            <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank" style="color: ${color}; text-decoration: none; font-weight: bold;">${p.name}</a> 
-            <span style="color: #888;">— +${p.totalGain} levels</span>
-          </li>`;
+      data.levelRanking.slice(0,10).forEach((p, i) => {
+        levelList.innerHTML += `<li><span style="color:#444">#${i+1}</span> <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank" style="color:${getColor(p.type)}; text-decoration:none; font-weight:bold;">${p.name}</a> <small style="color:#666">+${p.totalGain}</small></li>`;
       });
     }
 
-    // ✅ DEATH RANKING
+    // LISTA 2: MAIS MORTES
     if (data.deathRanking && data.deathRanking.length > 0) {
-      data.deathRanking.slice(0,10).forEach((p, index) => {
-        const color = getColor(p.type);
-        deathList.innerHTML += `
-          <li style="margin-bottom: 8px;">
-            <span style="color: #555;">#${index+1}</span> 
-            <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank" style="color: ${color}; text-decoration: none; font-weight: bold;">${p.name}</a> 
-            <span style="color: #888;">— ${p.deaths} mortes</span>
-          </li>`;
+      data.deathRanking.slice(0,10).forEach((p, i) => {
+        deathList.innerHTML += `<li><span style="color:#444">#${i+1}</span> <a href="https://www.tibia.com/community/?name=${encodeURIComponent(p.name)}" target="_blank" style="color:${getColor(p.type)}; text-decoration:none; font-weight:bold;">${p.name}</a> <small style="color:#666">${p.deaths}</small></li>`;
       });
     }
 
-    // ✅ RECENT LEVEL UPS
+    // LISTA 3: ÚLTIMOS LEVEL UPS (COLORIDO)
     if (data.recentLevelUps && data.recentLevelUps.length > 0) {
       data.recentLevelUps.forEach(entry => {
-        const color = getColor(entry.type);
         recentList.innerHTML += `
-          <li style="margin-bottom: 5px; font-size: 0.9rem;">
-            <span style="color: #666;">✨</span> 
-            <a href="https://www.tibia.com/community/?name=${encodeURIComponent(entry.name)}" target="_blank" style="color: ${color}; text-decoration: none;">${entry.name}</a> 
-            <b style="color: #aaa;">Lv ${entry.level}</b>
+          <li style="margin-bottom:5px;">
+            <span style="color:#666">✨</span> 
+            <a href="https://www.tibia.com/community/?name=${encodeURIComponent(entry.name)}" target="_blank" style="color:${getColor(entry.type)}; text-decoration:none; font-weight:bold;">${entry.name}</a> 
+            <span style="color:#fff; font-size:0.85rem;">(Lv ${entry.level})</span>
           </li>`;
       });
+    } else {
+      recentList.innerHTML = '<li>Nenhum registro recente.</li>';
     }
 
   } catch (e) { console.log('Erro ao carregar ranking'); }
