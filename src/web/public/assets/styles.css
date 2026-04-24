@@ -766,3 +766,5 @@ button {
 @media (max-width: 768px) { 
     .war-grid-stats, .tops-grid-war { grid-template-columns: 1fr; } 
 }
+.threat-active { font-size: 1.2rem; color: #fff; }
+.threat-timer { color: #f44; font-family: monospace; font-size: 1.5rem; font-weight: bold; margin-left: 10px; text-shadow: 0 0 10px #f00; }
