@@ -1,127 +1,150 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>⚔️ Painel de Guerra</title>
-    <link rel="stylesheet" href="/assets/styles.css">
+<meta charset="UTF-8">
+<title>⚔️ Painel de Guerra</title>
+<link rel="stylesheet" href="/assets/styles.css">
+<link rel="icon" href="/assets/favicon.png">
 </head>
 <body class="war-page-body">
 
 <div class="overlay-war"></div>
 <div id="navbar"></div>
 
-<div class="war-container">
-    <h1 class="war-title-custom">WAR PANEL</h1>
-    <div class="live-indicator"><span class="live-dot">●</span> LIVE FEED - UPDATING EVERY 3s</div>
+<div class="container">
 
-    <!-- PZ / THREAT CONTAINER -->
-    <div class="war-card-custom" style="margin-bottom: 20px; border-color: #f00;">
-        <h3 style="margin-top:0; color:#f44;">🚨 AMEAÇA ATIVA (PZ)</h3>
-        <div id="threatContainer">Nenhuma PZ ativa no momento.</div>
-    </div>
+<h1 style="color: #f00; text-shadow: 0 0 15px #f00; text-align: center;">⚔️ Painel de Guerra</h1>
+<div class="live-indicator"><span class="live-dot">●</span> Atualizando a cada 3 segundos</div>
 
-    <div class="war-grid-stats">
-        <div class="war-card-custom" id="cardDeaths">
-            <small>MORTES (FRIEND)</small>
-            <span id="totalDeaths" class="stat-val">-</span>
-        </div>
-        <div class="war-card-custom" id="cardKills">
-            <small>KILLS (FRIEND FRAGS)</small>
-            <span id="totalKills" class="stat-val">-</span>
-        </div>
-        <div class="war-card-custom" id="cardKD">
-            <small>K/D RATIO</small>
-            <span id="kdRatio" class="stat-val">-</span>
-        </div>
-    </div>
+<div class="card" id="pzCard">
+  <h3>🚨 Ameaça Ativa</h3>
+  <div id="threatContainer"></div>
+</div>
 
-    <div class="tops-grid-war">
-        <div class="war-card-custom">
-            <h4 style="margin:0; color:#f44;">🔥 ENEMY MAIS PERIGOSO</h4>
-            <div id="topEnemy" style="margin-top:10px;">-</div>
-        </div>
-        <div class="war-card-custom">
-            <h4 style="margin:0; color:#0f0;">🏹 FRIEND MAIS AGRESSIVO</h4>
-            <div id="topFriend" style="margin-top:10px;">-</div>
-        </div>
-    </div>
+<div class="war-grid">
+  <div class="card" id="cardDeaths">
+    <h3>💀 Mortes</h3>
+    <div id="totalDeaths" class="war-stat-number" style="color: #f00;"></div>
+  </div>
 
-    <div class="killfeed-war">
-        <h3 style="margin-top:0; border-bottom: 1px solid #444; padding-bottom: 10px; color: #888;">🩸 ÚLTIMAS BAIXAS INIMIGAS (GERAL)</h3>
-        <div id="lastEnemys"></div>
-    </div>
+  <div class="card" id="cardKills">
+    <h3>🔥 Kills</h3>
+    <div id="totalKills" class="war-stat-number" style="color: #0f0;"></div>
+  </div>
+
+  <div class="card" id="cardKD">
+    <h3>⚖️ K/D</h3>
+    <div id="kdRatio" class="war-stat-number"></div>
+  </div>
+</div>
+
+<div class="war-grid">
+  <div class="card war-link" id="cardTopEnemy">
+    <h3>🔥 Enemy Mais Perigoso</h3>
+    <p id="topEnemy"></p>
+  </div>
+
+  <div class="card war-link" id="cardTopFriend">
+    <h3>🏹 Friend Mais Agressivo</h3>
+    <p id="topFriend"></p>
+  </div>
+</div>
+
+<!-- Killfeed de baixas inimigas -->
+<div class="card" style="background: rgba(0,0,0,0.6);">
+    <h3 style="color: #888;">🩸 Últimas Baixas Inimigas (Geral)</h3>
+    <div id="lastEnemys"></div>
+</div>
+
 </div>
 
 <script src="/assets/navbar.js"></script>
+
 <script>
 let threatInterval = null;
-let currentThreatName = null;
 
-function tibiaLink(name, color) {
-    return `<a href="https://www.tibia.com/community/?name=${encodeURIComponent(name)}" target="_blank" style="color: ${color || 'inherit'}; text-decoration: none; font-weight:bold;">${name}</a>`;
+function tibiaLink(name) {
+  return `<a href="https://www.tibia.com/community/?subtopic=characters&name=${encodeURIComponent(name)}" target="_blank">${name}</a>`;
 }
 
+// SUA FUNÇÃO ORIGINAL (Mantida intacta)
 function startThreatCountdown(name, remainingMinutes) {
-    if (currentThreatName === name && threatInterval) return;
-    currentThreatName = name;
-    const container = document.getElementById('threatContainer');
-    let remainingSeconds = Math.floor(remainingMinutes * 60);
+  const container = document.getElementById('threatContainer');
+  const totalSeconds = 15 * 60;
+  let remainingSeconds = Math.floor(remainingMinutes * 60);
 
-    if (threatInterval) clearInterval(threatInterval);
+  container.innerHTML = `
+    <div class="threat-wrapper">
+      <div class="threat-header">
+        <span class="skull">☠️</span>
+        <span class="threat-badge">PZ ATIVA</span>
+        <span id="threatText"></span>
+      </div>
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+    </div>
+  `;
 
-    threatInterval = setInterval(() => {
-        if (remainingSeconds <= 0) {
-            clearInterval(threatInterval);
-            currentThreatName = null;
-            container.innerHTML = "Nenhuma PZ ativa no momento.";
-            return;
-        }
-        const m = Math.floor(remainingSeconds / 60);
-        const s = remainingSeconds % 60;
-        container.innerHTML = `<div class="threat-active">⚠️ <b>${tibiaLink(name, '#f44')}</b> está PK! Termina em: <span class="threat-timer">${m}m ${s}s</span></div>`;
-        remainingSeconds--;
-    }, 1000);
+  const threatText = document.getElementById('threatText');
+  const progressFill = document.getElementById('progressFill');
+  if (threatInterval) clearInterval(threatInterval);
+
+  threatInterval = setInterval(() => {
+    if (remainingSeconds <= 0) {
+      clearInterval(threatInterval);
+      container.innerHTML = 'Nenhuma ameaça ativa.';
+      return;
+    }
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    threatText.innerHTML = `${tibiaLink(name)} — ${minutes}m ${seconds}s restantes`;
+    const percent = (remainingSeconds / totalSeconds) * 100;
+    progressFill.style.width = percent + '%';
+    remainingSeconds--;
+  }, 1000);
 }
 
 async function loadWar() {
-    const cards = document.querySelectorAll('.war-card-custom');
-    try {
-        const res = await fetch('/api/public/war');
-        const data = await res.json();
+  const res = await fetch('/api/public/war');
+  const data = await res.json();
 
-        cards.forEach(c => c.classList.add('update-glow'));
-        setTimeout(() => cards.forEach(c => c.classList.remove('update-glow')), 400);
+  // Efeito Glow nos cards
+  const cards = document.querySelectorAll('.card');
+  cards.forEach(c => c.classList.add('update-glow'));
+  setTimeout(() => cards.forEach(c => c.classList.remove('update-glow')), 400);
 
-        if (data.threat) {
-            startThreatCountdown(data.threat.name, data.threat.remaining);
-        } else if (!currentThreatName) {
-            document.getElementById('threatContainer').innerText = "Nenhuma PZ ativa no momento.";
-        }
+  if (data.threat) {
+    startThreatCountdown(data.threat.name, data.threat.remaining);
+  } else {
+    if (!threatInterval) document.getElementById('threatContainer').innerText = 'Nenhuma PZ ativa.';
+  }
 
-        document.getElementById('totalDeaths').innerText = data.totalDeaths || 0;
-        document.getElementById('totalKills').innerText = data.totalKills || 0;
+  document.getElementById('totalDeaths').innerText = data.totalDeaths;
+  document.getElementById('totalKills').innerText = data.totalKills;
 
-        const kd = data.totalDeaths > 0 ? (data.totalKills / data.totalDeaths).toFixed(2) : (data.totalKills || 0).toFixed(2);
-        const kdEl = document.getElementById('kdRatio');
-        kdEl.innerText = kd;
-        kdEl.style.color = kd >= 1 ? '#0f0' : '#f00';
+  const kd = data.totalDeaths > 0 ? (data.totalKills / data.totalDeaths).toFixed(2) : data.totalKills.toFixed(2);
+  const kdElement = document.getElementById('kdRatio');
+  kdElement.innerText = kd;
+  kdElement.style.color = kd >= 1 ? '#0f0' : '#f00';
 
-        document.getElementById('topEnemy').innerHTML = data.topEnemy ? `${tibiaLink(data.topEnemy[0], '#f44')} <br> <small>${data.topEnemy[1]} Frags</small>` : '—';
-        document.getElementById('topFriend').innerHTML = data.topFriend ? `${tibiaLink(data.topFriend[0], '#0f0')} <br> <small>${data.topFriend[1]} Frags</small>` : '—';
+  document.getElementById('topEnemy').innerHTML = data.topEnemy ? `${tibiaLink(data.topEnemy[0])} — ${data.topEnemy[1]} frags` : '—';
+  document.getElementById('topFriend').innerHTML = data.topFriend ? `${tibiaLink(data.topFriend[0])} — ${data.topFriend[1]} frags` : '—';
 
-        const feed = document.getElementById('lastEnemys');
-        feed.innerHTML = data.lastEnemys.map(e => `
-            <div class="feed-row-war">
-                <span>${new Date(e.time).toLocaleTimeString()} - ${tibiaLink(e.name, '#ff4444')} (Lv ${e.level})</span>
-                <span style="color: #666; font-size: 0.8rem;">por: ${e.killers}</span>
-            </div>
-        `).join('');
-
-    } catch (e) { console.error(e); }
+  // Renderiza Killfeed de Inimigos
+  const feed = document.getElementById('lastEnemys');
+  feed.innerHTML = data.lastEnemys.map(e => `
+    <div style="display:flex; justify-content:space-between; padding: 5px; border-bottom: 1px solid #222; font-size: 0.85rem;">
+        <span>${new Date(e.time).toLocaleTimeString()} - ${tibiaLink(e.name)} (Lv ${e.level})</span>
+        <span style="color: #666; font-style: italic;">por: ${e.killers}</span>
+    </div>
+  `).join('');
 }
 
+// Atualiza a cada 3 segundos
 setInterval(loadWar, 3000);
 loadWar();
+
 </script>
 </body>
 </html>
