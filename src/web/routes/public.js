@@ -200,12 +200,9 @@ router.get('/ranking-monthly', async (req, res) => {
 /* =========================
    WAR (AGORA USANDO MONGO)
 ========================= */
-
 router.get('/war', async (req, res) => {
   try {
-    const fifteenMinutesAgo = moment().subtract(15, 'minutes').toDate();
-
-    // 1. TOTAL KILLS (Inimigo morto por alguém da nossa Friendlist)
+    // 1. TOTAL KILLS (Enemy morto por Friend da nossa lista)
     const totalKillsAgg = await WarEvent.aggregate([
       { $match: { type: 'enemy' } },
       { $unwind: "$killers" },
@@ -216,7 +213,7 @@ router.get('/war', async (req, res) => {
     ]);
     const totalKills = totalKillsAgg[0]?.total || 0;
 
-    // 2. TOTAL DEATHS (Amigo morto por alguém da EnemyList)
+    // 2. TOTAL DEATHS (Friend morto por Enemy da lista)
     const totalDeathsAgg = await WarEvent.aggregate([
       { $match: { type: 'friend' } },
       { $unwind: "$killers" },
@@ -227,7 +224,7 @@ router.get('/war', async (req, res) => {
     ]);
     const totalDeaths = totalDeathsAgg[0]?.total || 0;
 
-    // 3. TOP FRIEND (Matador da nossa guild que mais limpou inimigos)
+    // 3. TOP FRIEND (Quem da nossa guild mais matou inimigos)
     const friendAgg = await WarEvent.aggregate([
       { $match: { type: 'enemy' } },
       { $unwind: "$killers" },
@@ -237,7 +234,7 @@ router.get('/war', async (req, res) => {
       { $sort: { count: -1 } }, { $limit: 1 }
     ]);
 
-    // 4. TOP ENEMY (Inimigo que mais matou nossos amigos)
+    // 4. TOP ENEMY (Quem da guild deles mais matou nossos amigos)
     const enemyAgg = await WarEvent.aggregate([
       { $match: { type: 'friend' } },
       { $unwind: "$killers" },
@@ -247,7 +244,7 @@ router.get('/war', async (req, res) => {
       { $sort: { count: -1 } }, { $limit: 1 }
     ]);
 
-    // 5. ÚLTIMAS BAIXAS (Completo: mostra qualquer morte de enemy, mesmo pra bicho)
+    // 5. ÚLTIMAS BAIXAS (Feed geral de inimigos, incluindo mortes avulsas)
     const lastEnemys = await WarEvent.find({ type: 'enemy' }).sort({ time: -1 }).limit(10);
 
     res.json({
@@ -264,4 +261,5 @@ router.get('/war', async (req, res) => {
     });
   } catch (e) { res.json({}); }
 });
+
 export default router;
