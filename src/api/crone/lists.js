@@ -98,39 +98,41 @@ const MAX_POKE_LENGTH = 95;
 
 const formatDeathMessage = ({ type, characterName, level, killers = [], time }) => {
   const deathAge = formatDeathAgeShort(time);
-
   const safeName = characterName || 'Unknown';
-  const firstKiller = killers[0]?.name || 'unknown';
 
-  let extra = '';
-  if (killers.length > 1) {
-    extra = ` (+${killers.length - 1})`;
-  }
+  // Filtra killers (remove o próprio char se ele se matou)
+  const filteredKillers = killers.filter(k => k && k.name && k.name.toLowerCase() !== safeName.toLowerCase());
 
-  const coloredTag =
-    type === 'enemy'
-      ? '[color=red][ENEMY][/color]'
-      : '[color=green][FRIEND][/color]';
+  // --- Lógica para Killers (POKE: Máximo 2 | PRIVADA: Todos) ---
+  const pokeKillersBase = filteredKillers.slice(0, 2).map(k => k.name).join(', ');
+  const extraCount = filteredKillers.length - 2;
+  const pokeKillersText = extraCount > 0 ? `${pokeKillersBase} (+${extraCount})` : (pokeKillersBase || killers[0]?.name || 'unknown');
+  
+  const fullKillersText = filteredKillers.map(k => k.name).join(', ') || killers[0]?.name || 'unknown';
 
+  const coloredTag = type === 'enemy' ? '[color=red][ENEMY][/color]' : '[color=green][FRIEND][/color]';
+
+  // Seus templates originais
   const templates = [
-    `${coloredTag} ${safeName} ${level} caiu pra ${firstKiller}${extra}`,
-    `${coloredTag} ${safeName} ${level} foi de base pra ${firstKiller}${extra}`,
-    `${coloredTag} ${safeName} ${level} tomou bala de ${firstKiller}${extra}`,
-    `${coloredTag} ${safeName} ${level} virou tapete do ${firstKiller}${extra}`
+    `${coloredTag} ${safeName} ${level} caiu pra`,
+    `${coloredTag} ${safeName} ${level} foi de base pra`,
+    `${coloredTag} ${safeName} ${level} tomou bala de`,
+    `${coloredTag} ${safeName} ${level} virou tapete do`
   ];
+  const selectedTemplate = templates[Math.floor(Math.random() * templates.length)];
 
-  let finalMessage = `[${deathAge}] ${templates[Math.floor(Math.random() * templates.length)]}`;
-
-  if (finalMessage.length > MAX_POKE_LENGTH) {
-    finalMessage = finalMessage.substring(0, MAX_POKE_LENGTH - 3) + '...';
+  // --- Mensagem Curta (Poke) ---
+  let shortMessage = `[${deathAge}] ${selectedTemplate} ${pokeKillersText}`;
+  if (shortMessage.length > MAX_POKE_LENGTH) {
+    shortMessage = shortMessage.substring(0, MAX_POKE_LENGTH - 3) + '...';
   }
 
-  lastDeathKillers.set(
-    safeName.toLowerCase(),
-    killers.map(k => k.name)
-  );
+  // --- Mensagem Longa (Privada) ---
+  const fullMessage = `[${deathAge}] ${selectedTemplate} ${fullKillersText}`;
 
-  return finalMessage;
+  lastDeathKillers.set(safeName.toLowerCase(), killers.map(k => k.name));
+
+  return { shortMessage, fullMessage };
 };
 
 const formatLevelMessage = ({ name, previousLevel, currentLevel, vocation, monitoredType }) => {
