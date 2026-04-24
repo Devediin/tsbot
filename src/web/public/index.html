@@ -19,15 +19,9 @@
     <p class="subtitle">Ourobra • Portal Oficial do Time</p>
 
     <div class="hero-buttons">
-      <a href="ts3server://ts-spkteam.duckdns.org?port=9987" class="main-btn">
-        🎧 Entrar no TeamSpeak
-      </a>
-      <a href="/dashboard" class="secondary-btn">
-        📊 Ver Dashboard
-      </a>
-      <a href="/tools" class="secondary-btn">
-        💰 Loot Split
-      </a>
+      <a href="ts3server://ts-spkteam.duckdns.org?port=9987" class="main-btn">🎧 Entrar no TeamSpeak</a>
+      <a href="/dashboard" class="secondary-btn">📊 Ver Dashboard</a>
+      <a href="/tools" class="secondary-btn">💰 Loot Split</a>
     </div>
   </section>
 
@@ -37,63 +31,58 @@
       <h2>🏆 Player do Mês</h2>
       <p id="playerOfMonth">⏳ Carregando...</p>
     </div>
-
     <div class="card highlight-card">
       <h2>💀 Tragédia do Mês</h2>
       <p id="tragedyOfMonth">⏳ Carregando...</p>
     </div>
   </section>
 
-  <!-- STATUS (Adicionado Boosted Creature e Boss) -->
+  <!-- STATUS (Agora com os 6 campos necessários) -->
   <section class="status-grid">
     <div class="status-card">
       <h3>🌍 Servidor</h3>
-      <p id="serverName">Carregando...</p>
+      <p id="serverName">Ourobra</p>
     </div>
 
     <div class="status-card">
       <h3>🐉 Boosted Creature</h3>
-      <p id="boostedCreature" style="color: #0f0; font-weight: bold;">Carregando...</p>
+      <div id="boostedCreature">⏳...</div>
     </div>
 
     <div class="status-card">
       <h3>👹 Boosted Boss</h3>
-      <p id="boostedBoss" style="color: #f44; font-weight: bold;">Carregando...</p>
+      <div id="boostedBoss">⏳...</div>
     </div>
 
     <div class="status-card">
       <h3>👑 Dream Courts</h3>
-      <p id="dreamBoss">Carregando...</p>
+      <div id="dreamBoss">⏳...</div>
     </div>
 
     <div class="status-card">
       <h3>🎭 Tibiadrome</h3>
-      <p id="tibiadromeInfo">Carregando...</p>
+      <p id="tibiadromeInfo">⏳...</p>
     </div>
 
     <div class="status-card">
       <h3>🧞 Yasir</h3>
-      <p id="yasirStatus">Carregando...</p>
+      <p id="yasirStatus">⏳...</p>
     </div>
   </section>
 
   <!-- DAILY + LIVE -->
   <section class="main-grid">
-
     <div class="card daily-card">
       <h2>📅 Daily Info</h2>
-
       <div style="margin-bottom: 15px;">
-        <h3 style="margin-bottom: 5px;">🧳 Rashid</h3>
-        <p id="rashidCity" style="font-weight: bold;"></p>
+        <h3>🧳 Rashid</h3>
+        <p id="rashidCity" style="font-weight: bold; color: #fff;"></p>
       </div>
 
-      <!-- NOVO BLOCO: MINI WORLD CHANGES -->
       <div id="worldChangesContainer" style="display: none; border-top: 1px solid #333; padding-top: 15px;">
         <h3 style="margin-bottom: 10px; color: #888; font-size: 0.9rem; text-transform: uppercase;">🌍 World Changes Ativas</h3>
         <div id="worldChangesList"></div>
       </div>
-
       <small id="updatedAt" style="display: block; margin-top: 20px; color: #444;"></small>
     </div>
 
@@ -101,7 +90,6 @@
       <h2 id="liveTitle">🔴 LIVE OFFLINE</h2>
       <div id="liveContent"></div>
     </div>
-
   </section>
 
 </div>
@@ -114,143 +102,90 @@ async function loadDaily() {
   try {
     const res = await fetch('/api/public/daily');
     const data = await res.json();
-    if (!data.server) return;
+    if (!data || !data.server) return;
 
+    // Preenchimento básico
     document.getElementById('serverName').innerText = data.server.name;
     document.getElementById('rashidCity').innerText = data.rashid.city;
-    document.getElementById('yasirStatus').innerText =
-      data.yasir.active ? '🟢 Disponível hoje' : '🔴 Não ativo hoje';
+    document.getElementById('yasirStatus').innerText = data.yasir.active ? '🟢 Disponível hoje' : '🔴 Não ativo hoje';
     document.getElementById('updatedAt').innerText = `Atualizado em ${data.updatedAt}`;
+    document.getElementById('tibiadromeInfo').innerText = `#${data.tibiadrome.number} (${data.tibiadrome.start} → ${data.tibiadrome.end})`;
 
-    // --- BOOSTED CREATURE ---
-    const creatureEl = document.getElementById('boostedCreature');
-    creatureEl.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-        <img src="${data.boosted.creatureImg}" style="height: 50px; width: auto;" onerror="this.style.display='none'">
-        <span>${data.boosted.creature}</span>
-      </div>
-    `;
+    // Boosted Creature
+    document.getElementById('boostedCreature').innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <img src="${data.boosted.creatureImg}" style="height: 40px; margin-bottom: 5px;" onerror="this.style.display='none'">
+        <span style="color: #0f0; font-weight: bold; font-size: 0.9rem;">${data.boosted.creature}</span>
+      </div>`;
 
-    // --- BOOSTED BOSS ---
-    const bossEl = document.getElementById('boostedBoss');
-    bossEl.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-        <img src="${data.boosted.bossImg}" style="height: 50px; width: auto;" onerror="this.style.display='none'">
-        <span>${data.boosted.boss}</span>
-      </div>
-    `;
+    // Boosted Boss
+    document.getElementById('boostedBoss').innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <img src="${data.boosted.bossImg}" style="height: 40px; margin-bottom: 5px;" onerror="this.style.display='none'">
+        <span style="color: #f44; font-weight: bold; font-size: 0.9rem;">${data.boosted.boss}</span>
+      </div>`;
 
-    // --- DREAM BOSS ---
-    const dreamEl = document.getElementById('dreamBoss');
-    dreamEl.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-        <img src="${data.dreamCourts.image}" style="height: 50px; width: auto;" onerror="this.style.display='none'">
-        <span>${data.dreamCourts.boss}</span>
-      </div>
-    `;
+    // Dream Boss
+    document.getElementById('dreamBoss').innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <img src="${data.dreamCourts.image}" style="height: 40px; margin-bottom: 5px;" onerror="this.style.display='none'">
+        <span style="font-weight: bold; font-size: 0.9rem;">${data.dreamCourts.boss}</span>
+      </div>`;
 
-    document.getElementById('tibiadromeInfo').innerText =
-      `#${data.tibiadrome.rotation} (${data.tibiadrome.start} → ${data.tibiadrome.end})`;
-
-    // World Changes (Mantendo sua lógica anterior)
+    // World Changes
     const wcContainer = document.getElementById('worldChangesContainer');
     const wcList = document.getElementById('worldChangesList');
     if (data.worldChanges && data.worldChanges.length > 0) {
       wcContainer.style.display = 'block';
       wcList.innerHTML = data.worldChanges.map(wc => `
         <div style="margin-bottom: 10px; text-align: left; padding-left: 10px; border-left: 2px solid #f00;">
-          <b style="color: #fff; font-size: 0.9rem;">${wc.name}</b><br>
+          <b style="color: #fff; font-size: 0.85rem;">${wc.name}</b><br>
           <small style="color: #666;">📍 ${wc.loc}</small>
-        </div>
-      `).join('');
+        </div>`).join('');
+    } else {
+      wcContainer.style.display = 'none';
     }
-  } catch (e) { console.log('Erro loadDaily'); }
-}
+  } catch (e) { console.error('Erro loadDaily:', e); }
 }
 
 async function loadLive() {
-  const res = await fetch('/api/public/live');
-  const data = await res.json();
-  const liveTitle = document.getElementById('liveTitle');
-  const liveContent = document.getElementById('liveContent');
-  const channel = data.data?.user || "ediintv";
+  try {
+    const res = await fetch('/api/public/live');
+    const data = await res.json();
+    const liveTitle = document.getElementById('liveTitle');
+    const liveContent = document.getElementById('liveContent');
+    const channel = data.data?.user || "ediintv";
 
-  if (data.live && data.data) {
-    const viewers = data.data.viewer_count || 0;
-    const startedAt = data.data.started_at ? new Date(data.data.started_at) : null;
-    let liveTime = '';
-
-    if (startedAt) {
-      const diffMs = Date.now() - startedAt.getTime();
-      const hours = Math.floor(diffMs / (1000 * 60 * 60));
-      const minutes = Math.floor((diffMs / (1000 * 60)) % 60);
-      liveTime = `${hours}h ${minutes}m`;
+    if (data.live && data.data) {
+      liveTitle.innerHTML = `🟢 AO VIVO`;
+      liveContent.innerHTML = `<iframe src="https://player.twitch.tv/?channel=${channel}&parent=spkteam.duckdns.org&muted=true" height="300" width="100%" allowfullscreen></iframe>`;
+    } else {
+      liveTitle.innerHTML = '🔴 OFFLINE';
+      liveContent.innerHTML = `<img src="https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg" style="width:100%; border-radius:10px;"/>`;
     }
-
-    liveTitle.innerHTML = `🟢 AO VIVO • ${viewers} viewers`;
-    liveContent.innerHTML = `
-      <div class="live-wrapper">
-        <iframe
-          src="https://player.twitch.tv/?channel=${channel}&parent=spkteam.duckdns.org&muted=true"
-          height="360"
-          width="100%"
-          allowfullscreen>
-        </iframe>
-        <div style="margin-top:10px;">
-          ⏱️ Tempo ao vivo: ${liveTime}
-        </div>
-      </div>
-    `;
-  } else {
-    liveTitle.innerHTML = '🔴 OFFLINE';
-    liveContent.innerHTML = `
-      <div class="live-wrapper">
-        <img 
-          src="https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel}-640x360.jpg"
-          style="width:100%; border-radius:10px;"
-        />
-      </div>
-    `;
-  }
+  } catch (e) { console.log('Erro loadLive'); }
 }
 
 async function loadHighlights() {
   try {
     const res = await fetch('/api/public/ranking-monthly');
     const data = await res.json();
-    const playerDiv = document.getElementById('playerOfMonth');
-    const tragedyDiv = document.getElementById('tragedyOfMonth');
-
     if (data.levelRanking && data.levelRanking.length > 0) {
       const top = data.levelRanking[0];
-      playerDiv.innerHTML =
-        `🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(top.name)}" target="_blank">
-          ${top.name}
-        </a> — +${top.totalGain} levels`;
-      playerDiv.parentElement.classList.add('top-highlight');
-    } else {
-      playerDiv.innerText = 'Sem level ups no mês.';
-    }
+      document.getElementById('playerOfMonth').innerHTML = `🏆 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(top.name)}" target="_blank">${top.name}</a> — +${top.totalGain} levels`;
+    } else { document.getElementById('playerOfMonth').innerText = 'Sem level ups.'; }
 
     if (data.deathRanking && data.deathRanking.length > 0) {
       const topDeath = data.deathRanking[0];
-      tragedyDiv.innerHTML =
-        `💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(topDeath.name)}" target="_blank">
-          ${topDeath.name}
-        </a> — ${topDeath.deaths} mortes`;
-    } else {
-      tragedyDiv.innerText = 'Sem mortes no mês.';
-    }
-  } catch (e) {
-    console.log('Erro highlights');
-  }
+      document.getElementById('tragedyOfMonth').innerHTML = `💀 <a href="https://www.tibia.com/community/?name=${encodeURIComponent(topDeath.name)}" target="_blank">${topDeath.name}</a> — ${topDeath.deaths} mortes`;
+    } else { document.getElementById('tragedyOfMonth').innerText = 'Sem mortes.'; }
+  } catch (e) { console.log('Erro highlights'); }
 }
 
+// Execução
 loadDaily();
 loadLive();
 loadHighlights();
-setInterval(loadLive, 60000);
 </script>
-
 </body>
 </html>
