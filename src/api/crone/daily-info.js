@@ -13,6 +13,15 @@ global.dailyInfoCachePortal = {};
 global.isYasirActive = false;
 global.activeWorldChanges = []; // Nova variável global para MWCs
 
+
+const DREAM_COURTS_IMAGES = {
+  'Izcandar': 'https://www.tibiawiki.com.br/images/e/e0/Izcandar_the_Banished.gif',
+  'Plagueroot': 'https://www.tibiawiki.com.br/images/8/85/Plagueroot.gif',
+  'Malofur Mangrinder': 'https://www.tibiawiki.com.br/images/7/77/Malofur_Mangrinder.gif',
+  'Maxxenius': 'https://www.tibiawiki.com.br/images/a/a2/Maxxenius.gif',
+  'Alptramun': 'https://www.tibiawiki.com.br/images/1/14/Alptramun.gif'
+};
+
 /* =========================
    FUNÇÕES BASE (MANTIDAS)
 ========================= */
@@ -159,13 +168,25 @@ Boss Atual: ⭐ [b]${dreamBoss}[/b]
     global.dailyInfoCacheTS = descriptionTS.trim();
 
     // Cache para o Portal
+   const boostedCreatureData = await tibiaAPI.getBoostedCreature();
+    const boostedBossData = await tibiaAPI.getBoostedBoss();
+    const dreamBossName = getDreamCourtsBoss();
+
     global.dailyInfoCachePortal = {
       server: { name: serverName },
-      boosted: { creature: boostedCreature, boss: boostedBoss },
+      boosted: { 
+        creature: boostedCreatureData.name, 
+        creatureImg: boostedCreatureData.image,
+        boss: boostedBossData.name,
+        bossImg: boostedBossData.image
+      },
       rashid: { city: rashid },
       yasir: { active: global.isYasirActive },
       worldChanges: global.activeWorldChanges,
-      dreamCourts: { boss: dreamBoss },
+      dreamCourts: { 
+        boss: dreamBossName,
+        image: DREAM_COURTS_IMAGES[dreamBossName] || '' 
+      },
       tibiadrome: tibiadrome,
       updatedAt: momentTimezone.tz('America/Sao_Paulo').format('DD/MM/YYYY HH:mm'),
     };
