@@ -38,14 +38,39 @@ export default class TibiaAPI {
       characters,
     };
   }
-
+    /* -------------------
+      GUILD INFORMATION
+      ------------------- */
+  
   async getGuildInformation(guildName) {
-    const { data } = await axios.get(
-      `${TIBIA_DATA_API_URL}guild/${encodeURIComponent(guildName)}`
-    );
+    try {
+      const { data } = await axios.get(
+        `${TIBIA_DATA_API_URL}guild/${encodeURIComponent(guildName)}`
+      );
+      
+      const members = data.guild?.members || [];
+      const flatList = [];
+
+      // A API v4 separa por ranks, vamos achatar tudo em uma lista de nomes
+      members.forEach(rank => {
+        if (rank.characters) {
+          rank.characters.forEach(char => flatList.push(char.name));
+        }
+      });
+
+      return flatList;
+    } catch (error) {
+      console.error(`[GUILD API ERROR] ${guildName}:`, error.message);
+      return [];
+    }
+  }
 
     return data.guild?.members || [];
   }
+
+/* ----------------------
+    GET WORLD ONLINE
+  ---------------------- */
 
   async getWorldOnline() {
     const { data } = await axios.get(
