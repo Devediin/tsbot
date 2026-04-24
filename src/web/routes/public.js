@@ -136,12 +136,12 @@ router.get('/ranking-monthly', async (req, res) => {
   try {
     const monthKey = moment().format('YYYY-MM');
 
-    // 1. LEVEL RANKING (Só quem ainda é monitorado)
+    // 1. QUEM MAIS UPOU NO MÊS (Filtrado)
     const monthlyData = await mongoose.connection.collection('monthlyLevelTrackers').find({ monthKey }).toArray();
     const levelRanking = [];
     for (const entry of monthlyData) {
       const char = await Characters.findOne({ characterName: entry.name });
-      if (!char) continue; // SE SAIU DA GUILD, PULA
+      if (!char) continue; // Saiu da guild? Ignora.
 
       const tracker = await mongoose.connection.collection('levelTrackers').findOne({ name: entry.name });
       if (tracker) {
@@ -153,15 +153,18 @@ router.get('/ranking-monthly', async (req, res) => {
     }
     levelRanking.sort((a, b) => b.totalGain - a.totalGain);
 
-    // 2. DEATH RANKING (Só quem ainda é monitorado)
+    // 2. MAIS MORTES NO MÊS (Filtrado)
     const deaths = await getDeathsCache();
     const startOfMonth = moment().startOf('month').toDate();
     const deathMap = {};
     for (const d of deaths) {
       if (new Date(d.time) >= startOfMonth) {
         const char = await Characters.findOne({ characterName: d.characterName });
-        if (char) { // SÓ ADICIONA SE EXISTIR NO BANCO
-          deathMap[d.characterName] = { count: (deathMap[d.characterName]?.count || 0) + 1, type: char.type };
+        if (char) { 
+          deathMap[d.characterName] = { 
+            count: (deathMap[d.characterName]?.count || 0) + 1, 
+            type: char.type 
+          };
         }
       }
     }
@@ -169,21 +172,21 @@ router.get('/ranking-monthly', async (req, res) => {
       name, deaths: deathMap[name].count, type: deathMap[name].type
     })).sort((a, b) => b.deaths - a.deaths);
 
-    // 3. ÚLTIMOS LEVEL UPS (Filtro rigoroso + campo correto)
+    // 3. ÚLTIMOS LEVEL UPS (Filtro por quem está na guild + campo currentLevel)
     const recentHistory = await mongoose.connection.collection('leveluphistories')
       .find({}).sort({ _id: -1 }).limit(50).toArray();
     
     const recentLevelUps = [];
     for (const h of recentHistory) {
       const char = await Characters.findOne({ characterName: h.name });
-      if (!char) continue; // SE SAIU DA GUILD, PULA
+      if (!char) continue; // Saiu da guild? Ignora.
 
       recentLevelUps.push({
         name: h.name,
-        level: h.level || h.newLevel || h.currentLevel || '?', // Tenta vários campos para evitar undefined
+        level: h.currentLevel, // CAMPO CORRIGIDO CONFORME SEU LOG
         type: char.type
       });
-      if (recentLevelUps.length >= 10) break; // Pega os 10 mais recentes que ainda estão na guild
+      if (recentLevelUps.length >= 10) break; 
     }
 
     res.json({ levelRanking, deathRanking, recentLevelUps });
@@ -191,6 +194,7 @@ router.get('/ranking-monthly', async (req, res) => {
     res.json({ levelRanking: [], deathRanking: [], recentLevelUps: [] });
   }
 });
+
 /* =========================
    WAR (AGORA USANDO MONGO)
 ========================= */
