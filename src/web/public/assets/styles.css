@@ -581,3 +581,54 @@ button {
 .war-link a:hover {
   text-decoration: underline;
 }
+/* Container de cada morte */
+.death-row {
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    background: rgba(20, 20, 20, 0.8);
+    border-left: 4px solid #444;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+}
+
+.death-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.death-name {
+    font-size: 1.1rem;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.death-level {
+    font-size: 0.8rem;
+    background: #000;
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: #aaa;
+}
+
+.death-killers {
+    font-size: 0.85rem;
+    color: #eee;
+    font-style: italic;
+    opacity: 0.8;
+}
+
+/* Cores Inimigo */
+.death-enemy {
+    border-left-color: #ff4444;
+    background: linear-gradient(90deg, rgba(255, 68, 68, 0.1) 0%, rgba(20, 20, 20, 0.8) 100%);
+}
+.death-enemy .death-name { color: #ff4444; text-shadow: 0 0 8px rgba(255, 68, 68, 0.3); }
+
+/* Cores Amigo */
+.death-friend {
+    border-left-color: #00ff00;
+    background: linear-gradient(90deg, rgba(0, 255, 0, 0.1) 0%, rgba(20, 20, 20, 0.8) 100%);
+}
+.death-friend .death-name { color: #00ff00; text-shadow: 0 0 8px rgba(0, 255, 0, 0.3); }
