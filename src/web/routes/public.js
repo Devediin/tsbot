@@ -81,13 +81,16 @@ router.get('/online', async (req, res) => {
   }
 });
 
+ /* ------------------------
+   DEATH ROUTE
+   ---------------------- */
+
 router.get('/deaths', async (req, res) => {
   try {
     const deaths = await getDeathsCache();
     const detailed = [];
 
     for (const d of deaths.slice(-10).reverse()) {
-      // BUSCA O TIPO NO BANCO (importante para a cor)
       const charData = await Characters.findOne({ characterName: d.characterName });
       const type = charData ? charData.type : 'neutral';
 
@@ -101,14 +104,13 @@ router.get('/deaths', async (req, res) => {
 
       detailed.push({
         characterName: d.characterName,
-        type: type, // NOVO: envia friend/enemy
+        type: type,
         level: lastKill?.level || '???',
         killers: lastKill?.killers
-          ? lastKill.killers.map(k => k.name).join(' e ')
+          ? lastKill.killers.map(k => k.name).join(', ')
           : 'Unknown'
       });
     }
-
     res.json({ deaths: detailed });
   } catch (e) {
     res.json({ deaths: [] });
