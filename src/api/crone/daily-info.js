@@ -13,11 +13,11 @@ global.isYasirActive = false;
 global.activeWorldChanges = [];
 
 const DREAM_COURTS_IMAGES = {
-  'Izcandar': 'https://www.tibiawiki.com.br/images/e/e0/Izcandar_the_Banished.gif',
-  'Plagueroot': 'https://www.tibiawiki.com.br/images/8/85/Plagueroot.gif',
-  'Malofur Mangrinder': 'https://www.tibiawiki.com.br/images/7/77/Malofur_Mangrinder.gif',
+  'Izcandar': 'https://www.tibiawiki.com.br/images/0/0f/Izcandar_the_Banished.gif',
+  'Plagueroot': 'https://www.tibiawiki.com.br/images/2/24/Plagueroot.gif',
+  'Malofur Mangrinder': 'https://www.tibiawiki.com.br/images/3/3b/Malofur_Mangrinder.gif',
   'Maxxenius': 'https://www.tibiawiki.com.br/images/a/a2/Maxxenius.gif',
-  'Alptramun': 'https://www.tibiawiki.com.br/images/1/14/Alptramun.gif'
+  'Alptramun': 'https://www.tibiawiki.com.br/images/c/c9/Alptramun.gif'
 };
 
 /* =========================
