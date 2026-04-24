@@ -205,44 +205,39 @@ router.get('/war', async (req, res) => {
   try {
     const fifteenMinutesAgo = moment().subtract(15, 'minutes').toDate();
 
-    // THREAT (Se um Friend morreu nos últimos 15 min)
+    // TOTALS
+    const totalDeaths = await WarEvent.countDocuments({ type: 'friend' });
+    const totalKills = await WarEvent.countDocuments({ type: 'enemy' });
+
+    // THREAT
     const recentFriendDeath = await WarEvent.findOne({ type: 'friend' }).sort({ time: -1 });
     let threat = null;
     if (recentFriendDeath && recentFriendDeath.time >= fifteenMinutesAgo) {
       const killer = recentFriendDeath.killers?.find(k => k.isPlayer)?.name || 'Unknown';
-      const minutesPassed = moment().diff(moment(recentFriendDeath.time), 'minutes');
-      const remaining = 15 - minutesPassed;
+      const remaining = 15 - moment().diff(moment(recentFriendDeath.time), 'minutes');
       if (remaining > 0) threat = { name: killer, remaining };
     }
 
-    // TOTALS
-    const totalDeaths = await WarEvent.countDocuments({ type: 'friend' }); // Amigo morto
-    const totalKills = await WarEvent.countDocuments({ type: 'enemy' });  // Inimigo morto
-
-    // ENEMY MAIS PERIGOSO (Quem mais matou Friends - PvP)
+    // TOP ENEMY (Quem mais matou Friends - PvP)
     const enemyAgg = await WarEvent.aggregate([
       { $match: { type: 'friend' } },
       { $unwind: "$killers" },
-      { $match: { "killers.isPlayer": true } }, // Somente PvP
+      { $match: { "killers.isPlayer": true } },
       { $group: { _id: "$killers.name", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 1 }
+      { $sort: { count: -1 } }, { $limit: 1 }
     ]);
 
-    // FRIEND MAIS AGRESSIVO (Quem mais matou Inimigos - PvP)
+    // TOP FRIEND (Quem mais matou Inimigos - PvP)
     const friendAgg = await WarEvent.aggregate([
       { $match: { type: 'enemy' } },
       { $unwind: "$killers" },
-      { $match: { "killers.isPlayer": true } }, // Somente PvP
+      { $match: { "killers.isPlayer": true } },
       { $group: { _id: "$killers.name", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 1 }
+      { $sort: { count: -1 } }, { $limit: 1 }
     ]);
 
-    // ÚLTIMOS 10 ENEMYS MORTOS (Histórico completo)
-    const lastEnemys = await WarEvent.find({ type: 'enemy' })
-      .sort({ time: -1 })
-      .limit(10);
+    // ÚLTIMOS 10 ENEMYS MORTOS
+    const lastEnemys = await WarEvent.find({ type: 'enemy' }).sort({ time: -1 }).limit(10);
 
     res.json({
       threat,
@@ -257,9 +252,7 @@ router.get('/war', async (req, res) => {
         time: e.time
       }))
     });
-  } catch (e) {
-    res.json({});
-  }
+  } catch (e) { res.json({}); }
 });
 
 export default router;
