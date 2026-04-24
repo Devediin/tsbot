@@ -205,42 +205,52 @@ router.get('/war', async (req, res) => {
   try {
     const fifteenMinutesAgo = moment().subtract(15, 'minutes').toDate();
 
-    // TOTALS
-    const totalDeaths = await WarEvent.countDocuments({ type: 'friend' });
-    const totalKills = await WarEvent.countDocuments({ type: 'enemy' });
+    // 1. TOTAL KILLS (Inimigo morto por alguém da nossa Friendlist)
+    const totalKillsAgg = await WarEvent.aggregate([
+      { $match: { type: 'enemy' } },
+      { $unwind: "$killers" },
+      { $lookup: { from: "characters", localField: "killers.name", foreignField: "characterName", as: "kData" }},
+      { $match: { "kData.type": "friend" } },
+      { $group: { _id: "$_id" } },
+      { $count: "total" }
+    ]);
+    const totalKills = totalKillsAgg[0]?.total || 0;
 
-    // THREAT
-    const recentFriendDeath = await WarEvent.findOne({ type: 'friend' }).sort({ time: -1 });
-    let threat = null;
-    if (recentFriendDeath && recentFriendDeath.time >= fifteenMinutesAgo) {
-      const killer = recentFriendDeath.killers?.find(k => k.isPlayer)?.name || 'Unknown';
-      const remaining = 15 - moment().diff(moment(recentFriendDeath.time), 'minutes');
-      if (remaining > 0) threat = { name: killer, remaining };
-    }
-
-    // TOP ENEMY (Quem mais matou Friends - PvP)
-    const enemyAgg = await WarEvent.aggregate([
+    // 2. TOTAL DEATHS (Amigo morto por alguém da EnemyList)
+    const totalDeathsAgg = await WarEvent.aggregate([
       { $match: { type: 'friend' } },
       { $unwind: "$killers" },
-      { $match: { "killers.isPlayer": true } },
-      { $group: { _id: "$killers.name", count: { $sum: 1 } } },
-      { $sort: { count: -1 } }, { $limit: 1 }
+      { $lookup: { from: "characters", localField: "killers.name", foreignField: "characterName", as: "kData" }},
+      { $match: { "kData.type": "enemy" } },
+      { $group: { _id: "$_id" } },
+      { $count: "total" }
     ]);
+    const totalDeaths = totalDeathsAgg[0]?.total || 0;
 
-    // TOP FRIEND (Quem mais matou Inimigos - PvP)
+    // 3. TOP FRIEND (Matador da nossa guild que mais limpou inimigos)
     const friendAgg = await WarEvent.aggregate([
       { $match: { type: 'enemy' } },
       { $unwind: "$killers" },
-      { $match: { "killers.isPlayer": true } },
+      { $lookup: { from: "characters", localField: "killers.name", foreignField: "characterName", as: "kData" }},
+      { $match: { "kData.type": "friend" } },
       { $group: { _id: "$killers.name", count: { $sum: 1 } } },
       { $sort: { count: -1 } }, { $limit: 1 }
     ]);
 
-    // ÚLTIMOS 10 ENEMYS MORTOS
+    // 4. TOP ENEMY (Inimigo que mais matou nossos amigos)
+    const enemyAgg = await WarEvent.aggregate([
+      { $match: { type: 'friend' } },
+      { $unwind: "$killers" },
+      { $lookup: { from: "characters", localField: "killers.name", foreignField: "characterName", as: "kData" }},
+      { $match: { "kData.type": "enemy" } },
+      { $group: { _id: "$killers.name", count: { $sum: 1 } } },
+      { $sort: { count: -1 } }, { $limit: 1 }
+    ]);
+
+    // 5. ÚLTIMAS BAIXAS (Completo: mostra qualquer morte de enemy, mesmo pra bicho)
     const lastEnemys = await WarEvent.find({ type: 'enemy' }).sort({ time: -1 }).limit(10);
 
     res.json({
-      threat,
       topEnemy: enemyAgg.length > 0 ? [enemyAgg[0]._id, enemyAgg[0].count] : null,
       topFriend: friendAgg.length > 0 ? [friendAgg[0]._id, friendAgg[0].count] : null,
       totalDeaths,
@@ -254,5 +264,4 @@ router.get('/war', async (req, res) => {
     });
   } catch (e) { res.json({}); }
 });
-
 export default router;
