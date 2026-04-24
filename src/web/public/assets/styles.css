@@ -725,3 +725,44 @@ button {
 /* Destaque para números de morte */
 #totalKills { color: #00ff00; font-size: 2.5rem; text-shadow: 0 0 10px rgba(0,255,0,0.4); }
 #totalDeaths { color: #ff0000; font-size: 2.5rem; text-shadow: 0 0 10px rgba(255,0,0,0.4); }
+
+/* --- WAR PANEL THEME --- */
+.war-page-body {
+    margin: 0; padding: 0;
+    background: url('https://www.tibiabr.com/wp-content/uploads/2017/07/bk_1280.960.jpg') no-repeat center center fixed;
+    background-size: cover;
+}
+
+.overlay-war {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(10, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: -1;
+}
+
+.war-container { max-width: 1000px; margin: 0 auto; padding: 20px; color: white; }
+.war-title-custom { color: #ff0000; text-align: center; text-transform: uppercase; font-size: 2.5rem; text-shadow: 0 0 20px #f00; margin-bottom: 5px; }
+
+.live-indicator { text-align: center; font-size: 0.8rem; color: #666; margin-bottom: 20px; }
+.live-dot { color: #f00; animation: war-blink 1s infinite; }
+@keyframes war-blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+.war-grid-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+.war-card-custom { 
+    background: rgba(30, 0, 0, 0.6); border: 1px solid #500; border-radius: 8px; padding: 20px; text-align: center;
+    transition: box-shadow 0.3s ease-in-out;
+}
+
+.update-glow { box-shadow: 0 0 30px rgba(255, 0, 0, 0.6) !important; }
+.stat-val { font-size: 3.5rem; font-weight: 900; display: block; }
+
+#totalKills { color: #0f0; text-shadow: 0 0 15px #0f0; }
+#totalDeaths { color: #f00; text-shadow: 0 0 15px #f00; }
+
+.tops-grid-war { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.killfeed-war { background: rgba(0,0,0,0.5); border: 1px solid #333; border-radius: 8px; padding: 15px; margin-top: 20px; }
+.feed-row-war { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #222; font-size: 0.9rem; }
+
+@media (max-width: 768px) { 
+    .war-grid-stats, .tops-grid-war { grid-template-columns: 1fr; } 
+}
