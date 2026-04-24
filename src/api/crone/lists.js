@@ -520,9 +520,17 @@ export const startTasks = (teamspeak) => {
       const killsToPoke = await getNotPokedKills(deathListByCharacters);
 
       if (killsToPoke.length > 0) {
-        for (const killMessage of killsToPoke) {
-          console.log(`[DEATH] Enviando poke: ${killMessage}`);
-          await sendMassPoke(teamspeak, killMessage);
+        for (const deathObj of killsToPoke) {
+          // deathObj agora contém { shortMessage, fullMessage }
+          console.log(`[DEATH] Enviando poke: ${deathObj.shortMessage}`);
+          
+          // Envia o Poke Curto (Limite 95 chars)
+          await sendMassPoke(teamspeak, deathObj.shortMessage);
+          
+          // Envia a Mensagem Privada (Sem limite agressivo)
+          await sendMassPrivateMessage(teamspeak, deathObj.fullMessage);
+        }
+      }
 
           /* =========================
              FOCO - MATOU FRIEND
