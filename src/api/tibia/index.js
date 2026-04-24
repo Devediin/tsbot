@@ -82,23 +82,27 @@ export default class TibiaAPI {
     };
   }
 
-  // NOVO: Busca Criatura Boostada (Endpoint específico v4)
+    // Busca Criatura Boostada + Imagem
   async getBoostedCreature() {
     try {
       const { data } = await axios.get(`${TIBIA_DATA_API_URL}creatures`);
-      return data.creatures?.boosted?.name || 'Desconhecido';
-    } catch (e) {
-      return 'Desconhecido';
-    }
+      const boosted = data.creatures?.boosted;
+      return {
+        name: boosted?.name || 'Desconhecido',
+        image: boosted?.image_url || ''
+      };
+    } catch (e) { return { name: 'Desconhecido', image: '' }; }
   }
 
-  // NOVO: Busca Boss Boostado (Endpoint específico v4)
+  // Busca Boss Boostado + Imagem
   async getBoostedBoss() {
     try {
       const { data } = await axios.get(`${TIBIA_DATA_API_URL}boostablebosses`);
-      return data.boostable_bosses?.boosted?.name || 'Desconhecido';
-    } catch (e) {
-      return 'Desconhecido';
-    }
+      const boosted = data.boostable_bosses?.boosted;
+      return {
+        name: boosted?.name || 'Desconhecido',
+        image: boosted?.image_url || ''
+      };
+    } catch (e) { return { name: 'Desconhecido', image: '' }; }
   }
 }
