@@ -98,8 +98,10 @@ export const updateDailyInfoChannel = async (teamspeak) => {
   try {
     const worldOverview = await tibiaAPI.getWorldOverview();
     const serverName = worldOverview?.name || WORLD_NAME;
-    const boostedCreature = worldOverview?.boostedCreature || 'Desconhecido';
-    const boostedBoss = worldOverview?.boostedBoss || 'Desconhecido';
+
+    // Busca os nomes reais das criaturas boostadas
+    const boostedCreature = await tibiaAPI.getBoostedCreature();
+    const boostedBoss = await tibiaAPI.getBoostedBoss();
 
     const rashid = getRashidLocation();
     const dreamBoss = getDreamCourtsBoss();
