@@ -8,9 +8,16 @@ const tibiaAPI = new TibiaAPI({ worldName: WORLD_NAME });
 export const syncGuildsTask = async (teamspeak, guildName, type) => {
   try {
     const apiMembers = await tibiaAPI.getGuildInformation(guildName);
-    if (!apiMembers || apiMembers.length === 0) return;
+
+    // --- TRAVA DE SEGURANÇA ---
+    // Se a API falhar ou vier vazia, NÃO faz o sync para não apagar o banco por erro.
+    if (!apiMembers || apiMembers.length === 0) {
+      console.log(`[SYNC] Guilda ${guildName} retornou vazia. Abortando para evitar remoção massiva.`);
+      return;
+    }
 
     const dbMembers = await Characters.find({ type: type, guildName: guildName });
+    // ... resto do código igual ...
     const dbNames = dbMembers.map(c => c.characterName);
 
     const joined = apiMembers.filter(name => !dbNames.includes(name));
