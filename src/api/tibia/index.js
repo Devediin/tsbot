@@ -47,11 +47,21 @@ export default class TibiaAPI {
       const { data } = await axios.get(`${TIBIA_DATA_API_URL}guild/${encodeURIComponent(guildName)}`);
       const members = data.guild?.members || [];
       const flatList = [];
-      members.forEach(rank => {
-        if (rank.characters) { rank.characters.forEach(char => flatList.push(char.name)); }
+
+      members.forEach(item => {
+        // Se o item já tiver o .name, é a lista direta
+        if (item.name) { 
+          flatList.push(item.name); 
+        } 
+        // Se o item tiver .characters, é o formato por ranks
+        else if (item.characters) { 
+          item.characters.forEach(c => flatList.push(c.name)); 
+        }
       });
+
       return flatList;
     } catch (error) {
+      console.error(`[GUILD API ERROR] ${guildName}:`, error.message);
       return [];
     }
   }
