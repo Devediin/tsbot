@@ -9,25 +9,20 @@ export const syncGuildsTask = async (teamspeak, guildName, type) => {
   try {
     const apiMembers = await tibiaAPI.getGuildInformation(guildName);
 
-    // --- TRAVA DE SEGURANÇA ---
-    // Se a API falhar ou vier vazia, NÃO faz o sync para não apagar o banco por erro.
-    if (!apiMembers || apiMembers.length === 0) {
-      console.log(`[SYNC] Guilda ${guildName} retornou vazia. Abortando para evitar remoção massiva.`);
-      return;
-    }
-
-    const dbMembers = await Characters.find({ type: type, guildName: guildName });
-    // ... resto do código igual ...
+    // Buscamos apenas quem tem nome preenchido no banco para comparar
+    const dbMembers = await Characters.find({ type: type, guildName: guildName, characterName: { $exists: true } });
     const dbNames = dbMembers.map(c => c.characterName);
 
-    const joined = apiMembers.filter(name => !dbNames.includes(name));
-    const left = dbNames.filter(name => !apiMembers.includes(name));
+    const joined = apiMembers.filter(name => name && !dbNames.includes(name));
+    const left = dbNames.filter(name => name && !apiMembers.includes(name));
 
     const emoji = type === 'friend' ? '🟢' : '🔴';
     const typeLabel = type === 'friend' ? 'FRIEND' : 'ENEMY';
 
     // TRATAR ENTRADAS E RENAMES
     for (const name of joined) {
+      if (!name) continue; // Pula se o nome for inválido
+
       let renameMsg = '';
       try {
         const info = await tibiaAPI.getCharacterInformation(name);
@@ -41,12 +36,14 @@ export const syncGuildsTask = async (teamspeak, guildName, type) => {
         }
       } catch (e) {}
 
+      // GRAVAÇÃO NO BANCO
       await Characters.create({ characterName: name, type: type, guildName: guildName });
       await sendMassPrivateMessage(teamspeak, `${emoji} [b]GUILD ${typeLabel}:[/b] ${name} ENTROU na guild ${guildName}.${renameMsg}`);
     }
 
     // TRATAR SAÍDAS
     for (const name of left) {
+      if (!name) continue;
       await Characters.deleteOne({ characterName: name });
       await sendMassPrivateMessage(teamspeak, `${emoji} [b]GUILD ${typeLabel}:[/b] ${name} SAIU da guild ${guildName}.`);
     }
