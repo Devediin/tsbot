@@ -472,8 +472,12 @@ export const startTasks = (teamspeak) => {
 
       const playersOnline = await tibiaAPI.getWorldOnline();
       
-      // FIX: Case Sensitivity (Tudo em minúsculo para comparar banco vs api)
-      const onlinePlayerNamesLower = new Set(playersOnline.map(({ name }) => name.toLowerCase()));
+      // Fix: Filtro para garantir que nomes da API existam e estejam em minúsculo
+      const onlinePlayerNamesLower = new Set(
+        playersOnline
+          .filter(p => p && p.name)
+          .map(({ name }) => name.toLowerCase())
+      );
 
       console.log(`[WORLD] Jogadores online no mundo: ${playersOnline.length}`);
 
@@ -487,7 +491,7 @@ export const startTasks = (teamspeak) => {
 
       const focusCharacter = await Characters.findOne({ isFocus: true });
 
-      if (focusCharacter) {
+      if (focusCharacter && focusCharacter.characterName) {
         const focusName = focusCharacter.characterName.toLowerCase();
         const isOnline = onlinePlayerNamesLower.has(focusName);
 
@@ -504,15 +508,15 @@ export const startTasks = (teamspeak) => {
         }
       }
 
-      updateRecentlyOfflineMap(new Set(playersOnline.map(({ name }) => name)));
+      updateRecentlyOfflineMap(new Set(playersOnline.filter(p => p && p.name).map(({ name }) => name)));
 
-      // FIX: Filtro ignorando Case (Maiúsculas/Minúsculas)
+      // Fix: Filtro com trava de segurança (checa se characterName existe antes do toLowerCase)
       const onlineEnemyCharacters = enemyCharacters
-        .filter(({ characterName }) => onlinePlayerNamesLower.has(characterName.toLowerCase()))
+        .filter(c => c && c.characterName && onlinePlayerNamesLower.has(c.characterName.toLowerCase()))
         .map(({ type, characterName }) => ({ type, characterName }));
 
       const onlineFriendCharacters = friendCharacters
-        .filter(({ characterName }) => onlinePlayerNamesLower.has(characterName.toLowerCase()))
+        .filter(c => c && c.characterName && onlinePlayerNamesLower.has(c.characterName.toLowerCase()))
         .map(({ type, characterName }) => ({ type, characterName }));
 
       console.log(`[DEATH] Friends Online: ${onlineFriendCharacters.length} | Enemies Online: ${onlineEnemyCharacters.length}`);
@@ -551,7 +555,7 @@ export const startTasks = (teamspeak) => {
          FOCO - MATOU FRIEND
       ========================= */
 
-      if (focusCharacter) {
+      if (focusCharacter && focusCharacter.characterName) {
         const focusName = focusCharacter.characterName.toLowerCase();
 
         const matchedDeath = deathListByCharacters.find(d =>
