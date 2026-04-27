@@ -46,7 +46,8 @@ export const addCharactersByGuildName = async (guildName, type) => (
     try {
       const members = await tibiaAPI.getGuildInformation(guildName);
 
-      const characters = members.map(({ name }) => ({
+      // FIX: members agora é uma lista de strings, não objetos.
+      const characters = members.map((name) => ({
         characterName: name,
         type,
         guildName,
@@ -71,7 +72,9 @@ export const addCharactersByGuildName = async (guildName, type) => (
 export const syncCharactersByGuildName = async (guildName, type) => {
   try {
     const members = await tibiaAPI.getGuildInformation(guildName);
-    const currentMemberNames = new Set(members.map(({ name }) => name));
+    
+    // FIX: members já é uma lista de strings
+    const currentMemberNames = new Set(members);
 
     const dbCharacters = await Characters.find({ type, guildName });
     const dbNames = new Set(dbCharacters.map(({ characterName }) => characterName));
@@ -89,10 +92,11 @@ export const syncCharactersByGuildName = async (guildName, type) => {
     }
 
     let added = 0;
-    for (const member of members) {
-      if (!dbNames.has(member.name)) {
+    for (const name of members) {
+      // FIX: Comparação direta com a string 'name'
+      if (!dbNames.has(name)) {
         const newChar = new Characters({
-          characterName: member.name,
+          characterName: name,
           type,
           guildName,
         });
