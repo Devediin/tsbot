@@ -257,10 +257,13 @@ const generateDescription = async (data = {}) => {
 
 const getOnlineCharacters = (onlineCharacters = [], dbCharacters = []) => {
   const online = [];
-  onlineCharacters.forEach((onlineCharacter) => {
-    dbCharacters.forEach(({ characterName }) => {
-      if (characterName === onlineCharacter.name) online.push(onlineCharacter);
-    });
+  const onlineMap = new Map(onlineCharacters.map(p => [p.name.toLowerCase(), p]));
+
+  dbCharacters.forEach((dbChar) => {
+    const match = onlineMap.get(dbChar.characterName.toLowerCase());
+    if (match) {
+      online.push(match);
+    }
   });
   return { online, dbCharacters };
 };
@@ -468,7 +471,11 @@ export const startTasks = (teamspeak) => {
       ];
 
       const playersOnline = await tibiaAPI.getWorldOnline();
-      const onlinePlayerNames = new Set(playersOnline.map(({ name }) => name));
+      
+      // Cria uma lista de nomes em minúsculo para comparação segura
+      const onlinePlayerNamesLower = new Set(playersOnline.map(({ name }) => name.toLowerCase()));
+
+      console.log(`[DEATH] Jogadores no mundo: ${playersOnline.length}`);
 
       /* =========================
          FOCO - BANCO (LOGIN)
@@ -482,20 +489,29 @@ export const startTasks = (teamspeak) => {
 
       if (focusCharacter) {
         const focusName = focusCharacter.characterName.toLowerCase();
-        const isOnline = playersOnline.some(p => p.name.toLowerCase() === focusName);
+        const isOnline = onlinePlayerNamesLower.has(focusName);
 
         if (isOnline && !global.focusOnlineState) {
           global.focusOnlineState = true;
-          await sendMassPoke(
-            teamspeak,
-            `🎯 [b]FOCO ONLINE:[/b] ${focusCharacter.characterName}`
-          );
+          await sendMassPoke(teamspeak, `🎯 [b]FOCO ONLINE:[/b] ${focusCharacter.characterName}`);
         }
 
         if (!isOnline) {
           global.focusOnlineState = false;
         }
       }
+
+      updateRecentlyOfflineMap(new Set(playersOnline.map(({ name }) => name)));
+
+      const onlineEnemyCharacters = enemyCharacters
+        .filter(({ characterName }) => onlinePlayerNamesLower.has(characterName.toLowerCase()))
+        .map(({ type, characterName }) => ({ type, characterName }));
+
+      const onlineFriendCharacters = friendCharacters
+        .filter(({ characterName }) => onlinePlayerNamesLower.has(characterName.toLowerCase()))
+        .map(({ type, characterName }) => ({ type, characterName }));
+
+      console.log(`[DEATH] Friends Online: ${onlineFriendCharacters.length} | Enemies Online: ${onlineEnemyCharacters.length}`);
 
       updateRecentlyOfflineMap(onlinePlayerNames);
 
