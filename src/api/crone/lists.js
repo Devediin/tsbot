@@ -472,10 +472,10 @@ export const startTasks = (teamspeak) => {
 
       const playersOnline = await tibiaAPI.getWorldOnline();
       
-      // Cria uma lista de nomes em minúsculo para comparação segura
+      // FIX: Case Sensitivity (Tudo em minúsculo para comparar banco vs api)
       const onlinePlayerNamesLower = new Set(playersOnline.map(({ name }) => name.toLowerCase()));
 
-      console.log(`[DEATH] Jogadores no mundo: ${playersOnline.length}`);
+      console.log(`[WORLD] Jogadores online no mundo: ${playersOnline.length}`);
 
       /* =========================
          FOCO - BANCO (LOGIN)
@@ -493,7 +493,10 @@ export const startTasks = (teamspeak) => {
 
         if (isOnline && !global.focusOnlineState) {
           global.focusOnlineState = true;
-          await sendMassPoke(teamspeak, `🎯 [b]FOCO ONLINE:[/b] ${focusCharacter.characterName}`);
+          await sendMassPoke(
+            teamspeak,
+            `🎯 [b]FOCO ONLINE:[/b] ${focusCharacter.characterName}`
+          );
         }
 
         if (!isOnline) {
@@ -503,6 +506,7 @@ export const startTasks = (teamspeak) => {
 
       updateRecentlyOfflineMap(new Set(playersOnline.map(({ name }) => name)));
 
+      // FIX: Filtro ignorando Case (Maiúsculas/Minúsculas)
       const onlineEnemyCharacters = enemyCharacters
         .filter(({ characterName }) => onlinePlayerNamesLower.has(characterName.toLowerCase()))
         .map(({ type, characterName }) => ({ type, characterName }));
@@ -512,16 +516,6 @@ export const startTasks = (teamspeak) => {
         .map(({ type, characterName }) => ({ type, characterName }));
 
       console.log(`[DEATH] Friends Online: ${onlineFriendCharacters.length} | Enemies Online: ${onlineEnemyCharacters.length}`);
-
-      updateRecentlyOfflineMap(onlinePlayerNames);
-
-      const onlineEnemyCharacters = enemyCharacters
-        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(({ type, characterName }) => ({ type, characterName }));
-
-      const onlineFriendCharacters = friendCharacters
-        .filter(({ characterName }) => onlinePlayerNames.has(characterName))
-        .map(({ type, characterName }) => ({ type, characterName }));
 
       const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
 
@@ -541,8 +535,6 @@ export const startTasks = (teamspeak) => {
         });
       }
 
-      console.log(`[DEATH] Characters monitorados online: ${onlineEnemyCharacters.length + onlineFriendCharacters.length}`);
-      console.log(`[DEATH] Characters monitorados recem-offline: ${recentlyOfflineCharacters.length}`);
       console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
 
       const killsToPoke = await getNotPokedKills(deathListByCharacters);
@@ -550,9 +542,7 @@ export const startTasks = (teamspeak) => {
       if (killsToPoke.length > 0) {
         for (const deathData of killsToPoke) {
           console.log(`[DEATH] Enviando poke: ${deathData.shortMessage}`);
-          // 1. Envia o Poke (Curto + Negrito + Cor)
           await sendMassPoke(teamspeak, deathData.shortMessage);
-          // 2. Envia a Mensagem Privada (Completa + Emojis)
           await sendMassPrivateMessage(teamspeak, deathData.fullMessage);
         }
       }
