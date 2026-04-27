@@ -100,48 +100,31 @@ const MAX_POKE_LENGTH = 95;
 const formatDeathMessage = ({ type, characterName, level, killers = [], time }) => {
   const deathAge = formatDeathAgeShort(time);
   const safeName = characterName || 'Unknown';
-
-  // Filtra killers (remove o próprio char se ele se matou)
   const filteredKillers = killers.filter(k => k && k.name && k.name.toLowerCase() !== safeName.toLowerCase());
 
-  // --- Lógica de Killers ---
   const pokeKillersBase = filteredKillers.slice(0, 2).map(k => k.name).join(', ');
   const extraCount = filteredKillers.length - 2;
   const pokeKillersText = extraCount > 0 ? `${pokeKillersBase} (+${extraCount})` : (pokeKillersBase || killers[0]?.name || 'unknown');
-  
   const fullKillersText = filteredKillers.map(k => k.name).join(', ') || killers[0]?.name || 'unknown';
 
-  // --- Cores e Emojis ---
   const isEnemy = type === 'enemy';
   const color = isEnemy ? 'red' : 'green';
   const tag = isEnemy ? '[ENEMY]' : '[FRIEND]';
   const emoji = isEnemy ? '💀 🔴' : '🛡️ 🟢';
 
-  // Seus templates originais
-  const templates = [
-    `caiu pra`,
-    `foi de base pra`,
-    `tomou bala de`,
-    `virou tapete do`
-  ];
+  const templates = [`caiu pra`, `foi de base pra`, `tomou bala de`, `virou tapete do` ];
   const selectedTemplate = templates[Math.floor(Math.random() * templates.length)];
 
-  // --- MENSAGEM CURTA (POKE) ---
-  // Formato: [b][color=red][ENEMY][/color] Nome Level caiu pra Killers (+X)[/b]
   let shortMessage = `[b][${deathAge}] [color=${color}]${tag}[/color] ${safeName} ${level} ${selectedTemplate} ${pokeKillersText}[/b]`;
-  
   if (shortMessage.length > MAX_POKE_LENGTH) {
     shortMessage = shortMessage.substring(0, MAX_POKE_LENGTH - 7) + '...[/b]';
   }
 
-  // --- MENSAGEM LONGA (PRIVADA) ---
-  // Formato: 💀 🔴 [b][ENEMY][/b] Nome Level caiu pra Killers (Full)
   const fullMessage = `${emoji} [b][color=${color}]${tag}[/color][/b] [B]${safeName}[/B] (${level}) ${selectedTemplate} [i]${fullKillersText}[/i]`;
-
   lastDeathKillers.set(safeName.toLowerCase(), killers.map(k => k.name));
-
   return { shortMessage, fullMessage };
 };
+
 const formatLevelMessage = ({ name, previousLevel, currentLevel, vocation, monitoredType }) => {
   const typeLabel = getTypeLabel(monitoredType);
   const emoji = getVocationEmoji(vocation);
@@ -244,8 +227,38 @@ const appendProfessionBlock = async (title, list = [], description = '') => {
 
 const generateDescription = async (data = {}) => {
   const { online = [], dbCharacters = [] } = data;
-  const { eks, ems, rps, eds, mss, nons } = splitByProfessions(online);
+
+  const isEnemyList =
+    dbCharacters.length > 0 &&
+    dbCharacters[0]?.type === 'enemy';
+
   let description = `[b][color=#00AAFF]Online ${online.length}/${dbCharacters.length}[/color][/b]\n`;
+
+  if (isEnemyList) {
+    const focusCharacter = await Characters.findOne({ type: 'enemy', isFocus: true });
+    let focusOnline = [];
+    let normalOnline = online;
+    if (focusCharacter) {
+      focusOnline = online.filter(p => p.name === focusCharacter.characterName);
+      normalOnline = online.filter(p => p.name !== focusCharacter.characterName);
+    }
+    if (focusOnline.length > 0) {
+      description += `\n[b]🎯 FOCO (${focusOnline.length})[/b]\n`;
+      for (const character of focusOnline) {
+        description += await buildCharacterDescription(character);
+      }
+    }
+    const { eks, ems, rps, eds, mss, nons } = splitByProfessions(normalOnline);
+    description = await appendProfessionBlock('🛡️ Elite Knights', eks, description);
+    description = await appendProfessionBlock('🥋 Exalted Monks', ems, description);
+    description = await appendProfessionBlock('🏹 Royal Paladins', rps, description);
+    description = await appendProfessionBlock('🌿 Elder Druids', eds, description);
+    description = await appendProfessionBlock('🔥 Master Sorcerers', mss, description);
+    description = await appendProfessionBlock('❔ No Vocation', nons, description);
+    return { online, description, dbCharacters };
+  }
+
+  const { eks, ems, rps, eds, mss, nons } = splitByProfessions(online);
   description = await appendProfessionBlock('🛡️ Elite Knights', eks, description);
   description = await appendProfessionBlock('🥋 Exalted Monks', ems, description);
   description = await appendProfessionBlock('🏹 Royal Paladins', rps, description);
@@ -255,23 +268,23 @@ const generateDescription = async (data = {}) => {
   return { online, description, dbCharacters };
 };
 
+// FIX: Case Sensitivity na descrição do canal
 const getOnlineCharacters = (onlineCharacters = [], dbCharacters = []) => {
   const online = [];
-  const onlineMap = new Map(onlineCharacters.map(p => [p.name.toLowerCase(), p]));
-
+  const onlineMap = new Map(onlineCharacters.filter(p => p && p.name).map(p => [p.name.toLowerCase(), p]));
   dbCharacters.forEach((dbChar) => {
-    const match = onlineMap.get(dbChar.characterName.toLowerCase());
-    if (match) {
-      online.push(match);
+    if (dbChar && dbChar.characterName) {
+      const match = onlineMap.get(dbChar.characterName.toLowerCase());
+      if (match) online.push(match);
     }
   });
   return { online, dbCharacters };
 };
 
 const getAutomaticNeutralCharacters = (onlineCharacters = [], friendCharacters = [], enemyCharacters = []) => {
-  const friendNames = new Set(friendCharacters.map(({ characterName }) => characterName));
-  const enemyNames = new Set(enemyCharacters.map(({ characterName }) => characterName));
-  const neutralOnline = onlineCharacters.filter(({ name }) => !friendNames.has(name) && !enemyNames.has(name));
+  const friendNames = new Set(friendCharacters.map(({ characterName }) => characterName.toLowerCase()));
+  const enemyNames = new Set(enemyCharacters.map(({ characterName }) => characterName.toLowerCase()));
+  const neutralOnline = onlineCharacters.filter(({ name }) => !friendNames.has(name.toLowerCase()) && !enemyNames.has(name.toLowerCase()));
   return { online: sortDescendingByLevel(neutralOnline), dbCharacters: neutralOnline.map(({ name }) => ({ characterName: name, type: 'neutral-auto' })) };
 };
 
@@ -318,24 +331,18 @@ const getRecentlyOfflineCharacters = (characters = []) => {
 };
 
 const processLevelUps = async (playersOnline = [], friendCharacters = [], teamspeak) => {
-  const friendNames = new Set(friendCharacters.map(({ characterName }) => characterName));
+  const friendNames = new Set(friendCharacters.map(({ characterName }) => characterName.toLowerCase()));
   for (const player of playersOnline) {
-    if (!friendNames.has(player.name)) continue;
+    if (!friendNames.has(player.name.toLowerCase())) continue;
     const name = player.name;
     const currentLevel = Number(player.level);
-    const vocation = player.vocation;
-    const monitoredType = 'friend';
     const tracker = await ensureLevelTracker({ name, level: currentLevel });
     const previousLevel = Number(tracker?.lastLevel);
-    const alreadyAnnouncedLevel = announcedLevelUps.get(name);
-    const shouldAnnounce = Number.isFinite(previousLevel) && Number.isFinite(currentLevel) && currentLevel > previousLevel && alreadyAnnouncedLevel !== currentLevel;
-    if (!shouldAnnounce) {
-      await setLevelTrackerLevel({ name, level: currentLevel });
-      continue;
+    if (previousLevel && currentLevel > previousLevel && announcedLevelUps.get(name) !== currentLevel) {
+      const message = formatLevelMessage({ name, previousLevel, currentLevel, vocation: player.vocation, monitoredType: 'friend' });
+      await sendMassPrivateMessage(teamspeak, message);
+      announcedLevelUps.set(name, currentLevel);
     }
-    const message = formatLevelMessage({ name, previousLevel, currentLevel, vocation, monitoredType });
-    await sendMassPrivateMessage(teamspeak, message);
-    announcedLevelUps.set(name, currentLevel);
     await setLevelTrackerLevel({ name, level: currentLevel });
   }
 };
@@ -345,61 +352,21 @@ const getDeathCacheKey = ({ characterName, time }) => `${characterName}::${time}
 const getNotPokedKills = async (kills = []) => {
   try {
     const deathsCache = await getDeathsCache();
-    const cachedKeys = new Set(
-      deathsCache.map(({ characterName, time }) =>
-        getDeathCacheKey({ characterName, time })
-      )
-    );
-
+    const cachedKeys = new Set(deathsCache.map(({ characterName, time }) => getDeathCacheKey({ characterName, time })));
     const killsToPoke = [];
-
     for (const death of kills) {
       const { type, level, killers = [], time, characterName } = death;
-
       if (type !== 'friend' && type !== 'enemy') continue;
-
       const cacheKey = getDeathCacheKey({ characterName, time });
       if (cachedKeys.has(cacheKey)) continue;
-
-      /* =========================
-         NOVO: SALVAR NO MONGO
-      ========================= */
-
       try {
-        await WarEvent.create({
-          characterName,
-          type,
-          level,
-          killers: killers.map(k => ({
-            name: k.name,
-            isPlayer: k.player ?? true
-          })),
-          time: new Date(time)
-        });
-      } catch (err) {
-        console.error('[WAR] Erro salvando WarEvent:', err.message);
-      }
-
-      /* ========================= */
-
-      killsToPoke.push(
-        formatDeathMessage({
-          type,
-          characterName,
-          level,
-          killers,
-          time
-        })
-      );
-
+        await WarEvent.create({ characterName, type, level, killers: killers.map(k => ({ name: k.name, isPlayer: k.player ?? true })), time: new Date(time) });
+      } catch (err) { console.error('[WAR] Erro salvando WarEvent:', err.message); }
+      killsToPoke.push(formatDeathMessage({ type, characterName, level, killers, time }));
       await addDeathsCache({ characterName, time });
     }
-
     return killsToPoke;
-
-  } catch (error) {
-    throw error;
-  }
+  } catch (error) { throw error; }
 };
 
 const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
@@ -414,12 +381,8 @@ const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
       if (!isNeutralPageName) return false;
       return !validDbCids.has(cid);
     });
-    for (const orphanChannel of orphanNeutralPageChannels) {
-      try { await orphanChannel.del(true); } catch (error) {}
-    }
-  } catch (error) {
-    console.error('Erro limpando canais órfãos de neutral page:', error);
-  }
+    for (const orphanChannel of orphanNeutralPageChannels) { try { await orphanChannel.del(true); } catch (error) {} }
+  } catch (error) { console.error('Erro limpando canais órfãos:', error); }
 };
 
 const processServerSaveStatus = async (teamspeak) => {
@@ -428,43 +391,27 @@ const processServerSaveStatus = async (teamspeak) => {
     const serverSaveStatus = await getServerSaveStatus();
     const onlineCount = Number(worldOverview.onlineCount || 0);
     if (onlineCount <= 0) {
-      if (!serverSaveStatus?.isOffline) {
-        console.log('[SERVERSAVE] Mundo aparenta estar offline.');
-        await setServerSaveOffline();
-      }
+      if (!serverSaveStatus?.isOffline) await setServerSaveOffline();
       return;
     }
     if (serverSaveStatus?.isOffline) {
-      const message = buildServerSaveMessage({
-        worldName: worldOverview.name || WORLD_NAME,
-        boostedCreature: worldOverview.boostedCreature,
-        boostedBoss: worldOverview.boostedBoss,
-      });
-      console.log(`[SERVERSAVE] Mundo voltou. Mensagem: ${message}`);
+      const message = buildServerSaveMessage({ worldName: WORLD_NAME, boostedCreature: worldOverview.boostedCreature, boostedBoss: worldOverview.boostedBoss });
       await sendMassPrivateMessage(teamspeak, message);
       await setServerSaveOnline();
       await setServerSaveAnnounced();
       const { updateDailyInfoChannel } = await import('./daily-info');
       await updateDailyInfoChannel(teamspeak);
     }
-  } catch (error) {
-    console.error('[SERVERSAVE] Erro processando status do server save:', error);
-  }
+  } catch (error) { console.error('[SERVERSAVE] Erro status:', error); }
 };
 
 export const startTasks = (teamspeak) => {
   const fastTask = cron.schedule('0-59/5 * * * * *', async () => {
-    if (isFastTaskRunning) {
-      console.log('[CRON] fastTask ainda em execução. Pulando esta rodada.');
-      return;
-    }
-
+    if (isFastTaskRunning) return;
     isFastTaskRunning = true;
-
     try {
       const enemyCharacters = await Characters.find({ type: 'enemy' });
       const friendCharacters = await Characters.find({ type: 'friend' });
-
       const monitoredCharacters = [
         ...enemyCharacters.map(({ type, characterName }) => ({ type, characterName })),
         ...friendCharacters.map(({ type, characterName }) => ({ type, characterName })),
@@ -472,45 +419,25 @@ export const startTasks = (teamspeak) => {
 
       const playersOnline = await tibiaAPI.getWorldOnline();
       
-      // Fix: Filtro para garantir que nomes da API existam e estejam em minúsculo
-      const onlinePlayerNamesLower = new Set(
-        playersOnline
-          .filter(p => p && p.name)
-          .map(({ name }) => name.toLowerCase())
-      );
+      // FIX: Case sensitivity na detecção de quem está online
+      const onlinePlayerNamesLower = new Set(playersOnline.filter(p => p && p.name).map(({ name }) => name.toLowerCase()));
 
-      console.log(`[WORLD] Jogadores online no mundo: ${playersOnline.length}`);
+      console.log(`[WORLD] Online no mundo: ${playersOnline.length}`);
 
-      /* =========================
-         FOCO - BANCO (LOGIN)
-      ========================= */
-
-      if (!global.focusOnlineState) {
-        global.focusOnlineState = false;
-      }
-
+      if (!global.focusOnlineState) { global.focusOnlineState = false; }
       const focusCharacter = await Characters.findOne({ isFocus: true });
-
       if (focusCharacter && focusCharacter.characterName) {
         const focusName = focusCharacter.characterName.toLowerCase();
         const isOnline = onlinePlayerNamesLower.has(focusName);
-
         if (isOnline && !global.focusOnlineState) {
           global.focusOnlineState = true;
-          await sendMassPoke(
-            teamspeak,
-            `🎯 [b]FOCO ONLINE:[/b] ${focusCharacter.characterName}`
-          );
-        }
-
-        if (!isOnline) {
-          global.focusOnlineState = false;
-        }
+          await sendMassPoke(teamspeak, `🎯 [b]FOCO ONLINE:[/b] ${focusCharacter.characterName}`);
+        } else if (!isOnline) { global.focusOnlineState = false; }
       }
 
       updateRecentlyOfflineMap(new Set(playersOnline.filter(p => p && p.name).map(({ name }) => name)));
 
-      // Fix: Filtro com trava de segurança (checa se characterName existe antes do toLowerCase)
+      // FIX: Proteção contra undefined no toLowerCase()
       const onlineEnemyCharacters = enemyCharacters
         .filter(c => c && c.characterName && onlinePlayerNamesLower.has(c.characterName.toLowerCase()))
         .map(({ type, characterName }) => ({ type, characterName }));
@@ -522,53 +449,26 @@ export const startTasks = (teamspeak) => {
       console.log(`[DEATH] Friends Online: ${onlineFriendCharacters.length} | Enemies Online: ${onlineEnemyCharacters.length}`);
 
       const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
-
-      const deathPriorityCharacters = [
-        ...onlineEnemyCharacters,
-        ...onlineFriendCharacters,
-        ...recentlyOfflineCharacters
-      ].filter(({ characterName }) => characterName);
+      const deathPriorityCharacters = [...onlineEnemyCharacters, ...onlineFriendCharacters, ...recentlyOfflineCharacters].filter(({ characterName }) => characterName);
 
       const allCharactersInformation = await getInformationFromCharacters(deathPriorityCharacters);
-
       const deathListByCharacters = [];
-
       if (allCharactersInformation && allCharactersInformation.length > 0) {
-        allCharactersInformation.forEach((data) => {
-          if (data && data.kills) deathListByCharacters.push(...data.kills);
-        });
+        allCharactersInformation.forEach((data) => { if (data && data.kills) deathListByCharacters.push(...data.kills); });
       }
 
-      console.log(`[DEATH] Death entries recentes encontradas: ${deathListByCharacters.length}`);
-
       const killsToPoke = await getNotPokedKills(deathListByCharacters);
-
       if (killsToPoke.length > 0) {
         for (const deathData of killsToPoke) {
-          console.log(`[DEATH] Enviando poke: ${deathData.shortMessage}`);
           await sendMassPoke(teamspeak, deathData.shortMessage);
           await sendMassPrivateMessage(teamspeak, deathData.fullMessage);
         }
       }
 
-      /* =========================
-         FOCO - MATOU FRIEND
-      ========================= */
-
       if (focusCharacter && focusCharacter.characterName) {
         const focusName = focusCharacter.characterName.toLowerCase();
-
-        const matchedDeath = deathListByCharacters.find(d =>
-          d.type === 'friend' &&
-          d.killers?.some(k => k.name?.toLowerCase() === focusName)
-        );
-
-        if (matchedDeath) {
-          await sendMassPoke(
-            teamspeak,
-            `🚨 [b]FOCO MATOU:[/b] ${focusCharacter.characterName} eliminou ${matchedDeath.characterName}`
-          );
-        }
+        const matchedDeath = deathListByCharacters.find(d => d.type === 'friend' && d.killers?.some(k => k.name?.toLowerCase() === focusName));
+        if (matchedDeath) await sendMassPoke(teamspeak, `🚨 [b]FOCO MATOU:[/b] ${focusCharacter.characterName} eliminou ${matchedDeath.characterName}`);
       }
 
       await processLevelUps(playersOnline, friendCharacters, teamspeak);
@@ -586,20 +486,11 @@ export const startTasks = (teamspeak) => {
 
       await moveAfkClients(teamspeak);
       await processServerSaveStatus(teamspeak);
-
-    } catch (error) {
-      console.error('[CRON] Erro na fastTask:', error);
-    } finally {
-      isFastTaskRunning = false;
-    }
-
+    } catch (error) { console.error('[CRON] Erro na fastTask:', error); } finally { isFastTaskRunning = false; }
   }, { scheduled: false });
 
   const neutralTask = cron.schedule('*/30 * * * * *', async () => {
-    if (isSlowTaskRunning) {
-      console.log('[CRON] neutralTask ainda em execução. Pulando esta rodada.');
-      return;
-    }
+    if (isSlowTaskRunning) return;
     isSlowTaskRunning = true;
     try {
       const enemyCharacters = await Characters.find({ type: 'enemy' });
@@ -608,48 +499,31 @@ export const startTasks = (teamspeak) => {
       const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
       const channelLists = await teamspeak.channelList();
       const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
-      const neutralSummaryData = {
-        online: automaticNeutralData.online,
-        dbCharacters: automaticNeutralData.dbCharacters,
-        description: `[b][color=#00AAFF]Online ${automaticNeutralData.online.length}/${automaticNeutralData.dbCharacters.length}[/color][/b]\n\n[b]Neutral list is paginated below in groups of ${NEUTRAL_PAGE_SIZE}.[/b]\n`,
-      };
+      const neutralSummaryData = { online: automaticNeutralData.online, dbCharacters: automaticNeutralData.dbCharacters, description: `[b][color=#00AAFF]Online ${automaticNeutralData.online.length}/${automaticNeutralData.dbCharacters.length}[/color][/b]\n\n[b]Neutral list is paginated below in groups of ${NEUTRAL_PAGE_SIZE}.[/b]\n` };
       await updateChannel(teamspeak, 'neutral', neutralSummaryData, channelListsName);
       const neutralPages = paginateList(automaticNeutralData.online, NEUTRAL_PAGE_SIZE);
       const neutralParentChannel = await Channels.findOne({ type: 'neutral' });
       for (let i = 0; i < neutralPages.length; i += 1) {
         const page = neutralPages[i];
-        const start = i * NEUTRAL_PAGE_SIZE + 1;
-        const end = i * NEUTRAL_PAGE_SIZE + page.length;
         const pageData = { online: page, dbCharacters: page.map(({ name }) => ({ characterName: name, type: 'neutral-auto' })) };
         const { description } = await generateDescription(pageData);
-        const rangeLabel = `${start}-${end}`;
-        await upsertNeutralPageChannel(teamspeak, i, rangeLabel, description, neutralParentChannel);
+        await upsertNeutralPageChannel(teamspeak, i, `${(i * NEUTRAL_PAGE_SIZE) + 1}-${(i * NEUTRAL_PAGE_SIZE) + page.length}`, description, neutralParentChannel);
       }
       await deleteUnusedNeutralPageChannels(teamspeak, neutralPages.map((_, index) => index));
       await deleteOrphanNeutralPageChannelsFromTs(teamspeak);
       await syncRegistrationGroups(teamspeak);
       await updateMeta();
-    } catch (error) {
-      console.error('[CRON] Erro na neutralTask:', error);
-    } finally {
-      isSlowTaskRunning = false;
-    }
+    } catch (error) { console.error('[CRON] Erro na neutralTask:', error); } finally { isSlowTaskRunning = false; }
   }, { scheduled: false });
 
   fastTask.start();
   neutralTask.start();
 
-  // Sincronização Automática de Guildas (De hora em hora)
   cron.schedule('0 * * * *', async () => {
-    console.log('[CRON] Buscando guilds para sincronização...');
-    
-    // Busca todas as guilds únicas que estão na sua Enemy List e Friend List
+    console.log('[CRON] Sincronizando guildas...');
     const friendGuilds = await Characters.distinct('guildName', { type: 'friend' });
     const enemyGuilds = await Characters.distinct('guildName', { type: 'enemy' });
-
-    // Roda a sincronização para cada uma encontrada
     for (const g of friendGuilds) { if (g) await syncGuildsTask(teamspeak, g, 'friend'); }
     for (const g of enemyGuilds) { if (g) await syncGuildsTask(teamspeak, g, 'enemy'); }
   });
-  
 };
