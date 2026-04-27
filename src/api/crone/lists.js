@@ -162,7 +162,8 @@ const getInformationFromCharacters = async (characterNames = []) => {
     const uniqueCharacters = [];
     const seen = new Set();
     for (const entry of characterNames) {
-      const key = `${entry.type}:${entry.characterName}`;
+      if (!entry.characterName) continue;
+      const key = `${entry.type}:${entry.characterName.toLowerCase()}`;
       if (seen.has(key)) continue;
       seen.add(key);
       uniqueCharacters.push(entry);
@@ -268,7 +269,6 @@ const generateDescription = async (data = {}) => {
   return { online, description, dbCharacters };
 };
 
-// FIX: Case Sensitivity na descrição do canal
 const getOnlineCharacters = (onlineCharacters = [], dbCharacters = []) => {
   const online = [];
   const onlineMap = new Map(onlineCharacters.filter(p => p && p.name).map(p => [p.name.toLowerCase(), p]));
@@ -282,9 +282,9 @@ const getOnlineCharacters = (onlineCharacters = [], dbCharacters = []) => {
 };
 
 const getAutomaticNeutralCharacters = (onlineCharacters = [], friendCharacters = [], enemyCharacters = []) => {
-  const friendNames = new Set(friendCharacters.map(({ characterName }) => characterName.toLowerCase()));
-  const enemyNames = new Set(enemyCharacters.map(({ characterName }) => characterName.toLowerCase()));
-  const neutralOnline = onlineCharacters.filter(({ name }) => !friendNames.has(name.toLowerCase()) && !enemyNames.has(name.toLowerCase()));
+  const friendNames = new Set(friendCharacters.filter(c => c && c.characterName).map(({ characterName }) => characterName.toLowerCase()));
+  const enemyNames = new Set(enemyCharacters.filter(c => c && c.characterName).map(({ characterName }) => characterName.toLowerCase()));
+  const neutralOnline = onlineCharacters.filter(p => p && p.name && !friendNames.has(p.name.toLowerCase()) && !enemyNames.has(p.name.toLowerCase()));
   return { online: sortDescendingByLevel(neutralOnline), dbCharacters: neutralOnline.map(({ name }) => ({ characterName: name, type: 'neutral-auto' })) };
 };
 
@@ -331,9 +331,9 @@ const getRecentlyOfflineCharacters = (characters = []) => {
 };
 
 const processLevelUps = async (playersOnline = [], friendCharacters = [], teamspeak) => {
-  const friendNames = new Set(friendCharacters.map(({ characterName }) => characterName.toLowerCase()));
+  const friendNames = new Set(friendCharacters.filter(c => c && c.characterName).map(({ characterName }) => characterName.toLowerCase()));
   for (const player of playersOnline) {
-    if (!friendNames.has(player.name.toLowerCase())) continue;
+    if (!player.name || !friendNames.has(player.name.toLowerCase())) continue;
     const name = player.name;
     const currentLevel = Number(player.level);
     const tracker = await ensureLevelTracker({ name, level: currentLevel });
@@ -382,7 +382,7 @@ const deleteOrphanNeutralPageChannelsFromTs = async (teamspeak) => {
       return !validDbCids.has(cid);
     });
     for (const orphanChannel of orphanNeutralPageChannels) { try { await orphanChannel.del(true); } catch (error) {} }
-  } catch (error) { console.error('Erro limpando canais órfãos:', error); }
+  } catch (error) { console.error('Erro limpando canais órfãos de neutral page:', error); }
 };
 
 const processServerSaveStatus = async (teamspeak) => {
@@ -418,8 +418,6 @@ export const startTasks = (teamspeak) => {
       ];
 
       const playersOnline = await tibiaAPI.getWorldOnline();
-      
-      // FIX: Case sensitivity na detecção de quem está online
       const onlinePlayerNamesLower = new Set(playersOnline.filter(p => p && p.name).map(({ name }) => name.toLowerCase()));
 
       console.log(`[WORLD] Online no mundo: ${playersOnline.length}`);
@@ -437,25 +435,17 @@ export const startTasks = (teamspeak) => {
 
       updateRecentlyOfflineMap(new Set(playersOnline.filter(p => p && p.name).map(({ name }) => name)));
 
-      // FIX: Proteção contra undefined no toLowerCase()
-      const onlineEnemyCharacters = enemyCharacters
-        .filter(c => c && c.characterName && onlinePlayerNamesLower.has(c.characterName.toLowerCase()))
-        .map(({ type, characterName }) => ({ type, characterName }));
+      const onlineEnemyCharacters = enemyCharacters.filter(c => c && c.characterName && onlinePlayerNamesLower.has(c.characterName.toLowerCase())).map(({ type, characterName }) => ({ type, characterName }));
+      const onlineFriendCharacters = friendCharacters.filter(c => c && c.characterName && onlinePlayerNamesLower.has(c.characterName.toLowerCase())).map(({ type, characterName }) => ({ type, characterName }));
 
-      const onlineFriendCharacters = friendCharacters
-        .filter(c => c && c.characterName && onlinePlayerNamesLower.has(c.characterName.toLowerCase()))
-        .map(({ type, characterName }) => ({ type, characterName }));
-
-      console.log(`[DEATH] Friends Online: ${onlineFriendCharacters.length} | Enemies Online: ${onlineEnemyCharacters.length}`);
+      console.log(`[DEATH] Amigos: ${onlineFriendCharacters.length} | Inimigos: ${onlineEnemyCharacters.length}`);
 
       const recentlyOfflineCharacters = getRecentlyOfflineCharacters(monitoredCharacters);
       const deathPriorityCharacters = [...onlineEnemyCharacters, ...onlineFriendCharacters, ...recentlyOfflineCharacters].filter(({ characterName }) => characterName);
 
       const allCharactersInformation = await getInformationFromCharacters(deathPriorityCharacters);
       const deathListByCharacters = [];
-      if (allCharactersInformation && allCharactersInformation.length > 0) {
-        allCharactersInformation.forEach((data) => { if (data && data.kills) deathListByCharacters.push(...data.kills); });
-      }
+      allCharactersInformation.forEach((data) => { if (data && data.kills) deathListByCharacters.push(...data.kills); });
 
       const killsToPoke = await getNotPokedKills(deathListByCharacters);
       if (killsToPoke.length > 0) {
@@ -478,11 +468,9 @@ export const startTasks = (teamspeak) => {
       const enemyOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, enemyCharacters));
       const friendOnlineOfflineData = await generateDescription(getOnlineCharacters(playersOnline, friendCharacters));
 
-      const channelLists = await teamspeak.channelList();
-      const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
-
-      await updateChannel(teamspeak, 'enemy', enemyOnlineOfflineData, channelListsName);
-      await updateChannel(teamspeak, 'friend', friendOnlineOfflineData, channelListsName);
+      const channelLists = (await teamspeak.channelList()).map(({ propcache }) => propcache.channel_name);
+      await updateChannel(teamspeak, 'enemy', enemyOnlineOfflineData, channelLists);
+      await updateChannel(teamspeak, 'friend', friendOnlineOfflineData, channelLists);
 
       await moveAfkClients(teamspeak);
       await processServerSaveStatus(teamspeak);
@@ -497,15 +485,14 @@ export const startTasks = (teamspeak) => {
       const friendCharacters = await Characters.find({ type: 'friend' });
       const playersOnline = await tibiaAPI.getWorldOnline();
       const automaticNeutralData = getAutomaticNeutralCharacters(playersOnline, friendCharacters, enemyCharacters);
-      const channelLists = await teamspeak.channelList();
-      const channelListsName = channelLists.map(({ propcache }) => propcache.channel_name);
+      const channelLists = (await teamspeak.channelList()).map(({ propcache }) => propcache.channel_name);
       const neutralSummaryData = { online: automaticNeutralData.online, dbCharacters: automaticNeutralData.dbCharacters, description: `[b][color=#00AAFF]Online ${automaticNeutralData.online.length}/${automaticNeutralData.dbCharacters.length}[/color][/b]\n\n[b]Neutral list is paginated below in groups of ${NEUTRAL_PAGE_SIZE}.[/b]\n` };
-      await updateChannel(teamspeak, 'neutral', neutralSummaryData, channelListsName);
+      await updateChannel(teamspeak, 'neutral', neutralSummaryData, channelLists);
       const neutralPages = paginateList(automaticNeutralData.online, NEUTRAL_PAGE_SIZE);
       const neutralParentChannel = await Channels.findOne({ type: 'neutral' });
       for (let i = 0; i < neutralPages.length; i += 1) {
         const page = neutralPages[i];
-        const pageData = { online: page, dbCharacters: page.map(({ name }) => ({ characterName: name, type: 'neutral-auto' })) };
+        const pageData = { online: page, dbCharacters: page.map(p => ({ characterName: p.name, type: 'neutral-auto' })) };
         const { description } = await generateDescription(pageData);
         await upsertNeutralPageChannel(teamspeak, i, `${(i * NEUTRAL_PAGE_SIZE) + 1}-${(i * NEUTRAL_PAGE_SIZE) + page.length}`, description, neutralParentChannel);
       }
@@ -520,7 +507,6 @@ export const startTasks = (teamspeak) => {
   neutralTask.start();
 
   cron.schedule('0 * * * *', async () => {
-    console.log('[CRON] Sincronizando guildas...');
     const friendGuilds = await Characters.distinct('guildName', { type: 'friend' });
     const enemyGuilds = await Characters.distinct('guildName', { type: 'enemy' });
     for (const g of friendGuilds) { if (g) await syncGuildsTask(teamspeak, g, 'friend'); }
