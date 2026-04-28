@@ -585,7 +585,7 @@ export const startTasks = (teamspeak) => {
 
   }, { scheduled: false });
 
-  const neutralTask = cron.schedule('*/5 * * * *', async () => {
+  const neutralTask = cron.schedule('0 * * * * *', async () => {
     if (isSlowTaskRunning) {
       console.log('[CRON] neutralTask ainda em execução. Pulando esta rodada.');
       return;
