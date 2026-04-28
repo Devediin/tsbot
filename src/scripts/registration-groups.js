@@ -204,9 +204,13 @@ export const syncRegistrationGroups = async (teamspeak) => {
         console.log(`[REGSYNC] Char lookup ${mainCharacter}:`, JSON.stringify(characterData));
 
         if (!characterData || !characterData.info) {
+          const isOnline = worldOnlineNames.has(String(mainCharacter).trim().toLowerCase());
+
           console.log(
-            `[REGSYNC] Sem info válida para ${mainCharacter}. Preservando TODOS os grupos atuais.`
+            `[REGSYNC] Sem info válida para ${mainCharacter}. Mantendo grupos atuais. online=${isOnline}`
           );
+
+          await syncOnlineOfflineGroups(teamspeak, clientDatabaseId, currentGroups, isOnline);
           continue;
         }
 
@@ -242,9 +246,17 @@ export const syncRegistrationGroups = async (teamspeak) => {
           `[REGSYNC] OK ${clientNickname} -> ${mainCharacter} | level ${level} | vocation ${vocation} | online=${isOnline} | groups vocation=${targetVocationGroupId} level=${targetLevelGroupId}`
         );
       } catch (e) {
+        const isOnline = worldOnlineNames.has(String(mainCharacter).trim().toLowerCase());
+
         console.error(`[REGSYNC] Erro no lookup do char ${mainCharacter}:`, e.message || e);
+
+        // NÃO joga no grupo Sem Descrição por erro temporário da API
+        // NÃO remove os grupos de vocação/level
+        // Apenas atualiza online/offline se possível
+        await syncOnlineOfflineGroups(teamspeak, clientDatabaseId, currentGroups, isOnline);
+
         console.log(
-          `[REGSYNC] Lookup falhou para ${mainCharacter}. Preservando TODOS os grupos atuais.`
+          `[REGSYNC] Lookup falhou para ${mainCharacter}. Preservando grupos atuais. online=${isOnline}`
         );
       }
     } catch (err) {
