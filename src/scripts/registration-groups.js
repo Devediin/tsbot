@@ -199,7 +199,10 @@ export const syncRegistrationGroups = async (teamspeak) => {
       await removeGroupIfPresent(teamspeak, clientDatabaseId, currentGroups, SEM_DESCRICAO_GROUP_ID);
 
       try {
-        const characterData = await tibiaAPI.getCharacterInformation(mainCharacter);
+          const characterData = await Promise.race([
+          tibiaAPI.getCharacterInformation(mainCharacter),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ]);
 
         console.log(`[REGSYNC] Char lookup ${mainCharacter}:`, JSON.stringify(characterData));
 
