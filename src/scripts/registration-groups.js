@@ -204,8 +204,13 @@ export const syncRegistrationGroups = async (teamspeak) => {
         console.log(`[REGSYNC] Char lookup ${mainCharacter}:`, JSON.stringify(characterData));
 
         if (!characterData || !characterData.info) {
-          await addGroupIfMissing(teamspeak, clientDatabaseId, currentGroups, SEM_DESCRICAO_GROUP_ID);
-          await removeOnlineOfflineGroups(teamspeak, clientDatabaseId, currentGroups);
+          const isOnline = worldOnlineNames.has(String(mainCharacter).trim().toLowerCase());
+
+          console.log(
+            `[REGSYNC] Sem info válida para ${mainCharacter}. Mantendo grupos atuais. online=${isOnline}`
+          );
+
+          await syncOnlineOfflineGroups(teamspeak, clientDatabaseId, currentGroups, isOnline);
           continue;
         }
 
